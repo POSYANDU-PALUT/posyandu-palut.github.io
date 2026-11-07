@@ -4,6 +4,36 @@
 (function () {
 'use strict';
 var $ = function (id) { return document.getElementById(id); };
+
+/* ---------- warna aplikasi (disimpan per perangkat) ---------- */
+var PALET = [
+ { id: 'biru', nm: 'Biru Laut', pri: '#1b2b5e', p2: '#24387a', m: '#2a3f80', t: '#eef1f9', au: '#e3a008', d: ['#8ea6ff', '#a9bbff', '#222d52', '#c9d4ff'] },
+ { id: 'hijau', nm: 'Hijau Posyandu', pri: '#14603a', p2: '#1a7048', m: '#137a46', t: '#e8f5ee', au: '#e3a008', d: ['#6fd6a0', '#8fe3b8', '#163326', '#b8f0d3'] },
+ { id: 'tosca', nm: 'Hijau Tosca', pri: '#0f766e', p2: '#12877e', m: '#0f766e', t: '#e3f4f2', au: '#f97316', d: ['#5eead4', '#99f6e4', '#123532', '#c8faf0'] },
+ { id: 'ungu', nm: 'Ungu', pri: '#5b21b6', p2: '#6d28d9', m: '#6d28d9', t: '#f1ebfc', au: '#f59e0b', d: ['#b9a0ff', '#d0bfff', '#2a1f4d', '#e1d6ff'] },
+ { id: 'marun', nm: 'Merah Marun', pri: '#9f1239', p2: '#b4163f', m: '#9f1239', t: '#fbebef', au: '#fbbf24', d: ['#ff9db3', '#ffb8c8', '#431a26', '#ffd3dd'] },
+ { id: 'abu', nm: 'Abu Gelap', pri: '#334155', p2: '#3f5068', m: '#3b4a60', t: '#eef1f5', au: '#38bdf8', d: ['#9fb3cc', '#bccbde', '#232c3a', '#d6e0ec'] }
+];
+function warnaDipilih() { var v = 'biru'; try { v = localStorage.getItem('pantau-warna') || 'biru'; } catch (x) { } return PALET.some(function (q) { return q.id === v; }) ? v : 'biru'; }
+function terapkanWarna(id) {
+  var q = PALET.filter(function (z) { return z.id === id; })[0] || PALET[0], st = document.getElementById('v2warna');
+  if (q.id === 'biru') { if (st) st.parentNode.removeChild(st); return; }
+  var dk = 'body.v2on{--navy:' + q.d[0] + ';--navy2:' + q.d[1] + ';--navys:' + q.d[2] + ';--navyt:' + q.d[3] + '}';
+  var css = ':root{--pri:' + q.pri + ';--pri2:' + q.p2 + ';--pri3:' + q.m + ';--tint:' + q.t + ';--gold0:' + q.au + ';--gold:' + q.au + '}' +
+    ':root[data-theme=dark] ' + dk + '@media (prefers-color-scheme:dark){:root:not([data-theme=light]) ' + dk + '}';
+  if (!st) { st = document.createElement('style'); st.id = 'v2warna'; document.head.appendChild(st); }
+  st.textContent = css;
+}
+function setWarna(id) { try { localStorage.setItem('pantau-warna', id); } catch (x) { } terapkanWarna(id); }
+terapkanWarna(warnaDipilih());
+function kartuWarna() {
+  var cur = warnaDipilih(), q = PALET.filter(function (z) { return z.id === cur; })[0];
+  return '<section class="cd form"><h2>Warna aplikasi</h2><p class="mu sm">Pilih satu. Warna langsung berubah dan tersimpan otomatis di perangkat ini.</p><div class="wrn">' +
+    PALET.map(function (z) { return '<button type="button" class="wb' + (z.id === cur ? ' on' : '') + '" data-warna="' + z.id + '"><div class="wc"><i style="background:' + z.pri + '"></i><u style="background:' + z.au + '"></u></div>' + z.nm + '</button>'; }).join('') +
+    '</div><div class="wpv"><span style="background:' + q.pri + '">Menu dan judul</span><span style="background:' + q.au + ';color:#1c2333">Penanda dan sorotan</span><span style="background:#3b5bb5">Bar digital</span><span style="background:#16884f">Bar fisik</span></div>' +
+    '<div class="wfoot"><button type="button" class="bt ghost" data-warna="biru">Kembalikan ke Biru Laut</button></div>' +
+    '<p class="mu sm" style="margin-top:12px">Warna status tetap sama di semua pilihan: hijau lengkap, kuning menunggu, merah terlambat.</p></section>';
+}
 var I = {
  home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
@@ -393,16 +423,16 @@ function rincianPos(id) {
 }
 
 /* ---------- Pengaturan ---------- */
-var PSUB = [['j', 'cal', 'Jadwal dan pengumuman'], ['u', 'pos', 'Pengguna dan penerima'], ['s', 'db', 'Data dan cadangan'], ['t', 'shield', 'Sistem'], ['a', 'user', 'Akun saya']];
+var PSUB = [['j', 'cal', 'Jadwal dan pengumuman'], ['u', 'pos', 'Pengguna dan penerima'], ['s', 'db', 'Data dan cadangan'], ['t', 'shield', 'Sistem'], ['w', 'eye', 'Tampilan'], ['a', 'user', 'Akun saya']];
 function fld(lbl, inner, hint) { return '<div class="fl"><label>' + lbl + '</label>' + inner + (hint ? '<p class="hint">' + hint + '</p>' : '') + '</div>'; }
 function hlmPengaturan(ct) {
-  if (!utama()) S.ps = 'a';
-  var sub = utama() ? PSUB : PSUB.filter(function (x) { return x[0] === 'a'; });
+  if (!utama() && S.ps !== 'w') S.ps = 'a';
+  var sub = utama() ? PSUB : PSUB.filter(function (x) { return x[0] === 'a' || x[0] === 'w'; });
   var nav = '<nav class="psub">' + sub.map(function (x) { return '<a href="#" data-ps="' + x[0] + '" class="' + (S.ps === x[0] ? 'on' : '') + '">' + ic(x[1]) + x[2] + '</a>'; }).join('') + '</nav>';
   var back = '<a href="#" class="back" data-go="m">' + ic('left') + 'Lainnya</a>';
   ct.innerHTML = '<div class="pset">' + nav + '<div class="pcol" id="v2pcol">' + back + '</div></div>';
   var c = $('v2pcol');
-  ({ j: psJadwal, u: psPengguna, s: psData, t: psSistem, a: psAkun }[S.ps] || psAkun)(c);
+  ({ j: psJadwal, u: psPengguna, s: psData, t: psSistem, w: psWarna, a: psAkun }[S.ps] || psAkun)(c);
 }
 function psJadwal(c) {
   var v = S.simpan, bk = v.batas != null ? v.batas : PX.BATAS, bf = v.batasKel != null ? v.batasKel : PX.batasKelHari(), pg = v.pengumuman != null ? v.pengumuman : PX.PENGUMUMAN, wa = v.wa != null ? v.wa : (PX.WABANTU ? '+' + PX.WABANTU : '');
@@ -507,6 +537,7 @@ function logHtml() {
   if (!LOG.length) return '<p class="mu sm">Belum ada catatan.</p>';
   return '<ul class="log">' + LOG.slice(0, LOGN).map(function (x) { return '<li><span class="lt"><b>' + e(x.u) + '</b> ' + e(x.a) + '</span><span>' + e(x.t) + '</span></li>'; }).join('') + '</ul>' + (LOG.length > LOGN ? '<p class="mu sm" style="margin:8px 2px 0"><a href="#" data-aksi="logmore">Tampilkan lebih banyak</a></p>' : '');
 }
+function psWarna(c) { c.insertAdjacentHTML('beforeend', kartuWarna()); }
 function psSistem(c) {
   c.insertAdjacentHTML('beforeend', '<div id="v2pm"></div><section class="cd"><div class="hd"><div><h2>Tentang aplikasi</h2></div></div><div class="kvl"><span>Versi</span><b>v11 · tampilan baru</b></div><div class="kvl"><span>Jenis Posyandu</span><b>Balita, Lansia</b></div><div class="kvl"><span>Kelurahan</span><b>' + e(KEL.join(', ')) + '</b></div><div class="kvl"><span>Pengembang</span><b>Max Juniar Ratowo</b></div></section>');
   var pm = $('cardPm'); if (pm) { $('v2pm').appendChild(pm); pm.style.display = ''; }
@@ -518,6 +549,7 @@ function psAkun(c) {
     (utama() || (window.CRED && CRED.as) ? '<a href="#" data-aksi="sebagai">' + ic('eye') + '<span>' + (window.CRED && CRED.as ? 'Kembali sebagai admin' : 'Lihat sebagai operator') + '</span>' + ic('right', 'chev') + '</a>' : '') +
     '<a href="#" data-muat>' + ic('sync') + '<span>Muat ulang data</span>' + ic('right', 'chev') + '</a><a href="#" data-aksi="keluar" class="dz">' + ic('out') + '<span>Keluar</span>' + ic('right', 'chev') + '</a></div></section>');
   var box = $('v2akun');
+  if (!utama()) box.insertAdjacentHTML('beforebegin', kartuWarna());
   ['cardProf', 'cardPw'].forEach(function (id) { var x = $(id); if (x) { box.appendChild(x); x.style.display = ''; } });
 }
 
@@ -527,7 +559,7 @@ function hlmLainnya(ct) {
   var grp = utama() ? [['Pengaturan', PSUB.slice(0, 4)]] : [];
   var h = '<a href="#" class="cd prof" data-ps="a">' + avatar('lg') + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + (window.PROFIL && PROFIL.nip ? ' · NIP ' + e(PROFIL.nip) : '') + '</small></div>' + ic('right', 'chev') + '</a>';
   grp.forEach(function (g) { h += '<h3 class="hh sm">' + g[0] + '</h3><div class="cd ml">' + g[1].map(function (x) { return '<a href="#" data-ps="' + x[0] + '">' + ic(x[1]) + '<span>' + x[2] + '</span>' + ic('right', 'chev') + '</a>'; }).join('') + '</div>'; });
-  h += '<h3 class="hh sm">Tampilan</h3><div class="cd ml"><a href="#" data-tema>' + ic('moon') + '<span>Mode gelap</span><span class="tg' + (dark ? ' on' : '') + '"><i></i></span></a></div>';
+  h += '<h3 class="hh sm">Tampilan</h3><div class="cd ml"><a href="#" data-tema>' + ic('moon') + '<span>Mode gelap</span><span class="tg' + (dark ? ' on' : '') + '"><i></i></span></a><a href="#" data-ps="w">' + ic('eye') + '<span>Warna aplikasi</span>' + ic('right', 'chev') + '</a></div>';
   h += '<div class="cd ml"><a href="./" target="_blank" rel="noopener">' + ic('send') + '<span>Buka aplikasi laporan kader</span>' + ic('right', 'chev') + '</a><a href="#" data-aksi="keluar" class="dz">' + ic('out') + '<span>Keluar</span>' + ic('right', 'chev') + '</a></div>';
   h += '<p class="ver">Pantau Laporan Posyandu v11 · © 2026 Kecamatan Palu Utara</p>';
   ct.innerHTML = h;
@@ -612,6 +644,7 @@ function pasangKlik() {
     var t = ev.target.closest('a,button,tr[data-baris],tr[data-kel],tr[data-posd],label,[data-tutup],input'); if (!t || !root.contains(t)) { if (S.menu) { S.menu = null; render(); } return; }
     var d = t.dataset;
     if (t.tagName === 'INPUT' || (t.tagName === 'LABEL' && !d.tab)) { if (t.tagName === 'INPUT' && t.type === 'checkbox') return; return; }
+    if (d.warna) { ev.preventDefault(); setWarna(d.warna); return render(); }
     if (d.go) { ev.preventDefault(); return go(d.go); }
     if (d.ps) { ev.preventDefault(); S.ps = d.ps; S.pg = 'p'; S.simpan = {}; return render(); }
     if (d.tutup !== undefined) { ev.preventDefault(); S.laci = null; return laci(); }
