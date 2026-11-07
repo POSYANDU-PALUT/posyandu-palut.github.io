@@ -8,7 +8,7 @@
    (pesan "simpan"), jadi HP hanya menyimpan berkas aplikasi yang memang dibuka di HP itu. */
 var NAMA = 'posyandu-v11';
 var TERIMA = ['terima.html', 'terima', 'pindah.js', 'kantor.jpg', 'jsQR.js', 'tes.js', 'logo.png', 'icon-terima-192.png', 'icon-terima-512.png', 'apple-touch-icon-terima.png'];
-var DULU_JARINGAN = ['index.html', 'pantau', 'pantau.html', 'pantau-ext.js', 'pantau-tema.css', 'pantau-modern.css', 'pantau-baru.css', 'seed-posyandu.js',
+var DULU_JARINGAN = ['index.html', 'pantau', 'pantau.html', 'pantau-ext.js', 'pantau-tema.css', 'pantau-modern.css', 'pantau-baru.css', 'pantau-v2.css', 'pantau-v2.js', 'seed-posyandu.js',
   'pembaruan.js', 'banner.jpg', 'palu.jpg', 'palu-kader.jpg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
   'icon-pantau-192.png', 'icon-pantau-512.png', 'apple-touch-icon-pantau.png', 'pantau.webmanifest', 'terima.webmanifest'];
 var LUAR = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com'];

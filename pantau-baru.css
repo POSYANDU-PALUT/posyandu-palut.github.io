@@ -193,8 +193,8 @@ html body.pm .stat.sa::before,html body.pm .stat.sb::before,html body.pm .stat.s
 html body.pm .kh .kmasuk,html body.pm .kh .badge,html body.pm .kel-n,html body.pm [class*="kcount"]{background:var(--accent-soft)!important;color:var(--accent-text)!important}
 html body.pm .hl-ubah{background:var(--accent)!important;color:#fff!important}
 html body.pm .item{border-radius:10px}
-html body.pm .bar i,html body.pm .cmp i{background:var(--c1)!important;border-radius:6px 6px 0 0}
-html body.pm .cmp .on i{background:var(--accent)!important}
+#app .bar i,#app .cmp i{background:var(--c1)!important;border-radius:6px 6px 0 0}
+#app .cmp .on i{background:var(--accent)!important}
 html body.pm .khn,html body.pm #dpList .kh em.khn,html body.pm em.khn{background:var(--accent-soft)!important;color:var(--accent-text)!important}
 html body.pm .avt{background:var(--accent-soft);color:var(--accent-text)}
 html body.pm .ok2{background:var(--ok-soft);color:var(--ok)}

@@ -1898,6 +1898,38 @@ window.tampilBaru = function () { renderBeranda(); renderRekap(); renderData(); 
 window.setelahKeluar = function () { TRM_BARU = null; TRM_TAMBAH = false; SETOR_VIA = {}; SETOR = {}; SETOR_T = {}; SETOR_BUSY = 0; SETOR_OPEN = {}; BELUM_OPEN = {}; KSEL = { kel: '', pos: '' }; POHON_BUKA = {}; LEMB = {}; LEMB_T = {}; LEMB_BUSY = 0; terapKel(''); RUANG = null; CAD = null; POS = []; SK = {}; BANNERS = ['', '', '']; POSOK = false; bangunBanner(); tutupMenu(); tutupModal(); };
 document.addEventListener('DOMContentLoaded', function () { bangunBanner(); });
 if (document.readyState !== 'loading') bangunBanner();
+
+/* ---------- jembatan untuk tampilan baru (pantau-v2.js) ---------- */
+(function () {
+  function segar() { if (window.V2 && V2.segar) V2.segar(); }
+  var _rb = renderBeranda; renderBeranda = function () { try { _rb.apply(this, arguments); } finally { segar(); } };
+  var _rr = renderRekap; renderRekap = function () { try { _rr.apply(this, arguments); } finally { segar(); } };
+  var _rd = renderData; renderData = function () { try { _rd.apply(this, arguments); } finally { segar(); } };
+  var _ps = pasangSetelan; pasangSetelan = function () { try { _ps.apply(this, arguments); } finally { segar(); } };
+  var _pc = pasangCadangan; pasangCadangan = function () { try { _pc.apply(this, arguments); } finally { segar(); } };
+  var _rs = renderSK; renderSK = function () { try { _rs.apply(this, arguments); } finally { segar(); } };
+  window.PX = {
+    hitung: hitung, periodeAktif: periodeAktif, perKey: perKey, hariIni: hariIni, tglId: tglId, persen: persen,
+    batasTgl: batasTgl, teksBatas: teksBatas, teksBatasKel: teksBatasKel, batasKelHari: batasKelHari,
+    fisikSaja: fisikSaja, fisikOK: fisikOK, fisikTanda: fisikTanda, isOp: isOp, utama: utama, posAktif: posAktif, dasarPos: dasarPos, aktifKader: aktifKader,
+    muatSetor: muatSetor, simpanSetor: simpanSetor, unduhPoster: unduhPoster, unduhPdf: unduhPdf, angkaLap: angkaLap,
+    nomorWA: nomorWA, pesanWA: pesanWA, namaKontak: namaKontak, formNomor: formNomor, formPos: function (p) { formPos(p); },
+    simpanDaftar: simpanDaftar, simpanDariSK: simpanDariSK, ekspor: ekspor, lihatSK: lihatSK, unggahSK: unggahSK,
+    pasangUbah: pasangUbah, bukaUbah: function (m) { UBAH_BUKA = true; UBAH_MODE = m || ''; IMPOR = null; pasangUbah(); }, tutupUbah: function () { UBAH_BUKA = false; UBAH_MODE = ''; IMPOR = null; pasangUbah(); },
+    kaderPengganti: kaderPengganti, kartuAntar: kartuAntar, periodeOpList: periodeOpList, muatLembarKel: muatLembarKel,
+    cetakRekap: cetakRekap, unduhRekap: unduhRekap, unduhAngka: unduhAngka, rkSiap: rkSiap, dpSiap: dpSiap,
+    dialogPeralihan: dialogPeralihan, hitungRuangKlien: hitungRuangKlien, muatCadangan: muatCadangan, fmtB: fmtB, fmtWaktu: fmtWaktu,
+    bukaModal: bukaModal, tutupModal: tutupModal, toast: toast, bukaMenu: bukaMenu, gantiAs: gantiAs, pilihOperator: pilihOperator,
+    renderBeranda: function () { renderBeranda(); }, renderRekap: function () { renderRekap(); }, renderData: function () { renderData(); },
+    pasangSetelan: function () { pasangSetelan(); }, pasangCadangan: function () { pasangCadangan(); },
+    setAng: function (o) { var pa = periodeAktif(new Date()); ANG = Object.assign(ANG || { bl: pa.bl, th: pa.th, j: '', k: '' }, o); },
+    get SETOR() { return SETOR; }, get SETOR_VIA() { return SETOR_VIA; }, get POS() { return POS; }, get SK() { return SK; },
+    get BATAS() { return BATAS; }, get BATAS_KEL() { return BATAS_KEL; }, get PENGUMUMAN() { return PENGUMUMAN; }, get WABANTU() { return WABANTU; },
+    get RUANG() { return RUANG; }, get CAD() { return CAD; }, get KELSAYA() { return KELSAYA; }, get LEMB() { return LEMB; },
+    setBatas: function (v) { BATAS = v; }, setBatasKel: function (v) { BATAS_KEL = v; }, setPengumuman: function (v) { PENGUMUMAN = v; }, setWA: function (v) { WABANTU = v; },
+    setCAD: function (v) { CAD = v; }, setPOS: function (v) { POS = v; }
+  };
+})();
 })();
 
 
