@@ -302,76 +302,85 @@ function pillKec(r, pr) {
 }
 function renderBeranda() {
   var box = $('sumB'); if (!box) return; box.textContent = '';
-  box.classList.toggle('bgrid', !isOp());
+  box.classList.remove('bgrid'); box.classList.toggle('nb', !isOp());
   var pr = periodeBeranda(), h = hitung(pr.th, pr.bl);
   if (isOp()) { berandaOp(box); return; }
-  var c = el('div', 'card span2 hero2c');
   var SS = SETOR[perKey(pr)], MM = SS || {}, tot = h.rows.length;
-  var lg = h.rows.filter(function (x) { return fisikOK(x, pr); }), pc2 = persen(lg.length, tot);
+  var lg = h.rows.filter(function (x) { return fisikOK(x, pr); });
   var mf = h.rows.filter(function (x) { return x.d && !MM[x.p.id]; }).length;
   var bs = lg.filter(function (x) { return !x.d; }).length;
   var md = h.rows.filter(function (x) { return !x.d && MM[x.p.id]; }).length - bs;
   var belumN = Math.max(0, tot - lg.length - mf - Math.max(0, md));
-  var hero = el('div', 'hero2');
-  /* cincin kemajuan */
-  var CC = 2 * Math.PI * 48, cin = el('div', 'cincin');
-  cin.innerHTML = '<svg viewBox="0 0 120 120" aria-hidden="true"><circle class="cn0" cx="60" cy="60" r="48"></circle><circle class="cn1" cx="60" cy="60" r="48" transform="rotate(-90 60 60)" stroke-dasharray="' + (SS ? (CC * lg.length / (tot || 1)).toFixed(1) : 0) + ' ' + CC.toFixed(1) + '"></circle></svg>';
-  var ct = el('div', 'cin-t'); ct.appendChild(el('b', null, SS ? lg.length + '/' + tot : '\u2026')); ct.appendChild(el('small', null, SS ? pc2 + '%' : '')); cin.appendChild(ct);
-  hero.appendChild(cin);
-  /* tengah: judul, tiga angka, catatan */
-  var mid = el('div', 'hmid'), lr = el('div', 'hlbl');
-  lr.appendChild(el('span', null, ('Laporan ' + pr.bl + ' ' + pr.th).toUpperCase()));
-  lr.appendChild(btn('Muat ulang data', 'sm plain', function () { if (typeof muat === 'function') muat(); }));
-  mid.appendChild(lr);
-  var tt = el('div', 'htt'); tt.appendChild(el('b', null, (SS ? lg.length : '\u2026') + ' dari ' + tot)); tt.appendChild(document.createTextNode(' Posyandu sudah masuk ke kecamatan')); mid.appendChild(tt);
-  var k3 = el('div', 'kot3');
-  [['g', lg.length, 'sudah masuk'], ['y', mf, 'menunggu berkas fisik'], ['r', belumN, 'belum masuk']].forEach(function (q) {
-    var d = el('div', 'kot ' + q[0]); d.appendChild(el('b', null, SS ? String(q[1]) : '\u2026')); d.appendChild(el('span', null, q[2])); k3.appendChild(d);
+  box.classList.add('nb');
+  var nw = el('div', 'nbw');
+  nw.appendChild(kartuWaktu(pr));
+  var gr = el('div', 'nb-st');
+  var nDig = h.rows.filter(function (x) { return x.d; }).length, nFis = h.rows.filter(function (x) { return MM[x.p.id]; }).length;
+  var telatN = h.rows.filter(function (x) { return (x.st === 'lewat' || x.st === 'telat') && !fisikOK(x, pr); }).length;
+  var jr = function (f) { return ['Posyandu Balita', 'Posyandu Lansia'].map(function (j) { var l = h.rows.filter(function (x) { return x.p.jenis === j; }); return [j.replace('Posyandu ', ''), l.filter(f).length, l.length]; }); };
+  gr.appendChild(kartuTahap('1', 'Laporan digital terkirim', 'Dikirim kader lewat aplikasi', nDig, tot, 'c1', jr(function (x) { return !!x.d; }), ''));
+  gr.appendChild(kartuTahap('2', 'Berkas fisik diterima kecamatan', 'Dihitung sebagai laporan resmi masuk', SS ? nFis : null, tot, 'c2', jr(function (x) { return !!MM[x.p.id]; }),
+    SS ? 'Resmi masuk: ' + lg.length + ' dari ' + tot + (fisikSaja() ? ' (berkas fisik tanpa digital tetap dihitung)' : ' (digital dan fisik lengkap)') : ''));
+  var tn = el('div', 'nb-c nb-act'), th0 = el('div', 'nb-h'); th0.appendChild(el('span', 'nb-ic w', '!')); var ht = el('div'); ht.appendChild(el('b', null, 'Perlu tindakan')); ht.appendChild(el('small', null, 'Ketuk untuk menyaring daftar')); th0.appendChild(ht); tn.appendChild(th0);
+  [['y', 'Digital sudah ada, berkas fisik belum diterima', mf, 'wait'], ['g', 'Belum mengirim laporan apa pun', belumN, 'belum'], ['r', 'Terlambat (lewat batas kader)', telatN, 'telat']].forEach(function (q) {
+    var b = el('button', 'nb-ti'); b.type = 'button'; b.appendChild(el('i', 'nd ' + q[0])); b.appendChild(el('span', null, q[1])); b.appendChild(el('b', null, SS ? String(q[2]) : '…')); b.appendChild(el('em', null, '›'));
+    b.addEventListener('click', function () { SETOR_TAB = q[3]; renderBeranda(); var t = $('nbTabel'); if (t && t.scrollIntoView) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    tn.appendChild(b);
   });
-  mid.appendChild(k3);
-  mid.appendChild(el('small', 'hnote', fisikSaja() ? 'Dihitung masuk bila berkas fisik sudah diterima kecamatan. Laporan digital menyusul.' : 'Dihitung masuk bila laporan digital dan berkas fisik sudah ada.'));
-  hero.appendChild(mid);
-  /* sisa waktu kader */
-  var bt = batasTgl(pr.th, pr.bl), hr0 = new Date(); hr0.setHours(0, 0, 0, 0);
-  var hari = Math.round((new Date(bt.getFullYear(), bt.getMonth(), bt.getDate()) - hr0) / 86400000);
-  var sw = el('div', 'sisa' + (hari < 0 ? ' lewat' : ''));
-  sw.appendChild(el('small', 'sl', hari < 0 ? 'BATAS KADER SUDAH LEWAT' : 'SISA WAKTU KADER'));
-  sw.appendChild(el('b', null, hari < 0 ? Math.abs(hari) + ' hari' : (hari === 0 ? 'Hari ini' : hari + ' hari')));
-  var s1 = el('span'); s1.appendChild(document.createTextNode('Batas kader mengirim: ')); s1.appendChild(el('em', 'nb', teksBatas(pr.th, pr.bl))); sw.appendChild(s1);
-  var s2 = el('span', 'sl2'); s2.appendChild(document.createTextNode('Antar berkas fisik: ')); s2.appendChild(el('em', 'nb', teksBatasKel(pr.th, pr.bl))); sw.appendChild(s2);
-  hero.appendChild(sw);
-  c.appendChild(hero);
+  gr.appendChild(tn); nw.appendChild(gr);
   if (SS) {
     var kt = [];
     if (bs > 0) kt.push(bs + ' di antaranya hanya berkas fisik (belum lewat aplikasi)');
     if (md > 0) kt.push(md + ' menunggu laporan digital');
-    if (kt.length) c.appendChild(el('div', 'hasil2k', kt.join(' \u00b7 ')));
-    if (!fisikSaja()) c.appendChild(el('div', 'hasil2k hasil2n', 'Masa peralihan dimatikan: laporan dihitung masuk bila digital dan berkas fisik sudah ada.'));
+    if (kt.length) nw.appendChild(el('div', 'nb-note', kt.join(' · ')));
   }
-  if (h.asing.length) c.appendChild(el('div', 'warn2', h.asing.length + ' laporan memakai nama Posyandu yang belum cocok dengan Data Posyandu, sehingga tidak dihitung. Periksa ejaan di menu Data Posyandu.'));
-  if (!POS.length) c.appendChild(el('div', 'warn2', 'Memakai daftar Posyandu dari SK. ' + (utama() ? 'Buka menu Data Posyandu lalu tekan "Simpan daftar dari SK" agar bisa diubah.' : '')));
-  box.appendChild(c);
-  var c2 = el('div', 'card'); c2.appendChild(el('h4', null, 'Posyandu yang belum lengkap'));
-  var blm = h.rows.filter(function (x) { return !fisikOK(x, pr); });
-  if (!SS) c2.appendChild(el('div', 'lt', 'Memuat status penerimaan laporan fisik\u2026'));
-  else if (!blm.length) c2.appendChild(el('div', 'ok2', 'Semua Posyandu sudah mengumpulkan laporan ' + pr.bl + ' ' + pr.th + '.'));
-  if (SS) KEL.forEach(function (k) {
-    var semua = h.rows.filter(function (r) { return r.p.kel === k; }); if (!semua.length) return;
-    var l = blm.filter(function (r) { return r.p.kel === k; });
-    var dt = document.createElement('details'), sm = document.createElement('summary'); dt.open = !!BELUM_OPEN[k]; dt.addEventListener('toggle', function () { BELUM_OPEN[k] = dt.open; });
-    sm.className = 'kh'; sm.style.cssText = 'cursor:pointer;list-style:none';
-    sm.appendChild(el('span', 'kht', k + ' (' + l.length + ' belum)')); sm.appendChild(el('small', 'kmasuk', (semua.length - l.length) + '/' + semua.length + ' masuk'));
-    var bk = el('button', 'btn sm plain only-d bukakel', 'Buka \u203a'); bk.type = 'button';
-    bk.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); pilihKel(k, ''); });
-    sm.appendChild(bk); dt.appendChild(sm);
-    if (!l.length) dt.appendChild(el('div', 'ok2', 'Semua Posyandu di kelurahan ini sudah mengumpulkan laporan.'));
-    l.forEach(function (r) { dt.appendChild(barisPos(r, pr)); }); c2.appendChild(dt);
+  if (h.asing.length) nw.appendChild(el('div', 'warn2', h.asing.length + ' laporan memakai nama Posyandu yang belum cocok dengan Data Posyandu, sehingga tidak dihitung. Periksa ejaan di menu Data Posyandu.'));
+  if (!POS.length) nw.appendChild(el('div', 'warn2', 'Memakai daftar Posyandu dari SK. ' + (utama() ? 'Buka menu Data Posyandu lalu tekan "Simpan daftar dari SK" agar bisa diubah.' : '')));
+  /* tabel per kelurahan */
+  var kc = el('div', 'nb-c nb-kel'), kh = el('div', 'nb-h'); kh.appendChild(el('b', 'nb-t', 'Per kelurahan')); kh.appendChild(el('small', null, 'Ketuk baris untuk melihat Posyandu kelurahan itu')); kc.appendChild(kh);
+  var tw = el('div', 'nb-tw'), tb0 = el('table', 'nb-tb'), th1 = el('thead'), tr0 = el('tr');
+  ['Kelurahan', 'Posyandu', 'Laporan digital', 'Berkas fisik diterima', 'Belum masuk', ''].forEach(function (t, i) { var c0 = el('th', i === 1 ? 'c' : '', t); if (i === 2 || i === 3) c0.className = 'pbr'; tr0.appendChild(c0); });
+  th1.appendChild(tr0); tb0.appendChild(th1); var tbd = el('tbody');
+  KEL.forEach(function (k) {
+    var l = h.rows.filter(function (r) { return r.p.kel === k; }); if (!l.length) return;
+    var dg = l.filter(function (r) { return r.d; }).length, fs = l.filter(function (r) { return MM[r.p.id]; }).length, bl2 = l.length - l.filter(function (r) { return fisikOK(r, pr); }).length;
+    var tr = el('tr', 'klik'); tr.tabIndex = 0; tr.setAttribute('role', 'link');
+    var go1 = function () { pilihKel(k, ''); }; tr.addEventListener('click', go1); tr.addEventListener('keydown', function (e) { if (e.key === 'Enter') go1(); });
+    tr.appendChild(el('td', 'nm', k)); tr.appendChild(el('td', 'c', String(l.length)));
+    [[dg, 'c1'], [SS ? fs : null, 'c2']].forEach(function (q) {
+      var td = el('td', 'pbr'), bw = el('div', 'bw'), tr1 = el('div', 'trk'), fl = el('i', 'fl ' + q[1]); fl.style.width = (q[0] === null ? 0 : persen(q[0], l.length)) + '%'; tr1.appendChild(fl); bw.appendChild(tr1); bw.appendChild(el('span', null, (q[0] === null ? '…' : q[0]) + '/' + l.length)); td.appendChild(bw); tr.appendChild(td);
+    });
+    var tdb = el('td'); tdb.appendChild(el('span', 'chip ' + (bl2 ? 'n' : 'ok'), SS ? (bl2 ? bl2 + ' belum' : 'Lengkap') : '…')); tr.appendChild(tdb);
+    tr.appendChild(el('td', 'arr', '›')); tbd.appendChild(tr);
   });
-  box.appendChild(c2);
+  tb0.appendChild(tbd); tw.appendChild(tb0); kc.appendChild(tw); nw.appendChild(kc);
+  box.appendChild(nw);
   muatSetor(pr);
-  if (utama()) kartuSetor(box, h, pr);
+  if (utama()) kartuSetor(nw, h, pr);
   pasangRuang();
   pasangPeng();
+}
+/* ---- komponen Beranda baru ---- */
+function kartuWaktu(pr) {
+  var c = el('div', 'nb-c nb-wkt'), bt = batasTgl(pr.th, pr.bl), m = BULAN.indexOf(pr.bl), ny = +pr.th + (m === 11 ? 1 : 0), nm = (m + 1) % 12;
+  var awal = new Date(ny, nm, 1), b1 = new Date(ny, nm, bt.getDate()), b2 = new Date(ny, nm, Math.min(batasKelHari(), new Date(ny, nm + 1, 0).getDate())), hr0 = new Date(); hr0.setHours(0, 0, 0, 0);
+  var tot = Math.max(1, Math.round((b2 - awal) / 864e5)), pos = Math.min(100, Math.max(0, Math.round((hr0 - awal) / 864e5) * 100 / tot)), pk = Math.min(100, Math.round((b1 - awal) / 864e5) * 100 / tot);
+  var hari = Math.round((b1 - hr0) / 864e5);
+  var a = el('div', 'wk-a'); a.appendChild(el('b', null, 'Periode laporan ' + pr.bl + ' ' + pr.th));
+  var s = el('span'); s.appendChild(document.createTextNode('Kader mengirim paling lambat ')); s.appendChild(el('b', null, teksBatas(pr.th, pr.bl))); s.appendChild(document.createTextNode(' · kelurahan mengantar berkas fisik paling lambat ')); s.appendChild(el('b', null, teksBatasKel(pr.th, pr.bl))); a.appendChild(s); c.appendChild(a);
+  var tl = el('div', 'wk-t'), trk = el('div', 'wk-trk'), fl = el('i'); fl.style.width = pos + '%'; trk.appendChild(fl);
+  var mk = el('u'); mk.style.left = pos + '%'; trk.appendChild(mk); var tk = el('s'); tk.style.left = pk + '%'; trk.appendChild(tk); tl.appendChild(trk);
+  var lb = el('div', 'wk-l'); lb.appendChild(el('span', null, awal.getDate() + ' ' + BULAN[awal.getMonth()].slice(0, 3))); var l2 = el('span', 'k', b1.getDate() + ' ' + BULAN[b1.getMonth()].slice(0, 3) + '\nbatas kader'); l2.style.left = pk + '%'; lb.appendChild(l2); lb.appendChild(el('span', 'r', b2.getDate() + ' ' + BULAN[b2.getMonth()].slice(0, 3) + '\nbatas fisik')); tl.appendChild(lb); c.appendChild(tl);
+  var hk = el('div', 'wk-h' + (hari < 0 ? ' lewat' : '')); hk.appendChild(el('b', null, hari < 0 ? String(Math.abs(hari)) : (hari === 0 ? '0' : String(hari)))); hk.appendChild(el('span', null, hari < 0 ? 'hari lewat batas kader' : (hari === 0 ? 'hari ini batas kader' : 'hari lagi batas kader'))); c.appendChild(hk);
+  return c;
+}
+function kartuTahap(no, jdl, sub0, n, tot, cls, rinci, cat) {
+  var c = el('div', 'nb-c nb-tahap'), h0 = el('div', 'nb-h'); h0.appendChild(el('span', 'nb-ic ' + cls, no)); var t = el('div'); t.appendChild(el('b', null, jdl)); t.appendChild(el('small', null, sub0)); h0.appendChild(t); c.appendChild(h0);
+  var ok = n !== null, big = el('div', 'nb-big'); big.appendChild(el('b', null, ok ? String(n) : '…')); big.appendChild(el('span', null, '/ ' + tot + ' Posyandu')); big.appendChild(el('em', null, ok ? persen(n, tot) + '%' : '')); c.appendChild(big);
+  var tr = el('div', 'trk'), fl = el('i', 'fl ' + cls); fl.style.width = (ok ? persen(n, tot) : 0) + '%'; tr.appendChild(fl); c.appendChild(tr);
+  var rr = el('div', 'nb-r'); rinci.forEach(function (q) { var s = el('span', null, q[0] + ' '); s.appendChild(el('b', null, (ok ? q[1] : '…') + '/' + q[2])); rr.appendChild(s); }); c.appendChild(rr);
+  if (cat) c.appendChild(el('small', 'nb-cat', cat));
+  return c;
 }
 /* Kotak Drive dan kader pengganti dipindah dari Beranda: Drive ke Pengaturan, kader pengganti ke Data Posyandu. */
 function pasangRuang() { var b = $('boxRuang'); if (!b) return; b.textContent = ''; if (utama()) kartuRuang(b); }
@@ -400,43 +409,95 @@ function simpanSetor(pr, ids, tgl) {
     SETOR_BUSY--; toast(er.message || 'Gagal menyimpan'); SETOR_T[k] = 0; if (!SETOR_BUSY) muatSetor(pr, true);
   });
 }
+var SETOR_TAB = 'semua', SETOR_Q = '', SETOR_KELF = '', SETOR_JNS = '', SETOR_PIL = {}, SETOR_HAL = 1;
+function tglPendek(d) {
+  var m = /^(\d\d)\/(\d\d)\/(\d{4})(?: (\d\d):(\d\d))?/.exec((d && d.tk) || ''); if (!m) return 'Sudah dikirim';
+  return (+m[1]) + ' ' + BULAN[+m[2] - 1].slice(0, 3) + (m[4] ? ', ' + m[4] + '.' + m[5] : '');
+}
+function tglIso(s) { var p = (s || '').split('-'); return p.length === 3 ? (+p[2]) + ' ' + BULAN[+p[1] - 1].slice(0, 3) : ''; }
+function statusBaris(r, M) {
+  var tg = !!M[r.p.id];
+  if (fisikOK(r, { th: 0 }) && false) return null;
+  if (tg && r.d) return ['ok', 'Lengkap', 'lengkap'];
+  if (tg && !r.d) return [fisikSaja() ? 'bl' : 'w', fisikSaja() ? 'Fisik diterima · digital menyusul' : 'Menunggu laporan digital', fisikSaja() ? 'lengkap' : 'belum'];
+  if (r.d) return ['w', 'Menunggu berkas fisik', 'wait'];
+  return ['n', 'Belum masuk', 'belum'];
+}
 function kartuSetor(box, h, pr) {
-  var k = perKey(pr), M = SETOR[k] || {}, c = el('div', 'card'), tot = h.rows.length, n = h.rows.filter(function (r) { return M[r.p.id]; }).length;
-  c.appendChild(el('h4', null, 'Penyerahan laporan ke kecamatan - ' + pr.bl + ' ' + pr.th));
-  c.appendChild(el('div', 'lt', 'Centang Posyandu yang laporannya sudah disahkan kelurahan dan diserahkan ke kecamatan.'));
-  var lkp = h.rows.filter(function (r) { return M[r.p.id] && r.d; }).length, mnt = n - lkp;
-  c.appendChild(el('div', 'hm ' + (tot && lkp === tot ? 'ok' : 'warn'), n + ' dari ' + tot + ' fisik diterima \u00b7 ' + lkp + ' sudah lengkap dengan digital'));
-  var tb = el('div', 'toolbar'); tb.appendChild(btn('Unduh PDF: belum menyerahkan', 'sm', function (ev) { unduhPoster(h, pr, 'pdf', ev.currentTarget); })); tb.appendChild(document.createTextNode(' ')); tb.appendChild(btn('Unduh gambar (untuk WhatsApp)', 'sm plain', function (ev) { unduhPoster(h, pr, 'png', ev.currentTarget); }));
-  if (mnt > 0 || SETOR_MENUNGGU) { tb.appendChild(document.createTextNode(' ')); tb.appendChild(btn(SETOR_MENUNGGU ? 'Tampilkan semua' : 'Hanya yang menunggu digital (' + mnt + ')', 'sm plain', function () { SETOR_MENUNGGU = !SETOR_MENUNGGU; renderBeranda(); })); }
-  c.appendChild(tb);
-  KEL.forEach(function (kel) {
-    var l = h.rows.filter(function (r) { return r.p.kel === kel && (!SETOR_MENUNGGU || (M[r.p.id] && !r.d)); }).sort(function (a, b) { return a.p.jenis.localeCompare(b.p.jenis) || a.p.nama.localeCompare(b.p.nama); });
-    if (!l.length) return;
-    var sudah = l.filter(function (r) { return M[r.p.id]; }).length, belum = l.filter(function (r) { return !M[r.p.id]; });
-    var dt = document.createElement('details'), sm = document.createElement('summary'); dt.open = (kel in SETOR_OPEN) ? SETOR_OPEN[kel] : false;
-    dt.addEventListener('toggle', function () { SETOR_OPEN[kel] = dt.open; });
-    sm.className = 'kh'; sm.style.cssText = 'cursor:pointer;list-style:none'; sm.textContent = kel + ' (' + sudah + ' dari ' + l.length + ' sudah menyerahkan)';
-    dt.appendChild(sm);
-    if (belum.length) dt.appendChild(btn('Centang semua ' + kel, 'sm plain', function () { simpanSetor(pr, belum.map(function (r) { return r.p.id; }), hariIni()); }));
-    l.forEach(function (r) {
-      var tg = M[r.p.id], it = el('div', 'item'); it.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;flex-wrap:wrap';
-      var lb = document.createElement('label'); lb.style.cssText = 'display:flex;align-items:center;gap:10px;flex:1;min-width:200px;min-height:44px;cursor:pointer';
-      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!tg; cb.style.cssText = 'width:22px;height:22px;flex:none;accent-color:var(--ok)';
-      cb.addEventListener('change', function () { simpanSetor(pr, [r.p.id], cb.checked ? hariIni() : ''); });
-      var t = el('div'); t.appendChild(el('div', 'a', r.p.nama + ' (' + r.p.jenis.replace('Posyandu ', '') + ')'));
-      var kt = el('div', 'b', r.d ? 'Sudah dibuat di aplikasi' : (tg ? (fisikSaja() ? 'Fisik diterima, belum lewat aplikasi' : 'Fisik diterima, menunggu laporan digital') : 'Belum dibuat di aplikasi'));
-      if (tg && !r.d) { kt.style.color = 'var(--warn)'; kt.style.fontWeight = '700'; } t.appendChild(kt);
-      lb.appendChild(cb); lb.appendChild(t); it.appendChild(lb);
-      if (tg) {
-        var di = document.createElement('input'); di.type = 'date'; di.value = tg; di.max = hariIni(); di.setAttribute('aria-label', 'Tanggal diserahkan ' + r.p.nama);
-        di.style.cssText = 'min-height:40px;border:1.5px solid var(--line);border-radius:10px;padding:4px 8px;background:var(--surface);color:var(--fg);font-size:14px';
-        di.addEventListener('change', function () { if (di.value) simpanSetor(pr, [r.p.id], di.value); });
-        it.appendChild(di);
-      }
-      dt.appendChild(it);
-    });
-    c.appendChild(dt);
+  var k = perKey(pr), M = SETOR[k] || {}, c = el('div', 'nb-c nb-lap'), tot = h.rows.length;
+  c.id = 'nbTabel';
+  var hd = el('div', 'nb-h nb-lh'); hd.appendChild(el('b', 'nb-t', 'Laporan Posyandu')); var ac = el('div', 'nb-ac');
+  ac.appendChild(btn('Unduh PDF: belum menyerahkan', 'line sm', function (ev) { unduhPoster(h, pr, 'pdf', ev.currentTarget); }));
+  ac.appendChild(btn('Unduh gambar (WhatsApp)', 'line sm', function (ev) { unduhPoster(h, pr, 'png', ev.currentTarget); }));
+  hd.appendChild(ac); c.appendChild(hd);
+  var rows = h.rows.map(function (r) { var s = statusBaris(r, M); return { r: r, s: s, tab: s[2], telat: (r.st === 'lewat' || r.st === 'telat') && s[2] !== 'lengkap' }; });
+  var cnt = { semua: rows.length, wait: 0, belum: 0, lengkap: 0, telat: 0 }; rows.forEach(function (x) { cnt[x.tab] = (cnt[x.tab] || 0) + 1; if (x.telat) cnt.telat++; });
+  var tabs = el('div', 'nb-tabs'); tabs.setAttribute('role', 'tablist');
+  [['semua', 'Semua'], ['wait', 'Menunggu berkas fisik'], ['belum', 'Belum masuk'], ['lengkap', 'Lengkap']].concat(SETOR_TAB === 'telat' ? [['telat', 'Terlambat']] : []).forEach(function (q) {
+    var b = el('button', SETOR_TAB === q[0] ? 'on' : ''); b.type = 'button'; b.setAttribute('role', 'tab'); b.appendChild(document.createTextNode(q[1] + ' ')); b.appendChild(el('i', null, String(cnt[q[0]] || 0)));
+    b.addEventListener('click', function () { SETOR_TAB = q[0]; SETOR_HAL = 1; renderBeranda(); }); tabs.appendChild(b);
   });
+  c.appendChild(tabs);
+  var fl = el('div', 'nb-flt'), q1 = document.createElement('input'); q1.type = 'search'; q1.placeholder = 'Cari Posyandu atau kelurahan…'; q1.value = SETOR_Q; q1.setAttribute('aria-label', 'Cari Posyandu'); fl.appendChild(q1);
+  var s1 = document.createElement('select'); s1.setAttribute('aria-label', 'Kelurahan'); [['', 'Semua kelurahan']].concat(KEL.map(function (x) { return [x, x]; })).forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; s1.appendChild(op); }); s1.value = SETOR_KELF; fl.appendChild(s1);
+  var s2 = document.createElement('select'); s2.setAttribute('aria-label', 'Jenis'); [['', 'Semua jenis'], ['Posyandu Balita', 'Balita'], ['Posyandu Lansia', 'Lansia']].forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; s2.appendChild(op); }); s2.value = SETOR_JNS; fl.appendChild(s2);
+  c.appendChild(fl);
+  var bar = el('div', 'nb-bulk'); bar.hidden = true; c.appendChild(bar);
+  var wrap = el('div', 'nb-tw'); c.appendChild(wrap);
+  var pg = el('div', 'nb-pg'); c.appendChild(pg);
+  var PER = 15;
+  function sel() { return Object.keys(SETOR_PIL).filter(function (i) { return SETOR_PIL[i]; }); }
+  function tampil() {
+    var qq = SETOR_Q.trim().toLowerCase();
+    var l = rows.filter(function (x) {
+      var p = x.r.p;
+      if (SETOR_TAB === 'telat' ? !x.telat : (SETOR_TAB !== 'semua' && x.tab !== SETOR_TAB)) return false;
+      if (SETOR_KELF && p.kel !== SETOR_KELF) return false; if (SETOR_JNS && p.jenis !== SETOR_JNS) return false;
+      return !qq || (p.nama + ' ' + p.kel + ' ' + (p.ketua || '')).toLowerCase().indexOf(qq) >= 0;
+    }).sort(function (a, b) { return KEL.indexOf(a.r.p.kel) - KEL.indexOf(b.r.p.kel) || a.r.p.jenis.localeCompare(b.r.p.jenis) || a.r.p.nama.localeCompare(b.r.p.nama); });
+    var hal = Math.max(1, Math.ceil(l.length / PER)); if (SETOR_HAL > hal) SETOR_HAL = hal;
+    var vis = l.slice((SETOR_HAL - 1) * PER, SETOR_HAL * PER);
+    wrap.textContent = '';
+    if (!l.length) { wrap.appendChild(el('div', 'nb-kosong', 'Tidak ada Posyandu yang cocok.')); }
+    else {
+      var tb = el('table', 'nb-tb nb-lt'), th = el('thead'), tr = el('tr');
+      var ca = document.createElement('input'); ca.type = 'checkbox'; ca.setAttribute('aria-label', 'Pilih semua di halaman ini');
+      ca.addEventListener('change', function () { vis.forEach(function (x) { SETOR_PIL[x.r.p.id] = ca.checked; }); tampil(); });
+      var t0 = el('th', 'ck'); t0.appendChild(ca); tr.appendChild(t0);
+      ['Posyandu', 'Jenis', 'Laporan digital', 'Berkas fisik', 'Status'].forEach(function (t) { tr.appendChild(el('th', null, t)); });
+      th.appendChild(tr); tb.appendChild(th); var tbd = el('tbody');
+      vis.forEach(function (x) {
+        var r = x.r, p = r.p, tg = M[p.id], tr2 = el('tr', SETOR_PIL[p.id] ? 'sel' : '');
+        var tc = el('td', 'ck'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!SETOR_PIL[p.id]; cb.setAttribute('aria-label', 'Pilih ' + p.nama);
+        cb.addEventListener('change', function () { SETOR_PIL[p.id] = cb.checked; tampil(); }); tc.appendChild(cb); tr2.appendChild(tc);
+        var tn = el('td', 'nm'); tn.appendChild(el('b', null, p.nama)); tn.appendChild(el('small', null, 'Kel. ' + p.kel + (p.ketua ? ' · Ketua ' + p.ketua : ''))); tr2.appendChild(tn);
+        var tj = el('td'); tj.appendChild(el('span', 'jn ' + (p.jenis === 'Posyandu Balita' ? 'b' : 'l'), p.jenis.replace('Posyandu ', ''))); tr2.appendChild(tj);
+        tr2.appendChild(el('td', r.d ? 'dg ok' : 'dg no', r.d ? '✓ ' + tglPendek(r.d) : 'Belum dikirim'));
+        var tf = el('td'); 
+        if (tg) { var di = document.createElement('input'); di.type = 'date'; di.value = tg; di.max = hariIni(); di.className = 'nb-dt'; di.setAttribute('aria-label', 'Tanggal diterima ' + p.nama); di.addEventListener('change', function () { if (di.value) simpanSetor(pr, [p.id], di.value); }); tf.appendChild(di);
+          var bx = el('button', 'nb-x', '×'); bx.type = 'button'; bx.title = 'Batalkan tanda terima'; bx.setAttribute('aria-label', 'Batalkan tanda terima ' + p.nama); bx.addEventListener('click', function () { simpanSetor(pr, [p.id], ''); }); tf.appendChild(bx); }
+        else { var tb2 = el('button', 'nb-tt', 'Tandai diterima'); tb2.type = 'button'; tb2.addEventListener('click', function () { simpanSetor(pr, [p.id], hariIni()); }); tf.appendChild(tb2); }
+        tr2.appendChild(tf);
+        var ts = el('td'); ts.appendChild(el('span', 'chip ' + x.s[0], x.s[1])); tr2.appendChild(ts);
+        tbd.appendChild(tr2);
+      });
+      tb.appendChild(tbd); wrap.appendChild(tb);
+    }
+    var ss = sel(); bar.hidden = !ss.length; bar.textContent = '';
+    if (ss.length) {
+      bar.appendChild(el('b', null, ss.length + ' dipilih'));
+      var tb3 = btn('Tandai diterima hari ini', 'sm', function () { var ids = sel().filter(function (i) { return !M[i]; }); SETOR_PIL = {}; if (ids.length) simpanSetor(pr, ids, hariIni()); else renderBeranda(); });
+      bar.appendChild(tb3);
+      bar.appendChild(btn('Batalkan tanda terima', 'line sm', function () { var ids = sel().filter(function (i) { return M[i]; }); SETOR_PIL = {}; if (ids.length) simpanSetor(pr, ids, ''); else renderBeranda(); }));
+      bar.appendChild(btn('Kosongkan pilihan', 'plain sm', function () { SETOR_PIL = {}; tampil(); }));
+    }
+    pg.textContent = ''; pg.appendChild(el('span', null, 'Menampilkan ' + vis.length + ' dari ' + l.length + ' Posyandu'));
+    if (hal > 1) { var pn = el('div', 'nb-pn'); for (var i = 1; i <= hal; i++) (function (i) { var b = el('button', i === SETOR_HAL ? 'on' : '', String(i)); b.type = 'button'; b.addEventListener('click', function () { SETOR_HAL = i; tampil(); }); pn.appendChild(b); })(i); pg.appendChild(pn); }
+  }
+  q1.addEventListener('input', function () { SETOR_Q = q1.value; SETOR_HAL = 1; tampil(); });
+  s1.addEventListener('change', function () { SETOR_KELF = s1.value; SETOR_HAL = 1; tampil(); });
+  s2.addEventListener('change', function () { SETOR_JNS = s2.value; SETOR_HAL = 1; tampil(); });
+  tampil();
   box.appendChild(c);
 }
 /* Poster pengingat: Posyandu yang belum menyerahkan laporan ke kecamatan. Digambar di kanvas, bisa diunduh sebagai gambar (untuk grup WhatsApp) atau PDF. */
