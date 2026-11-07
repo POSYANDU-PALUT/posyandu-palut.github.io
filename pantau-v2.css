@@ -94,6 +94,7 @@ body.v2on #v2{display:flex;min-height:100vh;font-family:Inter,system-ui,-apple-s
 #v2 .tlm{position:relative;height:0}#v2 .tlm span{position:absolute;top:7px;font-size:11px;color:var(--mu2);transform:translateX(-50%);white-space:nowrap}
 #v2 .tlm span:first-child{transform:none}#v2 .tlm span.m2{transform:translateX(-100%)}
 #v2 .tlm .m1{color:var(--r);font-weight:600}
+#v2 .tlm span.m3{top:27px;transform:translateX(-50%)}#v2 .tl.dk{padding-bottom:42px}
 #v2 .cnt{display:flex;align-items:center;gap:10px;padding-left:24px;border-left:1px solid var(--line)}
 #v2 .cnt b{font-size:32px;line-height:1;color:var(--r);font-weight:700}#v2 .cnt.f b{color:var(--a)}#v2 .cnt span{font-size:12px;color:var(--mu);line-height:1.3}
 
