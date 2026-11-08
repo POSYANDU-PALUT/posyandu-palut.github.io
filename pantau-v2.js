@@ -62,7 +62,8 @@ var I = {
  menu: '<path d="M3 6h18M3 12h18M3 18h18"/>', edit: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
  qr: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/>',
  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
- eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
+ eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+ wallet: '<rect x="2.5" y="6" width="19" height="14" rx="2"/><path d="M2.5 10h19M16 15h2"/>'
 };
 function ic(n, c) { return '<svg class="i ' + (c || '') + '" viewBox="0 0 24 24" aria-hidden="true">' + (I[n] || '') + '</svg>'; }
 function e(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -111,17 +112,17 @@ function pillHp(st) { return pill(st).replace('Menunggu berkas fisik', 'Tunggu f
 /* ---------- kerangka ---------- */
 function navItems() {
   return op() ? [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['a', 'user', 'Akun saya']]
-    : [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['d', 'pos', 'Posyandu'], ['p', 'gear', 'Pengaturan']];
+    : [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['d', 'pos', 'Posyandu']].concat(utama() ? [['h', 'wallet', 'Honor']] : []).concat([['p', 'gear', 'Pengaturan']]);
 }
 function navHp() {
   return op() ? [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['a', 'user', 'Akun']]
-    : [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['d', 'pos', 'Posyandu'], ['m', 'menu', 'Lainnya']];
+    : [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['d', 'pos', 'Posyandu']].concat(utama() ? [['h', 'wallet', 'Honor']] : []).concat([['m', 'menu', 'Lainnya']]);
 }
 function nama() { return (window.PROFIL && PROFIL.nama) || 'Admin Posyandu'; }
 function peranTeks() { return op() ? 'Operator Kel. ' + PX.KELSAYA : (utama() ? 'Admin kecamatan' : 'Petugas kecamatan'); }
 function inisial() { return (nama().trim().charAt(0) || 'A').toUpperCase(); }
 function avatar(c) { var f = window.PROFIL && PROFIL.foto; return '<span class="av ' + (c || '') + '">' + (f ? '<img src="' + e(f) + '" alt="">' : e(inisial())) + '</span>'; }
-var JUDUL = { b: ['Beranda', 'Kondisi laporan Posyandu Kecamatan Palu Utara'], r: ['Rekap', 'Rekapitulasi bulanan dan angka kegiatan'], d: ['Posyandu', 'Data Posyandu, kader, dan SK'], p: ['Pengaturan', 'Hanya admin kecamatan'], a: ['Akun saya', 'Profil dan kata sandi'], m: ['Lainnya', ''] };
+var JUDUL = { b: ['Beranda', 'Kondisi laporan Posyandu Kecamatan Palu Utara'], r: ['Rekap', 'Rekapitulasi bulanan dan angka kegiatan'], d: ['Posyandu', 'Data Posyandu, kader, dan SK'], p: ['Pengaturan', 'Hanya admin kecamatan'], h: ['Administrasi Honor', 'Honor kader Posyandu Balita, Lansia, dan Poskesdes'], a: ['Akun saya', 'Profil dan kata sandi'], m: ['Lainnya', ''] };
 function judul() {
   var j = JUDUL[S.pg] || JUDUL.b;
   if (S.pg === 'b' && op()) return ['Beranda', 'Kelurahan ' + PX.KELSAYA];
@@ -148,7 +149,7 @@ function kerangka() {
     '<button class="upd" type="button" data-muat title="Muat ulang data">' + ic('sync') + '<span>' + (jamMuat() ? 'Diperbarui ' + e(jamMuat()) : 'Muat ulang') + '</span></button>' +
     '<button class="ib" type="button" data-tema aria-label="Ganti tampilan terang atau gelap">' + ic('moon') + '</button>' +
     '<button class="ib" type="button" data-bel aria-label="Laporan terbaru">' + ic('bell') + (titikBel() ? '<i class="dt"></i>' : '') + '</button></header>';
-  var hj = S.pg === 'b' ? (op() ? ['Kel. ' + PX.KELSAYA, 'Operator kelurahan'] : ['Pantau Posyandu', 'Kecamatan Palu Utara']) : S.pg === 'r' ? ['Rekap', per().bl + ' ' + per().th] : [j[0], S.pg === 'd' ? 'Data Posyandu dan SK' : ''];
+  var hj = S.pg === 'b' ? (op() ? ['Kel. ' + PX.KELSAYA, 'Operator kelurahan'] : ['Pantau Posyandu', 'Kecamatan Palu Utara']) : S.pg === 'r' ? ['Rekap', per().bl + ' ' + per().th] : [S.pg === 'h' ? 'Honor' : j[0], S.pg === 'd' ? 'Data Posyandu dan SK' : S.pg === 'h' ? 'Administrasi honor kader' : ''];
   var htb = '<header class="htb"><img src="logo.png" alt=""><div class="ht"><b>' + e(hj[0]) + '</b>' + (hj[1] ? '<small>' + e(hj[1]) + '</small>' : '') + '</div><div class="sp"></div>' +
     '<button class="ib" type="button" data-bel aria-label="Laporan terbaru">' + ic('bell') + (titikBel() ? '<i class="dt"></i>' : '') + '</button><button class="avb" type="button" data-akun aria-label="Akun">' + avatar('sm') + '</button></header>';
   var hn = '<nav class="hnav" style="grid-template-columns:repeat(' + ih.length + ',1fr)">' + ih.map(function (x) {
@@ -601,6 +602,7 @@ function render() {
   if (!aktif()) { document.body.classList.remove('v2on'); root.innerHTML = ''; return; }
   document.body.classList.add('v2on');
   if (op() && (S.pg === 'd' || S.pg === 'p' || S.pg === 'm')) S.pg = 'b';
+  if (S.pg === 'h' && (!utama() || !window.HONOR)) S.pg = 'b';
   if (!op() && S.pg === 'a') { S.pg = 'p'; S.ps = 'a'; }
   root.className = 'pg-' + S.pg + (op() ? ' isop' : '');
   var ae = document.activeElement, fid = ae && ae.id && root.contains(ae) ? ae.id : null, ss = fid && ae.selectionStart != null ? [ae.selectionStart, ae.selectionEnd] : null;
@@ -614,6 +616,7 @@ function render() {
     else if (S.pg === 'r') hlmRekap(ct);
     else if (S.pg === 'd') hlmPosyandu(ct);
     else if (S.pg === 'p') hlmPengaturan(ct);
+    else if (S.pg === 'h') HONOR.render(ct);
     else if (S.pg === 'a') { ct.innerHTML = '<div class="pcol" id="v2pcol"></div>'; psAkun($('v2pcol')); }
     else if (S.pg === 'm') { if (!hp()) { S.pg = 'p'; return render(); } hlmLainnya(ct); }
   } catch (er) { ct.innerHTML = '<div class="info w">' + ic('alert') + 'Halaman gagal ditampilkan: ' + e(er.message) + '</div>'; if (window.console) console.error(er); }
@@ -631,7 +634,7 @@ function pulangkan() {
 function segar() { if (jadwalT) return; jadwalT = setTimeout(render, 40); }
 function go(pg) {
   S.pg = pg; S.menu = null; S.laci = null;
-  var lama = { b: 'b', r: 'r', d: 'd', p: 'p', a: 'p', m: 'p' }[pg];
+  var lama = { b: 'b', r: 'r', d: 'd', p: 'p', a: 'p', m: 'p', h: 'b' }[pg];
   try { if (typeof tampilView === 'function') tampilView(lama); } catch (x) { }
   if (pg === 'r') PX.rkSiap();
   if (pg === 'd') PX.dpSiap();

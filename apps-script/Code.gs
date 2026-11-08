@@ -198,6 +198,7 @@ function doGet(e) {
   else if (p.aksi === 'tlembar') { hasil = terimaLembarCari(p); }
   else if (p.aksi === 'tlterima') { hasil = terimaLembarGet(p); }
   else if (p.aksi === 'lembarkel') { hasil = lembarKelurahan(p); }
+  else if (p.aksi === 'honor') { try { hasil = honorGet(p); } catch (er) { hasil = { ok: false, pesan: String(er.message || er) }; } }
   else if (p.aksi === 'pdf') {
     // Unduh PDF laporan (hanya setelah login). Operator hanya boleh laporan kelurahannya.
     var w5 = masuk(p.u, p.p);
@@ -609,6 +610,7 @@ function doPost(e) {
       if (d.aksi === 'ruang') { tag = 'a'; return perbaruiRuang(d); }
       if (d.aksi === 'pemeliharaan') { tag = 'a'; return aturPemeliharaan(d); }
       if (d.aksi === 'kosongkantes') { tag = 'a'; return kosongkanTes(d); }
+      if (d.aksi === 'honor') { tag = 'a'; return honorPost(d); }
       throw new Error('Aksi tidak dikenal');
     } finally {
       try { kunci.releaseLock(); } catch (x) {}
@@ -842,7 +844,7 @@ function simpanSk(d, cache) {
   var w = masuk(d.u, d.p);
   if (!w || w.peran !== 'utama') { Utilities.sleep(1200); throw new Error('Hanya admin utama yang boleh mengunggah SK'); }
   var jenis = String(d.jenis || '');
-  if (jenis !== 'Balita' && jenis !== 'Lansia') throw new Error('Jenis SK tidak dikenal');
+  if (jenis !== 'Balita' && jenis !== 'Lansia' && jenis !== 'Poskesdes') throw new Error('Jenis SK tidak dikenal');
   var n = parseInt(d.n, 10), bagian = [], kunciCache = [];
   if (!(n >= 1 && n <= 130)) throw new Error('Jumlah potongan tidak valid');
   for (var i = 0; i < n; i++) {
@@ -853,7 +855,7 @@ function simpanSk(d, cache) {
   var bytes = Utilities.base64Decode(bagian.join(''));
   if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new Error('Ukuran SK maksimal 10 MB');
   if (bytes[0] !== 37 || bytes[1] !== 80 || bytes[2] !== 68 || bytes[3] !== 70) throw new Error('Berkas bukan PDF');
-  var folder = anak(induk(), 'SK'), nama = 'SK Posyandu ' + jenis + '.pdf', lama = folder.getFilesByName(nama);
+  var folder = anak(induk(), 'SK'), nama = (jenis === 'Poskesdes' ? 'SK Kader Poskesdes' : 'SK Posyandu ' + jenis) + '.pdf', lama = folder.getFilesByName(nama);
   while (lama.hasNext()) lama.next().setTrashed(true);
   var file = folder.createFile(Utilities.newBlob(bytes, 'application/pdf', nama));
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -1377,4 +1379,468 @@ function ringkasPos(lama, baru) {
   if (aktif.length) bag.push('mengaktifkan ' + daftar(aktif));
   if (ubah.length) bag.push('mengubah data ' + daftar(ubah));
   return bag.length ? 'Data Posyandu: ' + bag.join('; ') : 'Menyimpan data Posyandu (tanpa perubahan)';
+}
+
+/* ===================== Administrasi Honor Kader (hanya admin utama) =====================
+ * Semua data di folder Drive "Honor" (di dalam folder utama; mode tes memakai folder TES/Honor).
+ *   honor-pengaturan.json  nominal bawaan, penandatangan, isian kwitansi, daftar kader Poskesdes
+ *   honor-indeks.json      daftar periode (ringkas)
+ *   honor-<YYYY-MM>.json   satu periode (bulan mulai); data periode tidak tercampur
+ *   honor-rekening.json    rekening dan NIK kader (privat, tidak pernah dibagikan)
+ *   honor-tujuan.json      tujuan potongan yang tersimpan
+ *   honor-riwayat.json     riwayat perubahan (siapa, kapan, nilai lama dan baru)
+ * Tahapan dihitung dari isian st (bukan disimpan sebagai angka), jadi tidak bisa melompat.
+ */
+var H_JENIS = ['Balita', 'Lansia', 'Poskesdes'];
+var H_KEL_URUT = ['Mamboro', 'Mamboro Barat', 'Taipa', 'Kayumalue Pajeko', 'Kayumalue Ngapa'];
+var H_LANGKAH = ['dbt', 'cetak', 'ttd', 'rekap', 'kw', 'berkas', 'setor', 'dana', 'pot', 'serah', 'selesai'];
+var H_NAMA_LANGKAH = { dbt: 'Daftar bayar dibuat', cetak: 'Daftar bayar dicetak', ttd: 'Daftar bayar sudah ditandatangani', rekap: 'Rekapitulasi dibuat', kw: 'Kwitansi dibuat',
+  berkas: 'Berkas pengajuan lengkap', setor: 'Berkas disetor ke DPPKAD', dana: 'Dana masuk rekening kantor', pot: 'Potongan selesai dicatat', serah: 'Daftar transfer diserahkan ke bendahara', selesai: 'Administrasi honor selesai' };
+var H_MAKS_NOM = 10000000;
+
+function folderHonor() { return anak(induk(), 'Honor'); }
+function hBaca(nb, def) {
+  try { var it = folderHonor().getFilesByName(nb); if (it.hasNext()) return JSON.parse(it.next().getBlob().getDataAsString()); } catch (x) {}
+  return def;
+}
+function hTulis(nb, o) {
+  var f = folderHonor(), t = JSON.stringify(o), it = f.getFilesByName(nb);
+  if (it.hasNext()) it.next().setContent(t); else f.createFile(nb, t, MimeType.PLAIN_TEXT);
+}
+function hInt(v, def) { var n = parseInt(v, 10); return isFinite(n) ? n : def; }
+function hTeks(s, maks) { return String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maks || 120); }
+function hNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function hKunci(posId, nama) { return String(posId) + '|' + hNorm(nama); }
+function hWaktu(t) { return Utilities.formatDate(new Date(t || Date.now()), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm'); }
+function hUtama(u, p) {
+  var w = masuk(u, p);
+  if (!w || w.peran !== 'utama') { Utilities.sleep(1200); throw new Error('Modul honor hanya untuk admin kecamatan'); }
+  return w;
+}
+
+/* ---------- pengaturan ---------- */
+function hCfg() {
+  var c = hBaca('honor-pengaturan.json', {}) || {}, n = c.nominal || {}, t = c.ttd || {}, k = c.kw || {};
+  function org(o) { o = o || {}; return { nama: hTeks(o.nama, 80), nip: hTeks(o.nip, 30) }; }
+  return {
+    nominal: { Balita: hInt(n.Balita, 250000), Lansia: hInt(n.Lansia, 150000), Poskesdes: hInt(n.Poskesdes, 100000) },
+    ttd: { pptk: org(t.pptk), bendahara: org(t.bendahara), camat: org(t.camat) },
+    kw: {
+      tahunAnggaran: hTeks(k.tahunAnggaran, 10),
+      sumber: hTeks(k.sumber || 'PAD', 40),
+      kodeRek: hTeks(k.kodeRek || '7.01.03.2.06.0007.5.1.02.02.001.00014', 80),
+      program: hTeks(k.program || 'Pemberdayaan Masyarakat Desa dan Kelurahan', 200),
+      kegiatan: hTeks(k.kegiatan || 'Pemberdayaan dan Kesejahteraan Keluarga Tingkat Kecamatan dan Kelurahan', 200),
+      subKegiatan: hTeks(k.subKegiatan || 'Penumbuhan Kesadaran Keluarga dalam Peningkatan Derajat Kesehatan Keluarga dengan Menerapkan Perilaku Hidup Bersih dan Sehat', 300),
+      belanja: hTeks(k.belanja || 'Jasa Tenaga Kesehatan.', 120),
+      dari: hTeks(k.dari || 'CAMAT PALU UTARA', 80),
+      penerima: hTeks(k.penerima, 60)
+    },
+    poskesdes: (Array.isArray(c.poskesdes) ? c.poskesdes : []).map(function (x) {
+      return { id: hTeks(x.id, 20), nama: hTeks(x.nama, 80), pos: hTeks(x.pos, 80), kel: hTeks(x.kel, 40), aktif: x.aktif !== false };
+    }).filter(function (x) { return x.id && x.nama; })
+  };
+}
+function hSimpanCfg(d, w) {
+  var lama = hCfg(), c = d.cfg || {}, baru = { nominal: {}, ttd: {}, kw: {}, poskesdes: [] };
+  H_JENIS.forEach(function (j) {
+    var v = hInt(c.nominal && c.nominal[j], lama.nominal[j]);
+    if (!(v >= 0 && v <= H_MAKS_NOM)) throw new Error('Nominal ' + j + ' tidak valid');
+    baru.nominal[j] = v;
+  });
+  ['pptk', 'bendahara', 'camat'].forEach(function (r) {
+    var o = (c.ttd && c.ttd[r]) || lama.ttd[r];
+    baru.ttd[r] = { nama: hTeks(o.nama, 80), nip: hTeks(o.nip, 30).replace(/[^0-9 ]/g, '') };
+  });
+  Object.keys(lama.kw).forEach(function (k) { baru.kw[k] = hTeks(c.kw && c.kw[k] !== undefined ? c.kw[k] : lama.kw[k], k === 'subKegiatan' ? 300 : 200); });
+  var ids = {};
+  (Array.isArray(c.poskesdes) ? c.poskesdes : lama.poskesdes).forEach(function (x, i) {
+    var nm = hTeks(x.nama, 80); if (!nm) return;
+    var id = hTeks(x.id, 20) || ('k' + Date.now().toString(36) + i);
+    if (ids[id]) id = id + i; ids[id] = 1;
+    var kel = hTeks(x.kel, 40); if (KELURAHAN.indexOf(kel) < 0) throw new Error('Kelurahan kader Poskesdes ' + nm + ' tidak dikenal');
+    baru.poskesdes.push({ id: id, nama: nm, pos: hTeks(x.pos, 80), kel: kel, aktif: x.aktif !== false });
+  });
+  if (baru.poskesdes.length > 100) throw new Error('Maksimal 100 kader Poskesdes');
+  hTulis('honor-pengaturan.json', baru);
+  var beda = [];
+  H_JENIS.forEach(function (j) { if (lama.nominal[j] !== baru.nominal[j]) beda.push('nominal ' + j + ' ' + lama.nominal[j] + ' → ' + baru.nominal[j]); });
+  if (lama.poskesdes.length !== baru.poskesdes.length) beda.push('kader Poskesdes ' + lama.poskesdes.length + ' → ' + baru.poskesdes.length);
+  hCatat(w, '', 'Pengaturan honor diubah', beda.join('; '), '');
+  return baru;
+}
+
+/* ---------- riwayat ---------- */
+function hCatat(w, per, teks, lama, baruV) {
+  try {
+    var l = hBaca('honor-riwayat.json', []) || [];
+    l.unshift({ t: Date.now(), u: w ? w.u : '', per: per || '', a: hTeks(teks, 300), l: hTeks(lama, 300), b: hTeks(baruV, 300) });
+    hTulis('honor-riwayat.json', l.slice(0, 3000));
+  } catch (x) {}
+  try { catatLog(w ? w.u : '', 'Honor: ' + hTeks(teks, 200)); } catch (x) {}
+}
+
+/* ---------- calon penerima dari SK (Data Posyandu) + Poskesdes ---------- */
+function hCalon(cfg) {
+  var out = [], pos = bacaPos();
+  if (!pos.length) throw new Error('Data Posyandu belum disimpan. Buka menu Posyandu lalu simpan daftar dari SK dulu.');
+  pos.forEach(function (p) {
+    if (p.aktif === false) return;
+    var j = p.jenis === 'Posyandu Lansia' ? 'Lansia' : 'Balita';
+    (p.kader || []).forEach(function (k) {
+      if (k.aktif === false || !hTeks(k.nama, 80)) return;
+      out.push({ k: hKunci(p.id, k.nama), nama: hTeks(k.nama, 80), pos: hTeks(p.nama, 80), posId: String(p.id), kel: p.kel, jenis: j });
+    });
+  });
+  cfg.poskesdes.forEach(function (k) { if (k.aktif) out.push({ k: 'K|' + k.id, nama: k.nama, pos: k.pos, posId: 'K', kel: k.kel, jenis: 'Poskesdes' }); });
+  var ur = function (x) { var i = H_KEL_URUT.indexOf(x.kel); return i < 0 ? 9 : i; };
+  var idx = {}; out.forEach(function (x, i) { idx[x.k] = i; });
+  out.sort(function (a, b) { return H_JENIS.indexOf(a.jenis) - H_JENIS.indexOf(b.jenis) || ur(a) - ur(b) || idx[a.k] - idx[b.k]; });
+  var lihat = {};
+  return out.filter(function (x) { if (lihat[x.k]) return false; lihat[x.k] = 1; return true; });
+}
+
+/* ---------- periode ---------- */
+function hBulanLabel(ym) { var p = String(ym).split('-'); return BULAN[(+p[1]) - 1] + ' ' + p[0]; }
+function hDaftarBulan(mulai, n) {
+  var p = String(mulai).split('-'), y = +p[0], m = (+p[1]) - 1, out = [];
+  for (var i = 0; i < n; i++) { var mm = m + i, yy = y + Math.floor(mm / 12); mm = mm % 12; out.push(yy + '-' + (mm < 9 ? '0' : '') + (mm + 1)); }
+  return out;
+}
+function hLabel(bulan) {
+  if (bulan.length === 1) return hBulanLabel(bulan[0]);
+  var a = hBulanLabel(bulan[0]).split(' '), b = hBulanLabel(bulan[bulan.length - 1]).split(' ');
+  return (a[1] === b[1] ? a[0] : a.join(' ')) + ' s.d. ' + b.join(' ');
+}
+function hIndeks() { var l = hBaca('honor-indeks.json', []); return Array.isArray(l) ? l : []; }
+function hBacaPer(id) {
+  if (!/^20\d\d-(0[1-9]|1[0-2])$/.test(String(id || ''))) throw new Error('Periode tidak valid');
+  var o = hBaca('honor-' + id + '.json', null);
+  if (!o || !o.id) throw new Error('Periode honor ' + id + ' tidak ditemukan');
+  return o;
+}
+function hBruto(r) { return r.bayar === false ? 0 : r.nominal * r.bulan; }
+function hTotal(per) {
+  var t = { n: 0, bruto: 0, pot: 0, jenis: {} };
+  H_JENIS.forEach(function (j) { t.jenis[j] = { n: 0, bruto: 0, pot: 0 }; });
+  var potK = {}; (per.potongan || []).forEach(function (p) { potK[p.k] = (potK[p.k] || 0) + p.nom; });
+  per.penerima.forEach(function (r) {
+    if (r.bayar === false) return;
+    var b = hBruto(r), pt = potK[r.k] || 0, g = t.jenis[r.jenis];
+    t.n++; t.bruto += b; t.pot += pt; g.n++; g.bruto += b; g.pot += pt;
+  });
+  return t;
+}
+function hTahap(per) {
+  var st = per.st || {}, n = 1;
+  for (var i = 0; i < H_LANGKAH.length; i++) { if (st[H_LANGKAH[i]]) n = i + 2; else break; }
+  return n;   // 1 = periode dibuat; 12 = selesai (langkah ke-11 terpenuhi)
+}
+function hRingkas(per) {
+  var t = hTotal(per);
+  return { id: per.id, label: per.label, n: per.n, bulan: per.bulan, tahap: hTahap(per), kunci: !!(per.st && per.st.selesai), kader: t.n, bruto: t.bruto, pot: t.pot, dibuat: per.dibuat };
+}
+function hSimpanPer(per) {
+  hTulis('honor-' + per.id + '.json', per);
+  var l = hIndeks().filter(function (x) { return x.id !== per.id; });
+  l.push(hRingkas(per)); l.sort(function (a, b) { return a.id < b.id ? 1 : -1; });
+  hTulis('honor-indeks.json', l);
+}
+function hBuat(d, w) {
+  var cfg = hCfg(), mulai = String(d.mulai || ''), n = hInt(d.n, 1);
+  if (!/^20\d\d-(0[1-9]|1[0-2])$/.test(mulai)) throw new Error('Bulan mulai tidak valid');
+  if (!(n >= 1 && n <= 12)) throw new Error('Jumlah bulan 1 sampai 12');
+  var bulan = hDaftarBulan(mulai, n), nom = {};
+  H_JENIS.forEach(function (j) { var v = hInt(d.nominal && d.nominal[j], cfg.nominal[j]); if (!(v >= 0 && v <= H_MAKS_NOM)) throw new Error('Nominal ' + j + ' tidak valid'); nom[j] = v; });
+  hIndeks().forEach(function (x) {
+    (x.bulan || []).forEach(function (b) { if (bulan.indexOf(b) >= 0) throw new Error(hBulanLabel(b) + ' sudah dibayar di periode Honor ' + x.label + '. Periode tidak bisa dibuat (mencegah bayar ganda).'); });
+  });
+  var per = { v: 1, id: mulai, mulai: mulai, n: n, bulan: bulan, label: hLabel(bulan), nominal: nom, dibuat: Date.now(), oleh: w.u, st: {}, kw: {}, cek: {}, ulang: [], potongan: [],
+    penerima: hCalon(cfg).map(function (x) { return { k: x.k, nama: x.nama, pos: x.pos, posId: x.posId, kel: x.kel, jenis: x.jenis, nominal: nom[x.jenis], bulan: n, bayar: true, alasan: '' }; }) };
+  if (!per.penerima.length) throw new Error('Belum ada kader aktif di Data Posyandu');
+  hSimpanPer(per);
+  var t = hTotal(per);
+  hCatat(w, per.id, 'Periode Honor ' + per.label + ' dibuat: ' + t.n + ' kader, Rp' + t.bruto, '', 'Balita ' + nom.Balita + ', Lansia ' + nom.Lansia + ', Poskesdes ' + nom.Poskesdes);
+  return per;
+}
+function hHapusPer(d, w) {
+  var per = hBacaPer(d.per);
+  if (per.st.ttd) throw new Error('Periode yang daftar bayarnya sudah ditandatangani tidak bisa dihapus');
+  var it = folderHonor().getFilesByName('honor-' + per.id + '.json'); while (it.hasNext()) it.next().setTrashed(true);
+  hTulis('honor-indeks.json', hIndeks().filter(function (x) { return x.id !== per.id; }));
+  hCatat(w, per.id, 'Periode Honor ' + per.label + ' dihapus (belum ditandatangani)', '', '');
+}
+/** Perubahan penerima: sebelum ditandatangani bebas; sesudahnya wajib konfirmasi + alasan, dan dokumen dibuat ulang. */
+function hBolehUbahPenerima(per, d) {
+  if (per.st.selesai) throw new Error('Periode sudah selesai dan terkunci. Buka kunci dulu.');
+  if (per.st.setor) throw new Error('Berkas sudah disetor ke DPPKAD. Mundurkan tahap dulu bila memang harus diubah.');
+  if (per.st.ttd) {
+    if (d.yakin !== true) throw new Error('Daftar bayar sudah ditandatangani. Perubahan perlu konfirmasi.');
+    if (!hTeks(d.alasan, 200)) throw new Error('Tulis alasan perubahan');
+    return true;
+  }
+  return false;
+}
+function hSetelahUbahTtd(per, w, teks) {
+  ['ttd', 'rekap', 'kw', 'berkas'].forEach(function (k) { delete per.st[k]; });
+  delete per.st.cetak; per.cek = {};
+  per.ulang = ['Daftar Bayar (cetak dan tanda tangan ulang)', 'Rekapitulasi', 'Kwitansi'];
+  hCatat(w, per.id, 'Setelah ditandatangani: ' + teks + '. Dokumen harus dibuat ulang: Daftar Bayar, Rekapitulasi, Kwitansi', '', '');
+}
+function hBaris(d, w) {
+  var per = hBacaPer(d.per), sudah = hBolehUbahPenerima(per, d), r = null;
+  per.penerima.forEach(function (x) { if (x.k === d.k) r = x; });
+  if (!r) throw new Error('Kader tidak ditemukan di periode ini');
+  var u = d.ubah || {}, catat = [];
+  if (u.nominal !== undefined) {
+    var v = hInt(u.nominal, -1); if (!(v >= 0 && v <= H_MAKS_NOM)) throw new Error('Nominal tidak valid');
+    if (v !== r.nominal) { catat.push(['nominal ' + r.nama, r.nominal, v]); r.nominal = v; }
+  }
+  if (u.bulan !== undefined) {
+    var b = hInt(u.bulan, -1); if (!(b >= 1 && b <= per.n)) throw new Error('Jumlah bulan 1 sampai ' + per.n);
+    if (b !== r.bulan) { catat.push(['jumlah bulan ' + r.nama, r.bulan, b]); r.bulan = b; }
+  }
+  if (u.bayar !== undefined) {
+    var by = u.bayar !== false;
+    if (!by && !hTeks(u.alasan || d.alasan, 200)) throw new Error('Tulis alasan kader tidak dibayar');
+    if (by !== (r.bayar !== false)) { catat.push(['status dibayar ' + r.nama, r.bayar !== false ? 'dibayar' : 'tidak', by ? 'dibayar' : 'tidak']); r.bayar = by; r.alasan = by ? '' : hTeks(u.alasan || d.alasan, 200); }
+  }
+  if (u.nama !== undefined) {
+    var nm = hTeks(u.nama, 80); if (!nm) throw new Error('Nama kosong');
+    if (nm !== r.nama) { catat.push(['nama', r.nama, nm]); r.nama = nm; }
+  }
+  if (!catat.length) return per;
+  if (!r.bayar) per.potongan = (per.potongan || []).filter(function (p) { return p.k !== r.k; });
+  catat.forEach(function (c) { hCatat(w, per.id, 'Ubah ' + c[0] + (d.alasan ? ' (alasan: ' + hTeks(d.alasan, 150) + ')' : ''), c[1], c[2]); });
+  if (sudah) hSetelahUbahTtd(per, w, catat.map(function (c) { return c[0]; }).join(', '));
+  hSimpanPer(per);
+  return per;
+}
+function hTambah(d, w) {
+  var per = hBacaPer(d.per), sudah = hBolehUbahPenerima(per, d), cfg = hCfg();
+  var j = String(d.jenis || ''); if (H_JENIS.indexOf(j) < 0) throw new Error('Jenis tidak dikenal');
+  var nm = hTeks(d.nama, 80), pos = hTeks(d.pos, 80), kel = hTeks(d.kel, 40);
+  if (!nm || !pos) throw new Error('Isi nama dan Posyandu');
+  if (KELURAHAN.indexOf(kel) < 0) throw new Error('Kelurahan tidak dikenal');
+  var nom = hInt(d.nominal, per.nominal[j]); if (!(nom >= 0 && nom <= H_MAKS_NOM)) throw new Error('Nominal tidak valid');
+  var posId = 'T' + hNorm(pos + kel).slice(0, 20), k = hKunci(posId, nm);
+  var calon = hCalon(cfg).filter(function (x) { return hNorm(x.nama) === hNorm(nm) && hNorm(x.pos) === hNorm(pos) && x.jenis === j; })[0];
+  if (calon) { k = calon.k; posId = calon.posId; }
+  if (per.penerima.some(function (x) { return x.k === k; })) throw new Error(nm + ' sudah ada di daftar periode ini (mencegah bayar ganda)');
+  per.penerima.push({ k: k, nama: nm, pos: pos, posId: posId, kel: kel, jenis: j, nominal: nom, bulan: per.n, bayar: true, alasan: '', tambahan: true });
+  hCatat(w, per.id, 'Tambah kader ' + nm + ' (' + j + ', ' + pos + ')' + (d.alasan ? ' — alasan: ' + hTeks(d.alasan, 150) : ''), '', 'Rp' + nom);
+  if (sudah) hSetelahUbahTtd(per, w, 'tambah kader ' + nm);
+  hSimpanPer(per);
+  return per;
+}
+/** Samakan daftar penerima dengan SK terbaru (hanya sebelum ditandatangani). Ubahan nominal/bulan yang ada tetap dipakai. */
+function hSegarkan(d, w) {
+  var per = hBacaPer(d.per);
+  if (per.st.ttd) throw new Error('Daftar bayar sudah ditandatangani; daftar tidak disamakan otomatis');
+  var lama = {}; per.penerima.forEach(function (x) { lama[x.k] = x; });
+  var baru = hCalon(hCfg()).map(function (x) { var o = lama[x.k]; return o ? Object.assign(o, { nama: x.nama, pos: x.pos, kel: x.kel }) : { k: x.k, nama: x.nama, pos: x.pos, posId: x.posId, kel: x.kel, jenis: x.jenis, nominal: per.nominal[x.jenis], bulan: per.n, bayar: true, alasan: '' }; });
+  per.penerima.forEach(function (x) { if (x.tambahan && !baru.some(function (y) { return y.k === x.k; })) baru.push(x); });
+  var tb = baru.length - per.penerima.length;
+  per.penerima = baru;
+  hCatat(w, per.id, 'Daftar penerima disamakan dengan SK terbaru', '', (tb >= 0 ? '+' : '') + tb + ' kader');
+  hSimpanPer(per);
+  return per;
+}
+function hSnapshotRek(per) {
+  var db = hRekDb();
+  per.penerima.forEach(function (r) { var x = db[r.k]; r.rek = x ? { bank: x.bank, no: x.no, pemilik: x.pemilik, nik: x.nik } : null; });
+  per.rekT = Date.now();
+}
+function hLangkah(d, w) {
+  var per = hBacaPer(d.per), st = per.st, l = String(d.l || ''), i = H_LANGKAH.indexOf(l);
+  if (i < 0) throw new Error('Langkah tidak dikenal');
+  if (st.selesai) throw new Error('Periode sudah selesai dan terkunci');
+  if (i > 0 && !st[H_LANGKAH[i - 1]]) throw new Error('Selesaikan dulu: ' + H_NAMA_LANGKAH[H_LANGKAH[i - 1]]);
+  var t = hTotal(per), ket = '';
+  if (l === 'dbt') { if (st.dbt) return per; }
+  if (l === 'cetak') { st.cetakN = (st.cetakN || 0) + 1; }
+  if (l === 'ttd') {
+    var c = d.cek || {};
+    H_JENIS.forEach(function (j) { if (t.jenis[j].n && c[j] !== true) throw new Error('Centang pemeriksaan tanda tangan ' + j); });
+    hSnapshotRek(per); per.ulang = [];
+    ket = 'Balita ' + t.jenis.Balita.n + ', Lansia ' + t.jenis.Lansia.n + ', Poskesdes ' + t.jenis.Poskesdes.n;
+  }
+  if (l === 'kw') {
+    var k = d.kw || {};
+    per.kw = { tgl: hTeks(k.tgl, 40), nomor: hTeks(k.nomor, 60), untuk: hTeks(k.untuk, 400), penerima: hTeks(k.penerima, 60), dari: hTeks(k.dari, 80), sumber: hTeks(k.sumber, 40), tahun: hTeks(k.tahun, 10) };
+    if (!per.kw.tgl) throw new Error('Isi tanggal kwitansi');
+    ket = 'Rp' + t.bruto;
+  }
+  if (l === 'berkas') {
+    var cb = d.cek || {};
+    ['kwitansi', 'rekap', 'daftar', 'sk'].forEach(function (x) { if (cb[x] !== true) throw new Error('Lengkapi pemeriksaan berkas: ' + x); });
+    per.cek = cb;
+  }
+  if (l === 'setor') { st.setorTgl = hTeks(d.tgl, 40); }
+  if (l === 'dana') {
+    var jm = hInt(d.jumlah, -1); if (!(jm >= 0)) throw new Error('Isi jumlah dana yang masuk');
+    st.danaJml = jm; st.danaTgl = hTeks(d.tgl, 40);
+    ket = 'Rp' + jm + (jm !== t.bruto ? ' (BERBEDA dari pengajuan Rp' + t.bruto + ')' : ' (sama dengan pengajuan)');
+  }
+  if (l === 'serah') { st.serahTgl = hTeks(d.tgl, 40); }
+  st[l] = Date.now();
+  hCatat(w, per.id, H_NAMA_LANGKAH[l] + (ket ? ': ' + ket : ''), '', '');
+  hSimpanPer(per);
+  return per;
+}
+function hMundur(d, w) {
+  var per = hBacaPer(d.per), st = per.st;
+  if (st.selesai) throw new Error('Periode terkunci. Gunakan Buka kunci.');
+  if (!hTeks(d.alasan, 200)) throw new Error('Tulis alasan');
+  var akhir = null; H_LANGKAH.forEach(function (l) { if (st[l]) akhir = l; });
+  if (!akhir) throw new Error('Belum ada tahap yang bisa dimundurkan');
+  delete st[akhir];
+  hCatat(w, per.id, 'Tahap dimundurkan: ' + H_NAMA_LANGKAH[akhir] + ' (alasan: ' + hTeks(d.alasan, 150) + ')', 'selesai', 'belum');
+  hSimpanPer(per);
+  return per;
+}
+function hBukaKunci(d, w) {
+  var per = hBacaPer(d.per);
+  if (!per.st.selesai) throw new Error('Periode belum terkunci');
+  var harus = 'BUKA ' + per.label.toUpperCase();
+  if (hTeks(d.ketik, 80).toUpperCase() !== harus) throw new Error('Ketik persis: ' + harus);
+  if (!hTeks(d.alasan, 200)) throw new Error('Tulis alasan membuka kunci');
+  delete per.st.selesai;
+  hCatat(w, per.id, 'Kunci periode dibuka (alasan: ' + hTeks(d.alasan, 150) + ')', 'terkunci', 'terbuka');
+  hSimpanPer(per);
+  return per;
+}
+
+/* ---------- rekening ---------- */
+function hRekDb() { var o = hBaca('honor-rekening.json', {}); return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {}; }
+function hRekValid(x) {
+  var o = { bank: hTeks(x.bank, 40), no: String(x.no || '').replace(/[\s.\-]/g, ''), pemilik: hTeks(x.pemilik, 80), nik: String(x.nik || '').replace(/\s/g, ''), aktif: x.aktif !== false };
+  if (o.no && !/^\d{6,20}$/.test(o.no)) throw new Error('Nomor rekening harus 6–20 angka');
+  if (o.nik && !/^\d{16}$/.test(o.nik)) throw new Error('NIK harus 16 angka');
+  return o;
+}
+function hRekSimpan1(db, k, x, w, catat) {
+  if (!/^[A-Za-z0-9|_\-]{2,140}$/.test(String(k))) throw new Error('Kunci kader tidak valid');
+  var o = hRekValid(x), lama = db[k] || null;
+  if (lama && lama.no && o.no !== lama.no) {
+    if (catat) hCatat(w, '', 'Nomor rekening ' + hTeks(x.nama || k, 80) + ' diubah', '••••' + String(lama.no).slice(-4), '••••' + o.no.slice(-4));
+  } else if (catat && (!lama || !lama.no) && o.no) hCatat(w, '', 'Rekening ' + hTeks(x.nama || k, 80) + ' diisi', '', '••••' + o.no.slice(-4));
+  if (catat && lama && lama.nik && o.nik !== lama.nik) hCatat(w, '', 'NIK ' + hTeks(x.nama || k, 80) + ' diubah', '••••' + String(lama.nik).slice(-4), '••••' + o.nik.slice(-4));
+  var h = (lama && Array.isArray(lama.h)) ? lama.h : [];
+  if (lama && (lama.no !== o.no || lama.bank !== o.bank || lama.pemilik !== o.pemilik || lama.nik !== o.nik)) h.unshift({ t: Date.now(), bank: lama.bank, no: lama.no, pemilik: lama.pemilik, nik: lama.nik });
+  o.h = h.slice(0, 20); o.t = Date.now(); o.nama = hTeks(x.nama, 80);
+  db[k] = o;
+}
+function hRek(d, w) {
+  var db = hRekDb(), lama = db[d.k];
+  if (lama && lama.no && d.yakin !== true) throw new Error('Rekening ini sudah ada. Perubahan perlu konfirmasi.');
+  hRekSimpan1(db, d.k, d.data || {}, w, true);
+  hTulis('honor-rekening.json', db);
+  return db;
+}
+function hRekImpor(d, w) {
+  var db = hRekDb(), rows = Array.isArray(d.rows) ? d.rows : [], n = 0, ganti = 0;
+  if (rows.length > 600) throw new Error('Maksimal 600 baris');
+  rows.forEach(function (r) {
+    var ada = db[r.k];
+    if (ada && ada.no && r.no && String(r.no).replace(/\D/g, '') !== ada.no) { if (d.yakin !== true) return; ganti++; }
+    hRekSimpan1(db, r.k, r, w, false); n++;
+  });
+  hTulis('honor-rekening.json', db);
+  hCatat(w, '', 'Impor rekening dari Excel: ' + n + ' kader' + (ganti ? ', ' + ganti + ' nomor lama diganti' : ''), '', '');
+  return db;
+}
+function hAmbilRek(d, w) {
+  var per = hBacaPer(d.per);
+  if (per.st.serah || per.st.selesai) throw new Error('Daftar transfer sudah diserahkan');
+  if (!per.st.ttd) throw new Error('Belum ditandatangani; rekening selalu memakai data terbaru');
+  hSnapshotRek(per);
+  hCatat(w, per.id, 'Rekening di periode ini diperbarui dari data rekening terbaru', '', '');
+  hSimpanPer(per);
+  return per;
+}
+
+/* ---------- potongan ---------- */
+function hPot(d, w) {
+  var per = hBacaPer(d.per), st = per.st, sub = String(d.sub || '');
+  if (!st.dana) throw new Error('Potongan dibuka setelah dana masuk rekening kantor dicatat');
+  if (st.serah || st.selesai) throw new Error('Daftar transfer sudah diserahkan ke bendahara. Mundurkan tahap dulu.');
+  if (st.pot) throw new Error('Potongan sudah ditandai selesai. Mundurkan tahap dulu.');
+  per.potongan = per.potongan || [];
+  if (sub === 'hapus') {
+    var lama = per.potongan.filter(function (p) { return p.id === d.pid; })[0]; if (!lama) throw new Error('Potongan tidak ditemukan');
+    per.potongan = per.potongan.filter(function (p) { return p.id !== d.pid; });
+    hCatat(w, per.id, 'Hapus potongan ' + lama.nama + ' (' + lama.jenis + ')', 'Rp' + lama.nom, '');
+    hSimpanPer(per); return per;
+  }
+  var p = d.pt || {}, r = per.penerima.filter(function (x) { return x.k === p.k; })[0];   // d.p = kata sandi
+  if (!r || r.bayar === false) throw new Error('Kader tidak ada di daftar penerima');
+  var o = { id: sub === 'ubah' ? String(d.pid || '') :   /* d.id = nomor permintaan */ ('p' + Date.now().toString(36) + Math.floor(Math.random() * 1e4)), k: r.k, nama: r.nama, jenis: hTeks(p.jenis, 60), ket: hTeks(p.ket, 300),
+    nom: hInt(p.nom, -1), tujuan: p.tujuan === 'tunai' ? 'tunai' : 'transfer', ke: { nama: hTeks(p.ke && p.ke.nama, 80), bank: hTeks(p.ke && p.ke.bank, 40), no: String((p.ke && p.ke.no) || '').replace(/[\s.\-]/g, '') }, t: Date.now() };
+  if (!o.jenis) throw new Error('Isi jenis potongan');
+  if (!o.ket) throw new Error('Keterangan potongan wajib diisi');
+  if (!(o.nom > 0)) throw new Error('Nominal potongan harus lebih dari 0');
+  if (!o.ke.nama) throw new Error('Isi nama penerima / instansi tujuan potongan');
+  if (o.tujuan === 'transfer') { if (!o.ke.bank) throw new Error('Isi bank tujuan'); if (!/^\d{6,20}$/.test(o.ke.no)) throw new Error('Nomor rekening tujuan harus 6–20 angka'); }
+  else o.ke.bank = o.ke.no = '';
+  var lain = per.potongan.filter(function (x) { return x.k === r.k && x.id !== o.id; }).reduce(function (s, x) { return s + x.nom; }, 0);
+  if (lain + o.nom > hBruto(r)) throw new Error('Total potongan Rp' + (lain + o.nom) + ' melebihi honor ' + r.nama + ' (Rp' + hBruto(r) + ')');
+  if (sub === 'ubah') {
+    var idx = -1; per.potongan.forEach(function (x, i) { if (x.id === o.id) idx = i; });
+    if (idx < 0) throw new Error('Potongan tidak ditemukan');
+    var l2 = per.potongan[idx];
+    per.potongan[idx] = o;
+    hCatat(w, per.id, 'Ubah potongan ' + r.nama + ' (' + o.jenis + ': ' + o.ket + ')', 'Rp' + l2.nom + ' → ' + l2.ke.nama, 'Rp' + o.nom + ' → ' + o.ke.nama);
+  } else if (sub === 'tambah') {
+    per.potongan.push(o);
+    hCatat(w, per.id, 'Tambah potongan ' + r.nama + ' (' + o.jenis + ': ' + o.ket + '), ' + (o.tujuan === 'tunai' ? 'tunai ke ' : 'transfer ke ') + o.ke.nama, '', 'Rp' + o.nom);
+  } else throw new Error('Perintah potongan tidak dikenal');
+  if (o.tujuan === 'transfer') {
+    var tj = hBaca('honor-tujuan.json', []) || [];
+    if (!tj.some(function (x) { return x.no === o.ke.no && x.bank === o.ke.bank; })) { tj.unshift({ nama: o.ke.nama, bank: o.ke.bank, no: o.ke.no }); hTulis('honor-tujuan.json', tj.slice(0, 50)); }
+  }
+  hSimpanPer(per);
+  return per;
+}
+
+/* ---------- pintu masuk ---------- */
+function honorGet(p) {
+  var w = hUtama(p.u, p.p), op = String(p.op || 'muat');
+  if (op === 'muat') {
+    var cfg = hCfg(), out = { ok: true, cfg: cfg, daftar: hIndeks(), rek: hRekDb(), tujuan: hBaca('honor-tujuan.json', []) || [], sk: bacaPengaturan(PANTAU_USER).sk || {} };
+    try { out.calon = hCalon(cfg); } catch (x) { out.calon = []; out.calonPesan = String(x.message || x); }
+    if (p.per) { try { out.per = hBacaPer(p.per); } catch (x) { out.per = null; } }
+    else if (out.daftar.length) { try { out.per = hBacaPer(out.daftar[0].id); } catch (x) { out.per = null; } }
+    return out;
+  }
+  if (op === 'riwayat') {
+    var l = hBaca('honor-riwayat.json', []) || [];
+    if (p.per) l = l.filter(function (x) { return x.per === p.per || !x.per; });
+    return { ok: true, riwayat: l.slice(0, 1000).map(function (x) { return { w: hWaktu(x.t), u: x.u, per: x.per, a: x.a, l: x.l, b: x.b }; }) };
+  }
+  if (op === 'sk') {
+    var s = (bacaPengaturan(PANTAU_USER).sk || {})[String(p.jenis || '')];
+    if (!s || !s.id) return { ok: false, pesan: 'SK ' + p.jenis + ' belum diunggah' };
+    return { ok: true, b64: Utilities.base64Encode(DriveApp.getFileById(s.id).getBlob().getBytes()) };
+  }
+  return { ok: false, pesan: 'Perintah tidak dikenal' };
+}
+function honorPost(d) {
+  var w = hUtama(d.u, d.p), op = String(d.op || ''), r = { ok: true };
+  if (op === 'pengaturan') r.cfg = hSimpanCfg(d, w);
+  else if (op === 'buat') r.per = hBuat(d, w);
+  else if (op === 'hapus') hHapusPer(d, w);
+  else if (op === 'baris') r.per = hBaris(d, w);
+  else if (op === 'tambah') r.per = hTambah(d, w);
+  else if (op === 'segarkan') r.per = hSegarkan(d, w);
+  else if (op === 'langkah') r.per = hLangkah(d, w);
+  else if (op === 'mundur') r.per = hMundur(d, w);
+  else if (op === 'bukakunci') r.per = hBukaKunci(d, w);
+  else if (op === 'rek') { var db1 = hRek(d, w); r.k = d.k; r.rek1 = db1[d.k]; }
+  else if (op === 'rekimpor') { var db2 = hRekImpor(d, w); r.n = Object.keys(db2).length; }
+  else if (op === 'ambilrek') r.per = hAmbilRek(d, w);
+  else if (op === 'pot') r.per = hPot(d, w);
+  else throw new Error('Perintah honor tidak dikenal');
+  r.daftar = hIndeks();
+  return simpanHasil(r, 'a');
 }
