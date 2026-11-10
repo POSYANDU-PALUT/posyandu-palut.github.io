@@ -42,12 +42,129 @@ function cacheSkr() {
     get: function (k) { return c.get(P + k); },
     put: function (k, v, t) { return c.put(P + k, v, t); },
     remove: function (k) { return c.remove(P + k); },
-    removeAll: function (ks) { return c.removeAll((ks || []).map(function (k) { return P + k; })); }
+    removeAll: function (ks) { return c.removeAll((ks || []).map(function (k) { return P + k; })); },
+    getAll: function (ks) { var m = c.getAll((ks || []).map(function (k) { return P + k; })), o = {}; Object.keys(m).forEach(function (k) { o[k.slice(P.length)] = m[k]; }); return o; },
+    putAll: function (o, t) { var m = {}; Object.keys(o).forEach(function (k) { m[P + k] = o[k]; }); return c.putAll(m, t); }
   };
 }
 /** Versi simpanan sementara. Dinaikkan setiap kali berkas pengaturan atau berkas honor berubah, sehingga simpanan lama otomatis tidak terpakai lagi. */
-function verCache(n) { try { return PropertiesService.getScriptProperties().getProperty('VER_' + n + (MODE_TES ? '_TES' : '')) || '0'; } catch (x) { return '0'; } }
-function naikVer(n) { try { var lama = parseInt(verCache(n), 10) || 0; PropertiesService.getScriptProperties().setProperty('VER_' + n + (MODE_TES ? '_TES' : ''), String(Math.max(Date.now(), lama + 1))); } catch (x) {} }
+var VER_MEM = {};   // dibaca sekali per permintaan
+function verCache(n) {
+  var k = 'VER_' + n + (MODE_TES ? '_TES' : '');
+  if (VER_MEM[k] !== undefined) return VER_MEM[k];
+  try { VER_MEM[k] = PropertiesService.getScriptProperties().getProperty(k) || '0'; } catch (x) { return '0'; }
+  return VER_MEM[k];
+}
+function naikVer(n) {
+  try { var k = 'VER_' + n + (MODE_TES ? '_TES' : ''), lama = parseInt(verCache(n), 10) || 0, v = String(Math.max(Date.now(), lama + 1));
+    PropertiesService.getScriptProperties().setProperty(k, v); VER_MEM[k] = v; } catch (x) {}
+}
+
+/* ===================== Penyimpanan cepat (11 Nov 2026) =====================
+   Dulu satu kali simpan (mis. menandai langkah honor) mencari berkas di Drive berdasarkan nama, membaca ulang, lalu menulis
+   satu per satu: 17-18 panggilan Drive berurutan, 10-15 detik. Sekarang:
+   1) ID setiap berkas diingat di cache, jadi tidak perlu mencari berdasarkan nama lagi;
+   2) isi berkas honor, catatan aktivitas, dan profil disimpan juga di cache SESUDAH berhasil ditulis ke Drive, jadi pembacaan tidak ke Drive;
+   3) selama satu permintaan simpan, semua penulisan dikumpulkan lalu dikirim ke Drive BERSAMAAN sebelum jawaban dikirim
+      (jawaban "berhasil" hanya dikirim bila semua sudah tertulis). Bila cara bersamaan tidak bisa, berkas ditulis satu per satu seperti dulu. */
+var ANTRI = null, ANTRI_URUT = [], FID_MEM = {}, T_MULAI = 0, VIA_F = false;
+function verRuang(ruang) { return verCache(ruang === 'H' ? 'H' : 'F'); }
+function folderRuang(ruang) { return ruang === 'H' ? folderHonor() : induk(); }
+function kunciFid(ruang, nb) { return 'fid_' + ruang + '_' + verRuang(ruang) + '_' + nb; }
+function ingatFid(ruang, nb, id) { var k = kunciFid(ruang, nb); FID_MEM[k] = id; try { cacheSkr().put(k, id, 21600); } catch (x) {} }
+function lupaFid(ruang, nb) { var k = kunciFid(ruang, nb); delete FID_MEM[k]; try { cacheSkr().remove(k); } catch (x) {} }
+function fidTersimpan(ruang, nb) {
+  var k = kunciFid(ruang, nb);
+  if (FID_MEM[k]) return FID_MEM[k];
+  var id = null; try { id = cacheSkr().get(k); } catch (x) {}
+  if (id) FID_MEM[k] = id;
+  return id;
+}
+/** Berkas (objek Drive) berdasarkan nama, lewat ID yang diingat bila ada. null bila belum ada. */
+function berkasRuang(ruang, nb) {
+  var id = fidTersimpan(ruang, nb);
+  if (id === '-') return null;   // berkas honor yang belum pernah dibuat (semua penulisan honor lewat tulisTeks, jadi tanda ini selalu benar)
+  if (id) { try { return DriveApp.getFileById(id); } catch (x) { lupaFid(ruang, nb); } }
+  var it = folderRuang(ruang).getFilesByName(nb);
+  if (!it.hasNext()) { if (ruang === 'H') ingatFid(ruang, nb, '-'); return null; }
+  var f = it.next(); ingatFid(ruang, nb, f.getId()); return f;
+}
+/* Isi besar dipotong 30.000 huruf per bagian (batas cache 100 KB per nilai). */
+function cacheAmbilTeks(k) {
+  var c = cacheSkr(), v = c.get(k); if (v == null) return null;
+  if (v.charAt(0) !== '#') return v;
+  var n = parseInt(v.slice(1), 10), ks = []; for (var i = 0; i < n; i++) ks.push(k + '#' + i);
+  var m = c.getAll(ks), out = ''; for (var j = 0; j < n; j++) { if (m[ks[j]] == null) return null; out += m[ks[j]]; }
+  return out;
+}
+function cacheTaruhTeks(k, t) {
+  var c = cacheSkr(), P = 30000;
+  if (t.length <= P) { c.put(k, t, 21600); return; }
+  var n = Math.ceil(t.length / P); if (n > 60) { c.remove(k); return; }
+  var o = {}; for (var i = 0; i < n; i++) o[k + '#' + i] = t.slice(i * P, (i + 1) * P);
+  c.putAll(o, 21600); c.put(k, '#' + n, 21600);
+}
+function cacheBuang(k) { try { cacheSkr().remove(k); } catch (x) {} }
+/** Baca teks berkas: antrean permintaan ini, lalu cache, lalu Drive. ck = kunci cache (null = tanpa cache). */
+function bacaTeks(ruang, nb, ck) {
+  if (ANTRI && ANTRI[ruang + '|' + nb]) return ANTRI[ruang + '|' + nb].t;
+  if (ck) { try { var v = cacheAmbilTeks(ck); if (v != null) return v; } catch (x) {} }
+  var f = berkasRuang(ruang, nb); if (!f) return null;
+  var t = f.getBlob().getDataAsString();
+  if (ck) { try { cacheTaruhTeks(ck, t); } catch (x) { cacheBuang(ck); } }
+  return t;
+}
+/** Tulis teks berkas. Di dalam permintaan simpan: dikumpulkan dulu (dikirim bersamaan di kirimAntri). */
+function tulisTeks(ruang, nb, t, ck) {
+  if (ANTRI) { var k = ruang + '|' + nb; if (!ANTRI[k]) ANTRI_URUT.push(k); ANTRI[k] = { ruang: ruang, nb: nb, t: t, ck: ck }; return; }
+  tulisDrive(ruang, nb, t);
+  if (ck) { try { cacheTaruhTeks(ck, t); } catch (x) { cacheBuang(ck); } }
+}
+function tulisDrive(ruang, nb, t) {
+  var f = berkasRuang(ruang, nb);
+  if (f) { f.setContent(t); return; }
+  f = folderRuang(ruang).createFile(nb, t, MimeType.PLAIN_TEXT); ingatFid(ruang, nb, f.getId());
+}
+/** Kirim semua tulisan yang terkumpul ke Drive. Gagal = galat (jawaban menjadi "gagal"), cache berkas itu dibuang. */
+function kirimAntri() {
+  var q = ANTRI, urut = ANTRI_URUT; ANTRI = null; ANTRI_URUT = [];
+  if (!q || !urut.length) return;
+  var tugas = urut.map(function (k) { return q[k]; }), sisa = [], siap = [], c = cacheSkr();
+  tugas.forEach(function (x) { var id = fidTersimpan(x.ruang, x.nb); if (id === '-') id = null; else if (!id) { try { var f = berkasRuang(x.ruang, x.nb); if (f) id = f.getId(); } catch (e) {} } if (id) siap.push({ x: x, id: id }); else sisa.push(x); });
+  var paralel = false; try { paralel = !c.get('tulis_paralel_mati'); } catch (e) {}
+  if (siap.length && paralel) {
+    var gagal = siap;
+    try {
+      var tok = ScriptApp.getOAuthToken();
+      var rs = UrlFetchApp.fetchAll(siap.map(function (g) {
+        return { url: 'https://www.googleapis.com/upload/drive/v3/files/' + encodeURIComponent(g.id) + '?uploadType=media&supportsAllDrives=true&fields=id',
+                 method: 'patch', contentType: 'text/plain; charset=utf-8', payload: g.x.t, headers: { Authorization: 'Bearer ' + tok }, muteHttpExceptions: true };
+      }));
+      gagal = siap.filter(function (g, i) { var k = rs[i] && rs[i].getResponseCode(); return !(k >= 200 && k < 300); });
+      if (gagal.length === siap.length) { try { c.put('tulis_paralel_mati', '1', 21600); } catch (e) {} }
+    } catch (e) { gagal = siap; try { c.put('tulis_paralel_mati', '1', 3600); } catch (e2) {} }
+    siap = gagal;
+  }
+  siap.forEach(function (g) { sisa.push(g.x); });
+  sisa.sort(function (a, b) { return /riwayat|log-aktivitas/.test(a.nb) - /riwayat|log-aktivitas/.test(b.nb); });   // data utama dulu, catatan belakangan
+  var err = null;
+  sisa.forEach(function (x) { if (err) return; try { tulisDrive(x.ruang, x.nb, x.t); } catch (e) { err = e; } });
+  if (err) {
+    tugas.forEach(function (x) { if (x.ck) cacheBuang(x.ck); });
+    naikVer('H'); naikVer('F'); naikVer('PG'); PG_MEM = {};
+    throw new Error('Gagal menyimpan ke Drive, coba lagi. (' + (err.message || err) + ')');
+  }
+  tugas.forEach(function (x) { if (x.ck) { try { cacheTaruhTeks(x.ck, x.t); } catch (e) { cacheBuang(x.ck); } } });
+}
+function batalAntri() { ANTRI = null; ANTRI_URUT = []; }
+/** Jalankan sekali dari editor Apps Script (pilih izinkanAkses lalu Jalankan) untuk memberi izin menulis bersamaan ke Drive. */
+function izinkanAkses() {
+  var r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user', { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+  try { CacheService.getScriptCache().removeAll(['tulis_paralel_mati', 'TES_tulis_paralel_mati']); } catch (x) {}
+  var ok = r.getResponseCode() === 200;
+  Logger.log(ok ? 'BERHASIL: izin sudah diberikan, penyimpanan cepat aktif.' : 'Belum berhasil (kode ' + r.getResponseCode() + '): ' + r.getContentText().slice(0, 300));
+  return ok;
+}
 var PG_MEM = {};
 /** Waktu selesai pemeliharaan (milidetik) bila sedang menyala, selain itu 0. */
 function pemeliharaanSampai() {
@@ -117,7 +234,7 @@ function kosongkanTes(d) {
   while (it.hasNext()) it.next().setTrashed(true);
   var props = PropertiesService.getScriptProperties(), sid = props.getProperty('SHEET_ID_TES');
   if (sid) { try { DriveApp.getFileById(sid).setTrashed(true); } catch (x) {} props.deleteProperty('SHEET_ID_TES'); }
-  TES_MEM = null; HFOLD_MEM = null; PG_MEM = {}; props.setProperty('STAMP_TES', String(Date.now())); props.setProperty('VER_PG_TES', String(Date.now())); props.setProperty('VER_H_TES', String(Date.now()));
+  TES_MEM = null; HFOLD_MEM = null; PG_MEM = {}; props.setProperty('STAMP_TES', String(Date.now())); props.setProperty('VER_PG_TES', String(Date.now())); props.setProperty('VER_H_TES', String(Date.now())); props.setProperty('VER_F_TES', String(Date.now())); VER_MEM = {}; FID_MEM = {};
   return simpanHasil({ ok: true, tes: infoTes() }, 'a');
 }
 
@@ -170,7 +287,7 @@ function doGet(e) {
     var w2 = masuk(p.u, p.p);
     if (w2) {
       var c = bacaPengaturan(w2.u), bs = bacaPengaturan(PANTAU_USER);
-      hasil = { ok: true, nama: c.nama, nip: c.nip, jabatan: c.jabatan, unit: c.unit, foto: c.foto,
+      hasil = { ok: true, cepat: 1, nama: c.nama, nip: c.nip, jabatan: c.jabatan, unit: c.unit, foto: c.foto,
                 banners: bs.banners, batas: bs.batas, batasKel: bs.batasKel, bb: bs.bb || {}, sk: bs.sk, pengumuman: bs.pengumuman, wa: bs.wa, fisik: bs.fisik, peran: w2.peran, kel: w2.kel || '' };
       if (w2.peran === 'utama') { hasil.admins = daftarAdmin(); hasil.ruang = bacaRuang(); hasil.penerima = infoPenerima(); hasil.pemeliharaan = pemeliharaanSampai(); if (MODE_TES) hasil.tes = infoTes(); }
       hasil.modeTes = MODE_TES;
@@ -417,18 +534,17 @@ function kelola(d) {
     var k3 = bacaKelAdmin(); delete k3[nu]; simpanKelAdmin(k3);
     var it = induk().getFilesByName(berkasProfil(nu));
     while (it.hasNext()) it.next().setTrashed(true);
-    PG_MEM = {}; naikVer('PG');
+    PG_MEM = {}; naikVer('PG'); naikVer('F');
     catatLog(w.u, 'menghapus operator ' + nu);
   } else if (d.op !== 'daftar') {
     throw new Error('Perintah tidak dikenal');
   }
   return simpanHasil({ ok: true, admins: daftarAdmin(), penerima: infoPenerima() }, 'a');
 }
+/** Catatan aktivitas dan profil admin disimpan juga di cache (selalu ditulis lewat tulisTeks). Berkas lain dibaca dari Drive lewat ID yang diingat. */
+function kunciR(nb) { return (nb === NAMA_LOG || nb === NAMA_PENGATURAN || /^pengaturan-pantau-.+\.json$/.test(nb)) ? 'rb_' + verCache('F') + '_' + nb : null; }
 function bacaBerkas(nb) {
-  try {
-    var it = induk().getFilesByName(nb);
-    if (it.hasNext()) return JSON.parse(it.next().getBlob().getDataAsString());
-  } catch (x) {}
+  try { var t = bacaTeks('R', nb, kunciR(nb)); if (t != null) return JSON.parse(t); } catch (x) {}
   return {};
 }
 /** Profil satu admin. Untuk admin utama ikut berisi pengaturan bersama: banner (maks 3), batas tanggal, SK. */
@@ -502,8 +618,8 @@ function bacaPengaturan(u, ringan) {
   return c;
 }
 function simpanPengaturan(c, u) {
-  var nb = berkasProfil(u), teks = JSON.stringify(c), f = induk(), it = f.getFilesByName(nb);
-  if (it.hasNext()) it.next().setContent(teks); else f.createFile(nb, teks, MimeType.PLAIN_TEXT);
+  var nb = berkasProfil(u);
+  tulisTeks('R', nb, JSON.stringify(c), kunciR(nb));
   PG_MEM = {}; naikVer('PG');
   if (!u || u === PANTAU_USER) { try { cacheSkr().removeAll(['cfg_batas', 'nm_' + PANTAU_USER]); } catch (x) {} }
 }
@@ -660,9 +776,10 @@ function ambilPdf(nomor, w) {
 }
 
 function doPost(e) {
-  var tag = 's';
+  var tag = 's'; T_MULAI = Date.now();
   try {
     var d = JSON.parse((e.parameter && e.parameter.data) ? e.parameter.data : e.postData.contents);
+    VIA_F = d.via === 'f';
     AS_USER = String(d.as || '').toLowerCase();
     MODE_TES = kodeTesValid(d.tes); TES_AKHIR = MODE_TES && !pemeliharaanSampai() && d.aksi !== 'pemeliharaan' && d.aksi !== 'bagian';
     TOKEN_BALAS = String(d.t || '');
@@ -684,6 +801,12 @@ function doPost(e) {
     var kunci = LockService.getScriptLock();
     try {
       kunci.waitLock(30000);
+      if (d.aksi !== 'catat' && d.aksi !== 'selesai') {
+        // Permintaan yang sama dikirim ulang (mis. jalur cadangan): jawab dengan hasil yang sudah ada, jangan dikerjakan dua kali.
+        var lamaH = cache.get('hasil_a_' + ID_AKTIF);
+        if (lamaH) { try { var lo = JSON.parse(lamaH); if (lo && lo.ok) { tag = 'a'; return jawab(lo); } } catch (x) {} }
+      }
+      ANTRI = {}; ANTRI_URUT = [];
       if (d.aksi === 'catat') { tag = 'c'; return catat(d, cache); }
       if (d.aksi === 'selesai') { tag = 's'; return selesai(d, cache); }
       if (d.aksi === 'atur') { tag = 'a'; return atur(d); }
@@ -784,6 +907,8 @@ function selesai(d, cache) {
 }
 
 function simpanHasil(o, tag) {
+  if (o && o.ok === false) batalAntri();
+  else { try { kirimAntri(); } catch (e) { o = { ok: false, pesan: String(e.message || e) }; } }
   if (ID_RE.test(ID_AKTIF)) {
     try { cacheSkr().put('hasil_' + tag + '_' + ID_AKTIF, JSON.stringify(o), 21600); } catch (x) {}
   }
@@ -796,7 +921,8 @@ function bacaStamp() { return PropertiesService.getScriptProperties().getPropert
 function sentuhStamp() { try { var lama = parseInt(bacaStamp(), 10) || 0; PropertiesService.getScriptProperties().setProperty(kunciStamp(), String(Math.max(Date.now(), lama + 1))); } catch (x) {} }
 
 function jawab(o) {
-  o.t = TOKEN_BALAS;
+  o.t = TOKEN_BALAS; if (T_MULAI) o.sv = Date.now() - T_MULAI;
+  if (VIA_F) return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
   var teks = JSON.stringify(o).replace(/</g, '\\u003c');
   return HtmlService.createHtmlOutput('<script>window.top.postMessage(' + teks + ',"*");</script>');
 }
@@ -819,6 +945,7 @@ function bacaBerkasCepat(nb) {
   var cache = cacheSkr(), k = 'bk_' + nb + '_' + bacaStamp();
   try { var v = cache.get(k); if (v) return JSON.parse(v); } catch (x) {}
   var o = bacaBerkas(nb);
+  if (ANTRI && ANTRI['R|' + nb]) return o;   // belum tertulis ke Drive: jangan disimpan sementara
   try { var s = JSON.stringify(o); if (s.length < 90000) cache.put(k, s, 900); } catch (x) {}
   return o;
 }
@@ -970,8 +1097,7 @@ function bacaSetor() { return bacaSetorLengkap().d; }
 function tulisSetor(dd, tt) {
   var ks = Object.keys(dd).sort();
   while (ks.length > 24) { var k0 = ks.shift(); delete dd[k0]; delete tt[k0]; }
-  var teks = JSON.stringify({ d: dd, t: tt }), f = induk(), it = f.getFilesByName(NAMA_SETOR);
-  if (it.hasNext()) it.next().setContent(teks); else f.createFile(NAMA_SETOR, teks, MimeType.PLAIN_TEXT);
+  tulisTeks('R', NAMA_SETOR, JSON.stringify({ d: dd, t: tt }), null);
   sentuhStamp();
 }
 /** Hanya admin utama: catat (atau batalkan) penyerahan laporan satu atau beberapa Posyandu untuk satu bulan. */
@@ -1007,16 +1133,14 @@ var NAMA_LEMBAR = 'lembar-pengantar.json';
 var NAMA_KUNCI = 'kunci-laporan.json';
 function bacaKunciLap() { var o = bacaBerkasCepat(NAMA_KUNCI); return (o && o.K && typeof o.K === 'object') ? o.K : {}; }
 function tulisKunciLap(K) {
-  var teks = JSON.stringify({ K: K }), f = induk(), it = f.getFilesByName(NAMA_KUNCI);
-  if (it.hasNext()) it.next().setContent(teks); else f.createFile(NAMA_KUNCI, teks, MimeType.PLAIN_TEXT);
+  tulisTeks('R', NAMA_KUNCI, JSON.stringify({ K: K }), null);
   sentuhStamp();
 }
 function bacaLembarSemua() { var o = bacaBerkasCepat(NAMA_LEMBAR); return (o && o.L && typeof o.L === 'object') ? o.L : {}; }
 function tulisLembarSemua(L) {
   var ks = Object.keys(L).sort(function (a, b) { return (L[a].ts || 0) - (L[b].ts || 0); });
   while (ks.length > 120) delete L[ks.shift()];
-  var teks = JSON.stringify({ L: L }), f = induk(), it = f.getFilesByName(NAMA_LEMBAR);
-  if (it.hasNext()) it.next().setContent(teks); else f.createFile(NAMA_LEMBAR, teks, MimeType.PLAIN_TEXT);
+  tulisTeks('R', NAMA_LEMBAR, JSON.stringify({ L: L }), null);
   sentuhStamp();
 }
 function kodeLembarBaru() {
@@ -1446,8 +1570,7 @@ function catatLog(user, teks) {
     var l = bacaLog();
     l.unshift({ t: Date.now(), u: String(user || ''), a: String(teks || '').slice(0, 300) });
     l = l.slice(0, 300);
-    var t = JSON.stringify({ l: l }), f = induk(), it = f.getFilesByName(NAMA_LOG);
-    if (it.hasNext()) it.next().setContent(t); else f.createFile(NAMA_LOG, t, MimeType.PLAIN_TEXT);
+    tulisTeks('R', NAMA_LOG, JSON.stringify({ l: l }), kunciR(NAMA_LOG));
   } catch (x) {}
 }
 /** Ringkasan perbedaan daftar Posyandu lama dan baru. */
@@ -1492,20 +1615,12 @@ var H_MAKS_NOM = 10000000;
 var HFOLD_MEM = null;
 function folderHonor() { if (!HFOLD_MEM) HFOLD_MEM = anak(induk(), 'Honor'); return HFOLD_MEM; }
 /** Berkas honor dibaca dari simpanan sementara bila ada (versi 'H' naik setiap ada tulis/hapus, jadi tidak pernah basi). Berkas besar (>90 KB) tetap dibaca langsung. */
+function kunciH(nb) { return 'hb_' + verCache('H') + '_' + nb; }
 function hBaca(nb, def) {
-  var cache = cacheSkr(), ck = 'hb_' + verCache('H') + '_' + nb;
-  try { var v = cache.get(ck); if (v) return JSON.parse(v); } catch (x) {}
-  try {
-    var it = folderHonor().getFilesByName(nb);
-    if (it.hasNext()) { var t = it.next().getBlob().getDataAsString(), o = JSON.parse(t); if (t.length < 90000) { try { cache.put(ck, t, 21600); } catch (x) {} } return o; }
-  } catch (x) {}
+  try { var t = bacaTeks('H', nb, kunciH(nb)); if (t != null) return JSON.parse(t); } catch (x) {}
   return def;
 }
-function hTulis(nb, o) {
-  var f = folderHonor(), t = JSON.stringify(o), it = f.getFilesByName(nb);
-  if (it.hasNext()) it.next().setContent(t); else f.createFile(nb, t, MimeType.PLAIN_TEXT);
-  naikVer('H');
-}
+function hTulis(nb, o) { tulisTeks('H', nb, JSON.stringify(o), kunciH(nb)); }
 function hInt(v, def) { var n = parseInt(v, 10); return isFinite(n) ? n : def; }
 function hTeks(s, maks) { return String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maks || 120); }
 function hNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }

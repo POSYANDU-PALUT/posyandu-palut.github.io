@@ -298,7 +298,7 @@ footer.dsk{display:none}
 <link rel="stylesheet" href="pantau-tema.css?v=20261105ze">
 <link rel="stylesheet" href="pantau-modern.css?v=20261107f">
 <link rel="stylesheet" href="pantau-baru.css?v=20261108d">
-<link rel="stylesheet" href="pantau-v2.css?v=20261111c">
+<link rel="stylesheet" href="pantau-v2.css?v=20261111d">
 <style id="loginKaca">
 /* ---------- Gaya kaca: halaman masuk ---------- */
 html .login{background:#fff8e1}
@@ -364,7 +364,7 @@ html .login .lfoot{color:var(--fg,#241b00);opacity:.8}
     <div class="lerr" id="lerr" role="alert"></div>
     <button class="btn" id="lb" type="submit">Masuk</button>
   </form>
-  <div class="lfoot">Developed by <b>Max Juniar Ratowo</b><br>© 2026 All Rights Reserved<br><small id="ver" style="opacity:.55;font-size:10px">tampilan 20261111c</small></div>
+  <div class="lfoot">Developed by <b>Max Juniar Ratowo</b><br>© 2026 All Rights Reserved<br><small id="ver" style="opacity:.55;font-size:10px">tampilan 20261111d</small></div>
 </section>
 
 <div id="app" class="hidden" data-view="b">
@@ -524,7 +524,7 @@ html .login .lfoot{color:var(--fg,#241b00);opacity:.8}
 <script src="pembaruan.js?v=1"></script>
 <script src="tes.js?v=4"></script>
 <script src="seed-posyandu.js"></script>
-<script src="dialog.js?v=20261111c"></script>
+<script src="dialog.js?v=20261111d"></script>
 <script>
 /* ===== Kecepatan: catatan waktu, indikator tombol, muat-saat-perlu ===== */
 var PERF_K='pantau-perf';
@@ -573,8 +573,8 @@ function muatHonor(){
 }
 window.muatHonor=muatHonor;
 </script>
-<script src="pantau-ext.js?v=20261111c" defer></script>
-<script src="pantau-v2.js?v=20261111c" defer></script>
+<script src="pantau-ext.js?v=20261111d" defer></script>
+<script src="pantau-v2.js?v=20261111d" defer></script>
 <script>
 var ARSIP_URL='https://script.google.com/macros/s/AKfycbwnaGeg2gGim7aViuugfbN8TWg3XeTBxjE041tp6dd9PSyUpadGqOUD_d4EFsojjqgugw/exec';
 var BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -855,20 +855,40 @@ function profKeCache(){try{localStorage.setItem(profKey(),JSON.stringify(PROFIL)
 function ambilProfil(){
   if(!CRED||profJalan)return;profJalan=true;
   jsonp({aksi:'profil',u:CRED.u,p:CRED.p}).then(function(r){profJalan=false;
-    if(r&&r.ok){if(r.peran){PERAN=r.peran}if(window.terapKel&&r.peran)terapKel(r.peran==='admin'?(r.kel||'-'):'');if(r.admins)ADM=r.admins;if(r.penerima!==undefined)PENERIMA=r.penerima;if(window.terapFisik&&r.fisik!==undefined)terapFisik(r.fisik);window.PM_SAMPAI=r.pemeliharaan||0;window.TES_INFO=r.tes||null;pasangAdmin();PROFIL={nama:r.nama||'Admin Posyandu',nip:(r.nip!==undefined&&r.nip!==''?r.nip:lsNip()),jabatan:r.jabatan||'',unit:r.unit||'',foto:r.foto||''};if(window.terimaProfil)terimaProfil(r);profilOk=true;PEND={foto:null};pasangProfil();profKeCache()}
+    if(r&&r.ok){SRV_CEPAT=!!r.cepat;if(r.peran){PERAN=r.peran}if(window.terapKel&&r.peran)terapKel(r.peran==='admin'?(r.kel||'-'):'');if(r.admins)ADM=r.admins;if(r.penerima!==undefined)PENERIMA=r.penerima;if(window.terapFisik&&r.fisik!==undefined)terapFisik(r.fisik);window.PM_SAMPAI=r.pemeliharaan||0;window.TES_INFO=r.tes||null;pasangAdmin();PROFIL={nama:r.nama||'Admin Posyandu',nip:(r.nip!==undefined&&r.nip!==''?r.nip:lsNip()),jabatan:r.jabatan||'',unit:r.unit||'',foto:r.foto||''};if(window.terimaProfil)terimaProfil(r);profilOk=true;PEND={foto:null};pasangProfil();profKeCache()}
   }).catch(function(){profJalan=false;profilOk=false});
 }
 function tunda(ms){return new Promise(function(r){setTimeout(r,ms)})}
+/* Server baru (Code.gs 11 Nov 2026) menjawab simpan langsung lewat fetch, tanpa iframe dan tanpa bertanya ulang.
+   Server lama tetap memakai cara lama. Bila fetch tidak bisa dipakai di perangkat ini, kembali ke cara lama (1 hari). */
+var SRV_CEPAT=false;
+function fetchBoleh(){try{var t=+localStorage.getItem('pantau-fetch-mati')||0;return Date.now()-t>864e5}catch(x){return true}}
 function kirimAtur(f){
   var t0=performance.now(),n='Simpan: '+(f.aksi||'atur')+(f.op?'/'+f.op:''),sb=sibukTombol(f.aksi==='sk'?'Mengunggah…':'Menyimpan…'),
     lb=(f.aksi==='sk'||f.banner||f.foto)?'Mengunggah…':/hapus/i.test(String(f.op||'')+String(f.aksi||''))?'Menghapus…':'Menyimpan…',
     dl=window.Dlg?Dlg.sibuk(lb):function(){};
-  return kirimAtur0(f).then(function(r){perfCatat(n,t0,true);sb();dl();return r},function(e){perfCatat(n,t0,false);sb();dl();throw e});
+  return kirimAtur0(f).then(function(r){perfCatat(n,t0,true);if(r&&r.sv>=0)perfCatatMs('Server: '+(f.aksi||'atur')+(f.op?'/'+f.op:''),r.sv,true);sb();dl();return r},function(e){perfCatat(n,t0,false);sb();dl();throw e});
 }
 async function kirimAtur0(f){
   if(!CRED)throw new Error('Silakan masuk lagi');
   var id=f.id||('a'+Math.random().toString(36).slice(2,12)+Date.now().toString(36));
   var o={aksi:'atur',id:id,t:id,u:CRED.u,p:CRED.p};if(CRED.as)o.as=CRED.as;for(var k in f)o[k]=f[k];if(window.TES_KODE&&TES_KODE())o.tes=TES_KODE();
+  if(SRV_CEPAT&&window.fetch&&window.AbortController&&fetchBoleh()){
+    /* jalur cepat: satu permintaan, jawaban langsung dibaca */
+    var dj=null,ac=new AbortController(),tm=setTimeout(function(){ac.abort()},40000);
+    try{var res=await fetch(ARSIP_URL,{method:'POST',body:new URLSearchParams({data:JSON.stringify(Object.assign({via:'f'},o))}),signal:ac.signal,credentials:'omit',redirect:'follow'});dj=await res.json()}
+    catch(e){dj=null}
+    clearTimeout(tm);
+    if(dj&&typeof dj==='object'&&dj.t===id){if(dj.ok)return dj;throw new Error(dj.pesan||'Gagal menyimpan')}
+    /* jawaban tidak terbaca: tanyakan hasilnya dulu (server mungkin sudah selesai), baru kirim ulang dengan ID yang sama (server tidak mengerjakan dua kali) */
+    for(var q0=0;q0<6;q0++){
+      try{var rh=await jsonp0({aksi:'hasil',id:id,tag:'a'},8000);
+        if(rh&&rh.ok){try{localStorage.setItem('pantau-fetch-mati',String(Date.now()))}catch(x){}return rh}
+        if(rh&&rh.ok===false&&!rh.tunggu)throw new Error(rh.pesan||'Gagal menyimpan');
+      }catch(e){if(e&&e.message&&!/menghubungi|menjawab/.test(e.message))throw e}
+      await tunda(700);
+    }
+  }
   var fr=document.createElement('iframe');fr.name='af'+id;fr.style.display='none';document.body.appendChild(fr);
   var fm=document.createElement('form');fm.method='POST';fm.action=ARSIP_URL;fm.target=fr.name;fm.style.display='none';
   var i=document.createElement('input');i.type='hidden';i.name='data';i.value=JSON.stringify(o);fm.appendChild(i);document.body.appendChild(fm);fm.submit();
@@ -1063,7 +1083,7 @@ function cek(){if(window.matchMedia('(min-width:900px)').matches){if(k){t.classL
 var y=window.pageYOffset||document.documentElement.scrollTop||0;
 if(!k&&y>90){t.classList.add('kecil');k=true}else if(k&&y<12){t.classList.remove('kecil');k=false}}
 window.addEventListener('scroll',cek,{passive:true});window.addEventListener('resize',cek)})();</script>
-<script>if(window.PB)PB.mulai({app:'pantau',v:'20261111c'});</script>
+<script>if(window.PB)PB.mulai({app:'pantau',v:'20261111d'});</script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',function(){try{navigator.serviceWorker.register('sw-terima.js').then(function(){return navigator.serviceWorker.ready}).then(function(g){var l=[location.href,'pantau.webmanifest','icon-pantau-192.png','apple-touch-icon-pantau.png'];try{performance.getEntriesByType('resource').forEach(function(x){l.push(x.name)})}catch(e){}if(g.active)g.active.postMessage({simpan:l})}).catch(function(){})}catch(e){}})</script>
 </body>
 </html>
