@@ -422,7 +422,7 @@ function rincianPos(id) {
   if (utama() && PX.POS.length) {
     f.innerHTML = '<button class="bt dz" type="button" data-x="akt">' + (p.aktif === false ? 'Aktifkan' : 'Nonaktifkan') + '</button><div class="sp"></div><button class="bt pri" type="button" data-x="ubah">' + ic('edit') + ' Ubah data</button>';
     f.querySelector('[data-x=ubah]').onclick = function () { PX.formPos(p); };
-    f.querySelector('[data-x=akt]').onclick = function () { if (!confirm((p.aktif === false ? 'Aktifkan ' : 'Nonaktifkan ') + p.nama + '?')) return; PX.tutupModal(); PX.simpanDaftar(PX.POS.map(function (x) { return x.id === p.id ? Object.assign({}, x, { aktif: x.aktif === false }) : x; }), 'Status Posyandu diperbarui.'); };
+    f.querySelector('[data-x=akt]').onclick = async function () { if (!(await tanya((p.aktif === false ? 'Aktifkan ' : 'Nonaktifkan ') + p.nama + '?'))) return; PX.tutupModal(); PX.simpanDaftar(PX.POS.map(function (x) { return x.id === p.id ? Object.assign({}, x, { aktif: x.aktif === false }) : x; }), 'Status Posyandu diperbarui.'); };
   } else if (op() && PX.POS.length) {
     f.innerHTML = '<div class="sp"></div><button class="bt pri" type="button">' + (p.hp ? 'Ubah nomor ketua/perwakilan' : 'Isi nomor ketua/perwakilan') + '</button>';
     f.querySelector('button').onclick = function () { PX.formNomor(p); };
@@ -494,7 +494,7 @@ function modalOp(a) {
   q('batal').onclick = function () { PX.tutupModal(); };
   if (a) {
     if (q('buka')) q('buka').onclick = function (ev) { ev.preventDefault(); jalan({ op: 'buka', nu: a.u }, 'Kunci akun ' + a.u + ' dibuka.'); };
-    q('hapus').onclick = function () { if (confirm('Hapus operator ' + a.u + '?')) jalan({ op: 'hapus', nu: a.u }, 'Operator ' + a.u + ' dihapus.'); };
+    q('hapus').onclick = async function () { if ((await tanya('Hapus operator ' + a.u + '?'))) jalan({ op: 'hapus', nu: a.u }, 'Operator ' + a.u + ' dihapus.'); };
     q('simpan').onclick = function () {
       var k = q('kel').value, pw = q('pw').value, ch = Promise.resolve(true);
       if (pw && pw.length < 6) { st.textContent = 'Kata sandi minimal 6 karakter'; st.className = 'st bad'; return; }
@@ -666,7 +666,7 @@ function go(pg) {
 
 /* ---------- klik dan isian ---------- */
 function pasangKlik() {
-  root.addEventListener('click', function (ev) {
+  root.addEventListener('click', async function (ev) {
     var t = ev.target.closest('a,button,tr[data-baris],tr[data-kel],tr[data-posd],label,[data-tutup],input'); if (!t || !root.contains(t)) { if (S.menu) { S.menu = null; render(); } return; }
     var d = t.dataset;
     if (t.tagName === 'INPUT' || (t.tagName === 'LABEL' && !d.tab)) { if (t.tagName === 'INPUT' && t.type === 'checkbox') return; return; }
@@ -686,7 +686,7 @@ function pasangKlik() {
     if (d.posd) return rincianPos(d.posd);
     if (d.sklihat) { var s = (PX.SK || {})[d.sklihat]; if (s) PX.lihatSK('SK Kader Posyandu ' + d.sklihat, s.id); return; }
     if (d.opubah) { var a = (window.ADM || []).filter(function (z) { return z.u === d.opubah; })[0]; if (a) modalOp(a); return; }
-    if (d.pulih) { if (!confirm('Pulihkan daftar Posyandu dari cadangan ' + d.tgl + '? Keadaan sekarang disimpan dulu sebagai cadangan baru.')) return; t.disabled = true; t.textContent = 'Memulihkan…'; kirimAtur({ aksi: 'pulih', berkas: d.pulih }).then(function (r) { PX.setPOS(r.list || PX.POS); PX.setCAD(r.cadangan || PX.CAD); PX.renderData(); PX.renderBeranda(); PX.toast('Data Posyandu dipulihkan.'); }).catch(function (er) { alert(er.message); render(); }); return; }
+    if (d.pulih) { if (!(await tanya('Pulihkan daftar Posyandu dari cadangan ' + d.tgl + '? Keadaan sekarang disimpan dulu sebagai cadangan baru.'))) return; t.disabled = true; t.textContent = 'Memulihkan…'; kirimAtur({ aksi: 'pulih', berkas: d.pulih }).then(function (r) { PX.setPOS(r.list || PX.POS); PX.setCAD(r.cadangan || PX.CAD); PX.renderData(); PX.renderBeranda(); PX.toast('Data Posyandu dipulihkan.'); }).catch(function (er) { alert(er.message); render(); }); return; }
     if (d.muat !== undefined) { ev.preventDefault(); if (typeof muat === 'function') muat(); PX.toast('Memuat ulang data…'); return; }
     if (d.tema !== undefined) { ev.preventDefault(); var tm = $('tema'); if (tm) tm.click(); setTimeout(render, 50); return; }
     if (d.bel !== undefined) return bel();
@@ -700,7 +700,7 @@ function pasangKlik() {
     if (d.pil) { S.pil[d.pil] = t.checked; return isiTabel(data(per())); }
     if (d.pilsemua !== undefined) { var D = data(per()), l = saring(D).slice((S.hal - 1) * PER_HAL, S.hal * PER_HAL); l.forEach(function (x) { S.pil[x.p.id] = t.checked; }); return isiTabel(D); }
     if (d.skunggah) { var f = t.files[0]; t.value = ''; if (!f) return; var info = $('v2sk' + d.skunggah); var fake = { lastChild: info || document.createElement('small') }; PX.unggahSK(d.skunggah, f, fake); return; }
-    if (d.pulihjson !== undefined) { var f2 = t.files[0]; t.value = ''; if (!f2) return; var rd = new FileReader(); rd.onload = function () { try { var o = JSON.parse(rd.result); if (!Array.isArray(o.posyandu)) throw new Error('Berkas cadangan tidak dikenali'); if (!confirm('Pulihkan ' + o.posyandu.length + ' Posyandu dari cadangan? Data Posyandu sekarang akan diganti.')) return; PX.simpanDaftar(o.posyandu, 'Data Posyandu dipulihkan.'); } catch (er) { alert(er.message); } }; rd.readAsText(f2); return; }
+    if (d.pulihjson !== undefined) { var f2 = t.files[0]; t.value = ''; if (!f2) return; var rd = new FileReader(); rd.onload = async function () { try { var o = JSON.parse(rd.result); if (!Array.isArray(o.posyandu)) throw new Error('Berkas cadangan tidak dikenali'); if (!(await tanya('Pulihkan ' + o.posyandu.length + ' Posyandu dari cadangan? Data Posyandu sekarang akan diganti.'))) return; PX.simpanDaftar(o.posyandu, 'Data Posyandu dipulihkan.'); } catch (er) { alert(er.message); } }; rd.readAsText(f2); return; }
   });
   root.addEventListener('input', function (ev) {
     var t = ev.target, d = t.dataset;
@@ -727,7 +727,7 @@ function pasangKlik() {
     var t = ev.target.closest('#v2laci [data-aksi],#v2laci [data-tutup]'); if (!t) return;
   });
 }
-function aksi(a, t) {
+async function aksi(a, t) {
   var pr = per(), x;
   switch (a) {
     case 'posterpdf': case 'posterpng': S.menu = null; render(); PX.unduhPoster(PX.hitung(pr.th, pr.bl), pr, a === 'posterpdf' ? 'pdf' : 'png', null); PX.toast('Menyiapkan berkas…'); return;
@@ -738,7 +738,7 @@ function aksi(a, t) {
     case 'tandaipilih': var ids = Object.keys(S.pil).filter(function (k) { return S.pil[k]; }), M = PX.SETOR[PX.perKey(pr)] || {}; ids = ids.filter(function (k) { return !M[k]; }); S.pil = {}; if (ids.length) PX.simpanSetor(pr, ids, PX.hariIni()); else render(); return;
     case 'batalpilih': S.pil = {}; return isiTabel(data(pr));
     case 'tandai1': PX.simpanSetor(pr, [S.laci], PX.hariIni()); return;
-    case 'batal1': if (confirm('Batalkan tanda berkas fisik diterima?')) PX.simpanSetor(pr, [S.laci], ''); return;
+    case 'batal1': if ((await tanya('Batalkan tanda berkas fisik diterima?'))) PX.simpanSetor(pr, [S.laci], ''); return;
     case 'pdf1': x = cariBaris(S.laci); if (x && x.d) PX.unduhPdf(x.d, t); return;
     case 'nomor': x = cariBaris(S.laci); if (x) (utama() ? PX.formPos(x.p) : PX.formNomor(x.p)); return;
     case 'antar': S.laci = null; laci(); return bukaAntar();
@@ -760,11 +760,11 @@ function aksi(a, t) {
       var blob = new Blob([JSON.stringify({ versi: 1, tanggal: new Date().toISOString(), batas: PX.BATAS, posyandu: PX.POS }, null, 1)], { type: 'application/json' }), aa = document.createElement('a');
       aa.href = URL.createObjectURL(blob); aa.download = 'cadangan-pantau-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(aa); aa.click(); setTimeout(function () { URL.revokeObjectURL(aa.href); aa.remove(); }, 1000); return;
     case 'honormuat': render(); return;
-    case 'perfhapus': if (confirm('Hapus catatan kecepatan di perangkat ini?')) { perfHapus(); render(); } return;
+    case 'perfhapus': if ((await tanya('Hapus catatan kecepatan di perangkat ini?'))) { perfHapus(); render(); } return;
     case 'log': t.disabled = true; jsonp({ aksi: 'log', u: CRED.u, p: CRED.p }).then(function (r) { if (!r || !r.ok) throw new Error((r && r.pesan) || 'Gagal memuat'); LOG = r.log || []; LOGN = 10; render(); }).catch(function (er) { alert(er.message); t.disabled = false; }); return;
     case 'logmore': LOGN += 30; var lb = $('v2log'); if (lb) lb.innerHTML = logHtml(); return;
     case 'sebagai': if (window.CRED && CRED.as) return PX.gantiAs(''); return PX.pilihOperator();
-    case 'keluar': if (confirm('Keluar dari Pantau?')) { var o = $('out'); if (o) o.click(); else if (typeof keluar === 'function') keluar(); } return;
+    case 'keluar': if ((await tanya('Keluar dari Pantau?'))) { var o = $('out'); if (o) o.click(); else if (typeof keluar === 'function') keluar(); } return;
   }
 }
 

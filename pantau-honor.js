@@ -450,9 +450,9 @@ function mUbah(k) {
   modal('Ubah ' + r.nama, (s.ttd ? '<div class="warnb"><b>Daftar bayar sudah ditandatangani.</b> Bila disimpan, Daftar Bayar harus dicetak dan ditandatangani ulang, lalu Rekap dan Kwitansi dibuat ulang.</div>' : '') +
     '<div class="fl"><label for="muNama">Nama (sesuai SK)</label><input class="in" id="muNama" value="' + e(r.nama) + '"></div><div class="g2f"><div class="fl"><label for="muNom">Nominal per bulan</label><input class="in" id="muNom" inputmode="numeric" value="' + ang(r.nominal).replace(/,/g, '.') + '"></div>' +
     '<div class="fl"><label for="muBln">Jumlah bulan</label><select class="in" id="muBln">' + Array.apply(null, { length: H.per.n }).map(function (_, i) { return '<option' + (i + 1 === r.bulan ? ' selected' : '') + '>' + (i + 1) + '</option>'; }).join('') + '</select></div></div>' +
-    '<div class="fl"><label for="muAlasan">Alasan perubahan' + (s.ttd ? ' (wajib)' : '') + '</label><input class="in" id="muAlasan"></div>' + (s.ttd ? '<label class="ck"><input type="checkbox" id="muYakin">Saya yakin mengubah data yang sudah ditandatangani</label>' : ''), 'Simpan', function (w) {
+    '<div class="fl"><label for="muAlasan">Alasan perubahan' + (s.ttd ? ' (wajib)' : '') + '</label><input class="in" id="muAlasan"></div>' + (s.ttd ? '<label class="ck"><input type="checkbox" id="muYakin">Saya yakin mengubah data yang sudah ditandatangani</label>' : ''), 'Simpan', async function (w) {
       var u = { nama: nilai(w, '#muNama'), nominal: angkaDari(nilai(w, '#muNom')), bulan: +nilai(w, '#muBln') };
-      if (u.nominal !== r.nominal && !confirm('Ubah nominal ' + r.nama + ' dari ' + rp(r.nominal) + ' menjadi ' + rp(u.nominal) + ' per bulan?')) return false;
+      if (u.nominal !== r.nominal && !(await tanya('Ubah nominal ' + r.nama + ' dari ' + rp(r.nominal) + ' menjadi ' + rp(u.nominal) + ' per bulan?'))) return false;
       if (s.ttd && !nilai(w, '#muYakin')) throw new Error('Centang konfirmasi dulu');
       return kirim({ op: 'baris', k: k, ubah: u, alasan: nilai(w, '#muAlasan'), yakin: !!nilai(w, '#muYakin') }, 'Perubahan disimpan.');
     });
@@ -495,9 +495,9 @@ function mTgl(judul, isi, tombol, f, ok) {
 }
 function mDana() {
   var t = total();
-  var w = modal('Catat dana masuk rekening kantor', '<p>Isi jumlah yang benar-benar masuk setelah pengajuan disetujui.</p><div class="g2f"><div class="fl"><label for="mdJml">Jumlah masuk</label><input class="in" id="mdJml" inputmode="numeric" value="' + ang(t.bruto).replace(/,/g, '.') + '"></div><div class="fl"><label for="mdTgl">Tanggal</label><input class="in" id="mdTgl" value="' + e(tglId()) + '"></div></div><div class="calc" data-cd></div>', 'Simpan', function (w) {
+  var w = modal('Catat dana masuk rekening kantor', '<p>Isi jumlah yang benar-benar masuk setelah pengajuan disetujui.</p><div class="g2f"><div class="fl"><label for="mdJml">Jumlah masuk</label><input class="in" id="mdJml" inputmode="numeric" value="' + ang(t.bruto).replace(/,/g, '.') + '"></div><div class="fl"><label for="mdTgl">Tanggal</label><input class="in" id="mdTgl" value="' + e(tglId()) + '"></div></div><div class="calc" data-cd></div>', 'Simpan', async function (w) {
     var j = angkaDari(nilai(w, '#mdJml')); if (!(j >= 0)) throw new Error('Isi jumlah');
-    if (j !== t.bruto && !confirm('Jumlah ' + rp(j) + ' berbeda dari pengajuan ' + rp(t.bruto) + '. Tetap simpan?')) return false;
+    if (j !== t.bruto && !(await tanya('Jumlah ' + rp(j) + ' berbeda dari pengajuan ' + rp(t.bruto) + '. Tetap simpan?'))) return false;
     return kirim({ op: 'langkah', l: 'dana', jumlah: j, tgl: nilai(w, '#mdTgl') }, 'Dana masuk dicatat.').then(function () { H.tab = 'pt'; gambar(); });
   });
   function cek() { var j = angkaDari(nilai(w, '#mdJml')); w.querySelector('[data-cd]').innerHTML = '<div><span>Pengajuan</span><b>' + rp(t.bruto) + '</b></div><div><span>Masuk</span><b style="color:' + (j === t.bruto ? 'var(--g)' : 'var(--r)') + '">' + rp(j) + (j === t.bruto ? ' ✓' : ' (berbeda)') + '</b></div>'; }
@@ -530,7 +530,7 @@ function mPot(id) {
     if (ev.target.id === 'mpTj' && ev.target.value !== '') { var x = tj[+ev.target.value]; w.querySelector('#mpKe').value = x.nama; w.querySelector('#mpB').value = x.bank; w.querySelector('#mpNo').value = x.no; }
     hitung();
   });
-  var hp = w.querySelector('[data-hapuspot]'); if (hp) hp.onclick = function (ev) { ev.preventDefault(); if (!confirm('Hapus potongan ' + p.jenis + ' ' + rp(p.nom) + ' dari ' + p.nama + '?')) return; PX.tutupModal(); kirim({ op: 'pot', sub: 'hapus', pid: p.id }, 'Potongan dihapus.').catch(gagal); };
+  var hp = w.querySelector('[data-hapuspot]'); if (hp) hp.onclick = async function (ev) { ev.preventDefault(); if (!(await tanya('Hapus potongan ' + p.jenis + ' ' + rp(p.nom) + ' dari ' + p.nama + '?'))) return; PX.tutupModal(); kirim({ op: 'pot', sub: 'hapus', pid: p.id }, 'Potongan dihapus.').catch(gagal); };
   hitung();
 }
 function mRek(k) {
@@ -540,13 +540,13 @@ function mRek(k) {
     '<div class="g2f"><div class="fl"><label for="mrB">Nama bank</label><input class="in" id="mrB" value="' + e(x.bank || '') + '" placeholder="Nama bank"></div><div class="fl"><label for="mrNo">Nomor rekening</label><input class="in" id="mrNo" inputmode="numeric" value="' + e(x.no || '') + '"></div></div>' +
     '<div class="fl"><label for="mrP">Nama pemilik rekening</label><input class="in" id="mrP" value="' + e(x.pemilik || r.nama.toUpperCase()) + '"></div><div class="fl"><label for="mrNik">NIK</label><input class="in" id="mrNik" inputmode="numeric" maxlength="16" value="' + e(x.nik || '') + '"></div>' +
     '<label class="ck"><input type="checkbox" id="mrA"' + (x.aktif === false ? '' : ' checked') + '>Rekening aktif</label><div class="calc" data-cr style="margin-top:8px"></div>' +
-    (x.h && x.h.length ? '<p class="hint"><b>Riwayat rekening:</b> ' + x.h.slice(0, 5).map(function (y) { return e((y.bank || '') + ' ' + samar(y.no)); }).join(', ') + '</p>' : ''), 'Periksa & simpan', function (w) {
+    (x.h && x.h.length ? '<p class="hint"><b>Riwayat rekening:</b> ' + x.h.slice(0, 5).map(function (y) { return e((y.bank || '') + ' ' + samar(y.no)); }).join(', ') + '</p>' : ''), 'Periksa & simpan', async function (w) {
       var d = { bank: nilai(w, '#mrB'), no: nilai(w, '#mrNo').replace(/[\s.\-]/g, ''), pemilik: nilai(w, '#mrP'), nik: nilai(w, '#mrNik').replace(/\s/g, ''), aktif: nilai(w, '#mrA'), nama: r.nama };
       if (d.no && !/^\d{6,20}$/.test(d.no)) throw new Error('Nomor rekening harus 6–20 angka');
       if (d.nik && !/^\d{16}$/.test(d.nik)) throw new Error('NIK harus 16 angka');
       var yakin = false;
       if (x.no && (d.no !== x.no || d.nik !== (x.nik || '') || d.bank !== (x.bank || ''))) {
-        if (!confirm('Konfirmasi perubahan rekening ' + r.nama + ':\n\nLama: ' + (x.bank || '') + ' ' + x.no + (x.nik ? '\nNIK lama: ' + x.nik : '') + '\nBaru: ' + d.bank + ' ' + d.no + (d.nik ? '\nNIK baru: ' + d.nik : '') + '\n\nSimpan?')) return false;
+        if (!(await tanya('Konfirmasi perubahan rekening ' + r.nama + ':\n\nLama: ' + (x.bank || '') + ' ' + x.no + (x.nik ? '\nNIK lama: ' + x.nik : '') + '\nBaru: ' + d.bank + ' ' + d.no + (d.nik ? '\nNIK baru: ' + d.nik : '') + '\n\nSimpan?'))) return false;
         yakin = true;
       }
       return kirim({ op: 'rek', k: k, data: d, yakin: yakin }, 'Rekening disimpan.');
@@ -569,11 +569,11 @@ function mAtur() {
     '<h4 style="margin:6px 0 8px">Penandatangan</h4><div class="g2f">' + fl('maPN', 'PPTK — nama', t.pptk.nama) + fl('maPI', 'PPTK — NIP', t.pptk.nip) + fl('maBN', 'Bendahara Pengeluaran — nama', t.bendahara.nama) + fl('maBI', 'Bendahara — NIP', t.bendahara.nip) + fl('maCN', 'Camat / Pengguna Anggaran — nama', t.camat.nama) + fl('maCI', 'Camat — NIP', t.camat.nip) + '</div>' +
     '<h4 style="margin:6px 0 8px">Kwitansi</h4>' + fl('maKR', 'Kode rekening', k.kodeRek) + fl('maPr', 'Program', k.program) + fl('maKg', 'Kegiatan', k.kegiatan) + fl('maSK', 'Sub kegiatan', k.subKegiatan) +
     '<div class="g2f">' + fl('maBl', 'Belanja', k.belanja) + fl('maSD', 'Sumber dana', k.sumber) + fl('maDr', 'Sudah terima dari', k.dari) + fl('maTr', 'Yang menerima', k.penerima) + '</div>' +
-    '<h4 style="margin:6px 0 4px">Kader Poskesdes</h4><p class="hint" style="margin-top:0">Kader Poskesdes belum ada di Data Posyandu, jadi daftarnya diatur di sini.</p><div class="tw"><table class="tbl pk"><thead><tr><th>Nama</th><th>Poskesdes</th><th>Kelurahan</th><th></th></tr></thead><tbody data-pk></tbody></table></div><button class="bt ghost" type="button" data-pkt>+ Tambah kader Poskesdes</button>', 'Simpan pengaturan', function (w) {
+    '<h4 style="margin:6px 0 4px">Kader Poskesdes</h4><p class="hint" style="margin-top:0">Kader Poskesdes belum ada di Data Posyandu, jadi daftarnya diatur di sini.</p><div class="tw"><table class="tbl pk"><thead><tr><th>Nama</th><th>Poskesdes</th><th>Kelurahan</th><th></th></tr></thead><tbody data-pk></tbody></table></div><button class="bt ghost" type="button" data-pkt>+ Tambah kader Poskesdes</button>', 'Simpan pengaturan', async function (w) {
       var nom = {}; JENIS.forEach(function (j) { nom[j] = angkaDari(nilai(w, '#maN' + j)); });
       var baca = function () { return Array.prototype.map.call(w.querySelectorAll('[data-pk] tr'), function (tr) { return { id: tr.dataset.id, nama: tr.querySelector('[data-f=n]').value.trim(), pos: tr.querySelector('[data-f=p]').value.trim(), kel: tr.querySelector('[data-f=k]').value, aktif: true }; }).filter(function (x) { return x.nama; }); };
       var beda = JENIS.filter(function (j) { return nom[j] !== c.nominal[j]; });
-      if (beda.length && !confirm('Ubah nominal bawaan ' + beda.map(function (j) { return j + ' ' + rp(c.nominal[j]) + ' → ' + rp(nom[j]); }).join(', ') + '?\nPeriode yang sudah dibuat tidak ikut berubah.')) return false;
+      if (beda.length && !(await tanya('Ubah nominal bawaan ' + beda.map(function (j) { return j + ' ' + rp(c.nominal[j]) + ' → ' + rp(nom[j]); }).join(', ') + '?\nPeriode yang sudah dibuat tidak ikut berubah.'))) return false;
       return kirim({ op: 'pengaturan', cfg: { nominal: nom, ttd: { pptk: { nama: nilai(w, '#maPN'), nip: nilai(w, '#maPI') }, bendahara: { nama: nilai(w, '#maBN'), nip: nilai(w, '#maBI') }, camat: { nama: nilai(w, '#maCN'), nip: nilai(w, '#maCI') } },
         kw: { kodeRek: nilai(w, '#maKR'), program: nilai(w, '#maPr'), kegiatan: nilai(w, '#maKg'), subKegiatan: nilai(w, '#maSK'), belanja: nilai(w, '#maBl'), sumber: nilai(w, '#maSD'), dari: nilai(w, '#maDr'), penerima: nilai(w, '#maTr') }, poskesdes: baca() } }, 'Pengaturan honor disimpan.').then(function () { return muat(H.per && H.per.id); });
     });
@@ -918,7 +918,7 @@ function unduhPdf(jenis, tombol) {
 /* ---------- klik ---------- */
 function pasang(ct) {
   if (ct._hn) return; ct._hn = true;
-  ct.addEventListener('click', function (ev) {
+  ct.addEventListener('click', async function (ev) {
     var t = ev.target.closest('[data-hx],[data-ht],[data-hj],[data-hper],[data-hubah],[data-hbayar],[data-hrek],[data-hlihat],[data-hpot],[data-hrf],[data-hbuka],[data-hhapus],[data-hperm]'); if (!t || !ct.contains(t)) return;
     var d = t.dataset; ev.preventDefault(); ev.stopPropagation();
     try {
@@ -933,7 +933,7 @@ function pasang(ct) {
       if (d.hpot) return mPot(d.hpot);
       if (d.hbuka) return mBukaKunci(d.hbuka, d.label);
       if (d.hperm) return mHapusPerm(d.hperm, d.label);
-      if (d.hhapus) { if (confirm('Hapus periode Honor ' + d.label + '? Hanya bisa sebelum daftar bayar ditandatangani.')) kirim({ op: 'hapus', per: d.hhapus }, 'Periode dihapus.').then(function () { return muat(); }).catch(gagal); return; }
+      if (d.hhapus) { if ((await tanya('Hapus periode Honor ' + d.label + '? Hanya bisa sebelum daftar bayar ditandatangani.'))) kirim({ op: 'hapus', per: d.hhapus }, 'Periode dihapus.').then(function () { return muat(); }).catch(gagal); return; }
       var x = d.hx;
       if (x.indexOf('tab:') === 0) { H.tab = x.slice(4); return gambar(); }
       switch (x) {
@@ -943,20 +943,20 @@ function pasang(ct) {
         case 'baru': return mBaru();
         case 'atur': return mAtur();
         case 'tambah': return mTambah();
-        case 'segarkan': if (confirm('Samakan daftar penerima dengan SK terbaru di Data Posyandu? Ubahan nominal yang sudah ada tetap dipakai.')) kirim({ op: 'segarkan' }, 'Daftar disamakan dengan SK.').catch(gagal); return;
-        case 'cetak': if (confirm(st().cetak ? 'Catat cetak ulang daftar bayar?' : 'Tandai daftar bayar sudah dicetak?')) kirim({ op: 'langkah', l: 'cetak' }, 'Dicatat sudah dicetak.').catch(gagal); return;
+        case 'segarkan': if ((await tanya('Samakan daftar penerima dengan SK terbaru di Data Posyandu? Ubahan nominal yang sudah ada tetap dipakai.'))) kirim({ op: 'segarkan' }, 'Daftar disamakan dengan SK.').catch(gagal); return;
+        case 'cetak': if ((await tanya(st().cetak ? 'Catat cetak ulang daftar bayar?' : 'Tandai daftar bayar sudah dicetak?'))) kirim({ op: 'langkah', l: 'cetak' }, 'Dicatat sudah dicetak.').catch(gagal); return;
         case 'ttd': return mTtd();
-        case 'rekapok': if (confirm('Tandai rekap selesai? Total ' + rp(total().bruto) + '.')) kirim({ op: 'langkah', l: 'rekap' }, 'Rekap selesai.').then(function () { H.tab = 'kw'; gambar(); }).catch(gagal); return;
+        case 'rekapok': if ((await tanya('Tandai rekap selesai? Total ' + rp(total().bruto) + '.'))) kirim({ op: 'langkah', l: 'rekap' }, 'Rekap selesai.').then(function () { H.tab = 'kw'; gambar(); }).catch(gagal); return;
         case 'kwok': var kw = kwDariForm(); if (!kw.tgl) { alert('Isi tanggal kwitansi'); return; } kirim({ op: 'langkah', l: 'kw', kw: kw }, 'Kwitansi disimpan.').then(function () { if (!st().berkas) { H.tab = 'bk'; gambar(); } }).catch(gagal); return;
         case 'berkasok': var cek = {}; Array.prototype.forEach.call(ct.querySelectorAll('[data-hcek]'), function (c) { cek[c.dataset.hcek] = c.checked; }); if (['kwitansi', 'rekap', 'daftar', 'sk'].some(function (k) { return !cek[k]; })) { alert('Centang keempat berkas dulu.'); return; } kirim({ op: 'langkah', l: 'berkas', cek: cek }, 'Berkas pengajuan lengkap.').catch(gagal); return;
         case 'setor': return mTgl('Tandai berkas sudah disetor ke DPPKAD?', '<p>Berkas pengajuan Honor ' + e(H.per.label) + ' (' + rp(total().bruto) + ') sudah Anda setor ke DPPKAD.</p>', 'Ya, sudah disetor', { op: 'langkah', l: 'setor' }, 'Dicatat sudah disetor.');
         case 'dana': return mDana();
         case 'potbaru': return mPot(null);
-        case 'potok': if (confirm((H.per.potongan || []).length ? 'Tandai potongan selesai dicatat? Daftar transfer memakai potongan ini.' : 'Tidak ada potongan pada periode ini?')) kirim({ op: 'langkah', l: 'pot' }, 'Potongan selesai.').then(function () { H.tab = 'tf'; gambar(); }).catch(gagal); return;
+        case 'potok': if ((await tanya((H.per.potongan || []).length ? 'Tandai potongan selesai dicatat? Daftar transfer memakai potongan ini.' : 'Tidak ada potongan pada periode ini?'))) kirim({ op: 'langkah', l: 'pot' }, 'Potongan selesai.').then(function () { H.tab = 'tf'; gambar(); }).catch(gagal); return;
         case 'serah': return mTgl('Tandai daftar transfer sudah diserahkan ke bendahara?', '<p>Daftar transfer Honor ' + e(H.per.label) + ' sudah Anda bawa ke bendahara. Transfer dilakukan oleh bendahara.</p>', 'Ya, sudah diserahkan', { op: 'langkah', l: 'serah' }, 'Dicatat sudah diserahkan.');
-        case 'selesai': if (confirm('Selesaikan dan kunci periode Honor ' + H.per.label + '? Data tidak bisa diubah lagi kecuali kuncinya dibuka.')) kirim({ op: 'langkah', l: 'selesai' }, 'Periode selesai dan terkunci.').then(function () { H.tab = 'r'; gambar(); }).catch(gagal); return;
+        case 'selesai': if ((await tanya('Selesaikan dan kunci periode Honor ' + H.per.label + '? Data tidak bisa diubah lagi kecuali kuncinya dibuka.'))) kirim({ op: 'langkah', l: 'selesai' }, 'Periode selesai dan terkunci.').then(function () { H.tab = 'r'; gambar(); }).catch(gagal); return;
         case 'mundur': return mMundur();
-        case 'ambilrek': if (confirm('Pakai rekening terbaru dari Rekening Kader untuk daftar transfer periode ini?')) kirim({ op: 'ambilrek' }, 'Rekening diperbarui.').catch(gagal); return;
+        case 'ambilrek': if ((await tanya('Pakai rekening terbaru dari Rekening Kader untuk daftar transfer periode ini?'))) kirim({ op: 'ambilrek' }, 'Rekening diperbarui.').catch(gagal); return;
         case 'pdfdb': return unduhPdf('db', t);
         case 'pdfrk': return unduhPdf('rk', t);
         case 'pdfkw': return unduhPdf('kw', t);

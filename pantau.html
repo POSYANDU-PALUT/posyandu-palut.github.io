@@ -298,7 +298,7 @@ footer.dsk{display:none}
 <link rel="stylesheet" href="pantau-tema.css?v=20261105ze">
 <link rel="stylesheet" href="pantau-modern.css?v=20261107f">
 <link rel="stylesheet" href="pantau-baru.css?v=20261108d">
-<link rel="stylesheet" href="pantau-v2.css?v=20261110c">
+<link rel="stylesheet" href="pantau-v2.css?v=20261110d">
 <style id="loginKaca">
 /* ---------- Gaya kaca: halaman masuk ---------- */
 html .login{background:#fff8e1}
@@ -364,7 +364,7 @@ html .login .lfoot{color:var(--fg,#241b00);opacity:.8}
     <div class="lerr" id="lerr" role="alert"></div>
     <button class="btn" id="lb" type="submit">Masuk</button>
   </form>
-  <div class="lfoot">Developed by <b>Max Juniar Ratowo</b><br>© 2026 All Rights Reserved<br><small id="ver" style="opacity:.55;font-size:10px">tampilan 20261110c</small></div>
+  <div class="lfoot">Developed by <b>Max Juniar Ratowo</b><br>© 2026 All Rights Reserved<br><small id="ver" style="opacity:.55;font-size:10px">tampilan 20261110d</small></div>
 </section>
 
 <div id="app" class="hidden" data-view="b">
@@ -524,6 +524,7 @@ html .login .lfoot{color:var(--fg,#241b00);opacity:.8}
 <script src="pembaruan.js?v=1"></script>
 <script src="tes.js?v=3"></script>
 <script src="seed-posyandu.js"></script>
+<script src="dialog.js?v=20261110d"></script>
 <script>
 /* ===== Kecepatan: catatan waktu, indikator tombol, muat-saat-perlu ===== */
 var PERF_K='pantau-perf';
@@ -572,8 +573,8 @@ function muatHonor(){
 }
 window.muatHonor=muatHonor;
 </script>
-<script src="pantau-ext.js?v=20261110c" defer></script>
-<script src="pantau-v2.js?v=20261110c" defer></script>
+<script src="pantau-ext.js?v=20261110d" defer></script>
+<script src="pantau-v2.js?v=20261110d" defer></script>
 <script>
 var ARSIP_URL='https://script.google.com/macros/s/AKfycbwnaGeg2gGim7aViuugfbN8TWg3XeTBxjE041tp6dd9PSyUpadGqOUD_d4EFsojjqgugw/exec';
 var BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -817,9 +818,9 @@ function pasangAdmin(){
   ADM.forEach(function(a){
     var r=el('div','admrow'),t=el('div','admt');t.appendChild(el('b',null,a.u));t.appendChild(el('span',null,'Kelurahan '+(a.kel||'belum dipilih')+(a.nama?' · '+a.nama:'')+(a.nip?' · NIP '+a.nip:'')+(a.kunci?(a.kunci.permanen?' · TERKUNCI':' · terkunci sementara'):'')));
     var b0=el('button','btn sm plain','Kelurahan'),b1=el('button','btn sm plain','Sandi'),b2=el('button','btn sm plain','Hapus');b0.type=b1.type=b2.type='button';
-    b0.addEventListener('click',function(){var n=prompt('Kelurahan untuk '+a.u+':\n'+KEL_SEMUA.map(function(k,i){return (i+1)+'. '+k}).join('\n')+'\n\nKetik nomor 1-'+KEL_SEMUA.length+':');if(n===null)return;var k=KEL_SEMUA[parseInt(n,10)-1];if(!k){status('stAdm','Nomor tidak valid','bad');return}kelolaAdm({op:'kel',nu:a.u,kel:k},a.u+' sekarang hanya melihat '+k+'.')});
-    b1.addEventListener('click',function(){var n=prompt('Kata sandi baru untuk '+a.u+' (minimal 6 karakter):');if(n===null)return;kelolaAdm({op:'sandi',nu:a.u,ns:n},'Kata sandi '+a.u+' diubah.')});
-    b2.addEventListener('click',function(){if(confirm('Hapus admin '+a.u+'?'))kelolaAdm({op:'hapus',nu:a.u},'Admin '+a.u+' dihapus.')});
+    b0.addEventListener('click',async function(){var i=await pilih('Pilih satu kelurahan. Admin ini hanya akan melihat kelurahan itu.',KEL_SEMUA.slice(),{judul:'Kelurahan untuk '+a.u});if(i<0)return;var k=KEL_SEMUA[i];if(!k){status('stAdm','Pilihan tidak valid','bad');return}kelolaAdm({op:'kel',nu:a.u,kel:k},a.u+' sekarang hanya melihat '+k+'.')});
+    b1.addEventListener('click',async function(){var n=await isi('Minimal 6 karakter.',{judul:'Kata sandi baru untuk '+a.u,label:'Kata sandi baru',rahasia:true,min:6,ok:'Ubah sandi'});if(n===null)return;kelolaAdm({op:'sandi',nu:a.u,ns:n},'Kata sandi '+a.u+' diubah.')});
+    b2.addEventListener('click',async function(){if(await tanya('Hapus admin '+a.u+'?'))kelolaAdm({op:'hapus',nu:a.u},'Admin '+a.u+' dihapus.')});
     r.appendChild(t);r.appendChild(b0);r.appendChild(b1);r.appendChild(b2);
     if(a.kunci){var b3=el('button','btn sm','Buka kunci');b3.type='button';b3.style.flexBasis='100%';b3.addEventListener('click',function(){kelolaAdm({op:'buka',nu:a.u},'Kunci akun '+a.u+' dibuka.')});r.appendChild(b3)}
     box.appendChild(r)});
@@ -1059,7 +1060,7 @@ function cek(){if(window.matchMedia('(min-width:900px)').matches){if(k){t.classL
 var y=window.pageYOffset||document.documentElement.scrollTop||0;
 if(!k&&y>90){t.classList.add('kecil');k=true}else if(k&&y<12){t.classList.remove('kecil');k=false}}
 window.addEventListener('scroll',cek,{passive:true});window.addEventListener('resize',cek)})();</script>
-<script>if(window.PB)PB.mulai({app:'pantau',v:'20261110c'});</script>
+<script>if(window.PB)PB.mulai({app:'pantau',v:'20261110d'});</script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',function(){try{navigator.serviceWorker.register('sw-terima.js').then(function(){return navigator.serviceWorker.ready}).then(function(g){var l=[location.href,'pantau.webmanifest','icon-pantau-192.png','apple-touch-icon-pantau.png'];try{performance.getEntriesByType('resource').forEach(function(x){l.push(x.name)})}catch(e){}if(g.active)g.active.postMessage({simpan:l})}).catch(function(){})}catch(e){}})</script>
 </body>
 </html>

@@ -713,8 +713,8 @@ function pasangCadangan() {
   }); bc.style.margin = '10px 0'; c.appendChild(bc);
   CAD.forEach(function (x) {
     var r = el('div', 'cadr'), sp = el('span', null, tglCad(x.tgl)); sp.appendChild(document.createTextNode(' ')); sp.appendChild(el('small', null, fmtB(x.ukuran))); r.appendChild(sp);
-    r.appendChild(btn('Pulihkan', 'sm plain', function () {
-      if (!confirm('Pulihkan daftar Posyandu dari cadangan ' + tglCad(x.tgl) + '? Keadaan sekarang disimpan dulu sebagai cadangan baru.')) return;
+    r.appendChild(btn('Pulihkan', 'sm plain', async function () {
+      if (!(await tanya('Pulihkan daftar Posyandu dari cadangan ' + tglCad(x.tgl) + '? Keadaan sekarang disimpan dulu sebagai cadangan baru.'))) return;
       st.textContent = 'Memulihkan…'; st.className = 'st';
       kirimAtur({ aksi: 'pulih', berkas: x.id }).then(function (r2) { POS = r2.list || POS; CAD = r2.cadangan || CAD; POSOK = true; renderData(); renderBeranda(); pasangCadangan(); toast('Data Posyandu dipulihkan.'); }).catch(function (e) { st.textContent = e.message; st.className = 'st bad'; });
     })); c.appendChild(r);
@@ -1172,8 +1172,8 @@ function kartuPos(p) {
   if (rows.length) { var t = tabel(['No', 'Nama kader', 'Jabatan', 'Status'], rows); t.style.marginTop = '8px'; Array.prototype.forEach.call(t.querySelectorAll('tr'), function (tr, i) { var c = tr.lastChild; if (i && c) { c.className = 'stk ' + (c.textContent === 'Aktif' ? 'ok' : 'off'); } }); det.appendChild(t); }
   if (utama() && POS.length) {
     var ac = el('div', 'acts'); ac.appendChild(btn('Edit', 'sm plain', function () { formPos(p); }));
-    ac.appendChild(btn(p.aktif === false ? 'Aktifkan' : 'Nonaktifkan', 'sm plain', function () {
-      if (!confirm((p.aktif === false ? 'Aktifkan ' : 'Nonaktifkan ') + p.nama + '?')) return;
+    ac.appendChild(btn(p.aktif === false ? 'Aktifkan' : 'Nonaktifkan', 'sm plain', async function () {
+      if (!(await tanya((p.aktif === false ? 'Aktifkan ' : 'Nonaktifkan ') + p.nama + '?'))) return;
       var n = POS.map(function (x) { return x.id === p.id ? Object.assign({}, x, { aktif: x.aktif === false }) : x; }); simpanDaftar(n, 'Status Posyandu diperbarui.');
     })); det.appendChild(ac);
   }
@@ -1186,8 +1186,8 @@ function simpanDaftar(list, ok, konfirmasi) {
     .catch(function (e) { alert('Gagal menyimpan: ' + e.message); return false; });
 }
 function toast(t) { var d = el('div', 'ok2', t); d.style.cssText = 'position:fixed;left:12px;right:12px;bottom:90px;z-index:300;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.25)'; document.body.appendChild(d); setTimeout(function () { d.remove(); }, 2800); }
-function simpanDariSK() {
-  if (!confirm('Simpan daftar ' + (window.SEED_POS || []).length + ' Posyandu dan nama kader dari SK ke server?')) return;
+async function simpanDariSK() {
+  if (!(await tanya('Simpan daftar ' + (window.SEED_POS || []).length + ' Posyandu dan nama kader dari SK ke server?'))) return;
   simpanDaftar(JSON.parse(JSON.stringify(window.SEED_POS || [])), 'Daftar dari SK tersimpan.');
 }
 function aliasBaru(p, namaBaru) {
@@ -1459,7 +1459,7 @@ function pasangSetelan() {
         .catch(function (e) { alert(e.message); pasangSetelan(); });
     });
     lb.appendChild(inp); r.appendChild(th); r.appendChild(t); r.appendChild(lb);
-    if (BANNERS[i]) r.appendChild(btn('Hapus', 'sm plain', function () { if (!confirm('Hapus foto ' + (i + 1) + '?')) return; kirimAtur({ bannerIdx: i, banner: '' }).then(function () { BANNERS[i] = ''; bangunBanner(); pasangSetelan(); }).catch(function (e) { alert(e.message); }); }));
+    if (BANNERS[i]) r.appendChild(btn('Hapus', 'sm plain', async function () { if (!(await tanya('Hapus foto ' + (i + 1) + '?'))) return; kirimAtur({ bannerIdx: i, banner: '' }).then(function () { BANNERS[i] = ''; bangunBanner(); pasangSetelan(); }).catch(function (e) { alert(e.message); }); }));
     sl.appendChild(r);
   })(i);
   cb.appendChild(sl);
@@ -1533,7 +1533,7 @@ function pasangSetelan() {
   var pl = el('label', 'btn sm plain fbtn', 'Pulihkan dari cadangan'), pi = document.createElement('input'); pi.type = 'file'; pi.accept = '.json,application/json';
   pi.addEventListener('change', function () {
     var f = this.files[0]; this.value = ''; if (!f) return; var rd = new FileReader();
-    rd.onload = function () { try { var o = JSON.parse(rd.result); if (!Array.isArray(o.posyandu)) throw new Error('Berkas cadangan tidak dikenali'); if (!confirm('Pulihkan ' + o.posyandu.length + ' Posyandu dari cadangan? Data Posyandu sekarang akan diganti.')) return; simpanDaftar(o.posyandu, 'Data dipulihkan.'); } catch (e) { alert(e.message); } };
+    rd.onload = async function () { try { var o = JSON.parse(rd.result); if (!Array.isArray(o.posyandu)) throw new Error('Berkas cadangan tidak dikenali'); if (!(await tanya('Pulihkan ' + o.posyandu.length + ' Posyandu dari cadangan? Data Posyandu sekarang akan diganti.'))) return; simpanDaftar(o.posyandu, 'Data dipulihkan.'); } catch (e) { alert(e.message); } };
     rd.readAsText(f);
   });
   pl.appendChild(pi); tb.appendChild(pl); ca.appendChild(tb);
@@ -1746,18 +1746,18 @@ function kartuAntar(box, h, pr, gabung) {
     if (r.d && r.d.pdf) it.appendChild(tombolPdf(r.d));
     if (!r.d && r.p.hp) { var wa = document.createElement('a'); wa.className = 'btn sm kc wa'; wa.target = '_blank'; wa.rel = 'noopener'; wa.textContent = 'Ingatkan lewat WhatsApp'; wa.href = 'https://wa.me/' + nomorWA(r.p.hp) + '?text=' + encodeURIComponent(pesanWA(r.p, pr, r.st === 'lewat')); it.appendChild(wa); }
     var bn = btn(r.p.hp ? 'Ubah no. HP' : '+ No. HP', 'sm kc plain', function () { formNomor(r.p); }); if (!r.p.hp) { bn.style.color = 'var(--ink-orange)'; bn.style.borderColor = 'var(--ink-orange)'; } it.appendChild(bn);
-    if (terkunci && !diterima) it.appendChild(btn('Buka kembali', 'sm kc plain', function () {
-      var a = prompt('Alasan membuka kembali laporan ' + r.p.nama + ' (kader akan bisa mengirim ulang):'); if (a == null) return; a = a.trim(); if (a.length < 3) { toast('Tulis alasan singkat.'); return; }
+    if (terkunci && !diterima) it.appendChild(btn('Buka kembali', 'sm kc plain', async function () {
+      var a = await isi('Posyandu ' + r.p.nama + '. Kader akan bisa mengirim ulang laporan ini.', { judul: 'Buka kembali laporan?', label: 'Alasan (wajib)', kecil: 'Contoh: jumlah balita salah ketik', min: 3, ok: 'Buka kembali' }); if (a == null) return;
       LEMB_BUSY++; kirimAtur({ aksi: 'bukalaporan', per: k, pid: r.p.id, alasan: a }).then(function () { LEMB_BUSY--; toast('Laporan dibuka kembali. Kader bisa mengirim ulang.'); muatLembarKel(pr, true); })
         .catch(function (e) { LEMB_BUSY--; toast(e.message || 'Gagal membuka kembali'); });
     }));
     c.appendChild(it);
   });
   var st = el('div', 'st'); st.style.margin = '8px 0';
-  var tb = btn('Buat lembar pengantar dan unduh PDF', 'wide', function (ev) {
+  var tb = btn('Buat lembar pengantar dan unduh PDF', 'wide', async function (ev) {
     var b = ev.currentTarget || ev.target, tahan = rows.filter(function (r) { return !cek[r.p.id].checked && !cek[r.p.id].disabled; }).map(function (r) { return r.p.id; });
     var ikut = rows.filter(function (r) { return cek[r.p.id].checked; }).length; if (!ikut) { st.textContent = 'Centang minimal satu laporan.'; st.className = 'st bad'; return; }
-    if (!confirm('Buat lembar pengantar untuk ' + ikut + ' laporan?\n\nSetelah dibuat, laporan ini terkunci dan kader tidak bisa mengirim ulang sampai Anda membukanya kembali.')) return;
+    if (!(await tanya('Buat lembar pengantar untuk ' + ikut + ' laporan?\n\nSetelah dibuat, laporan ini terkunci dan kader tidak bisa mengirim ulang sampai Anda membukanya kembali.'))) return;
     var awal = b.textContent; b.disabled = true; st.className = 'st'; st.textContent = 'Membuat lembar pengantar…'; LEMB_BUSY++;
     kirimAtur({ aksi: 'lembar', per: k, tahan: tahan }).then(function (r) {
       if (!r || !r.lembar) throw new Error('Lembar tidak terbentuk'); return unduhGabungan(r.lembar, function (t) { st.textContent = t; });
@@ -2003,8 +2003,8 @@ window.pasangPenerima = function () {
     var ac = el('div', 'trmbtn'), tl0 = trmTautanAmbil(q.u);
     if (tl0) { var b1 = el('button', 'btn sm plain', 'Salin tautan'); b1.type = 'button'; b1.addEventListener('click', function () { TRM_BARU = { u: q.u, nama: q.nama || q.u, link: tl0 }; TRM_TAMBAH = false; pasangPenerima(); }); ac.appendChild(b1); }
     var b2 = el('button', 'btn sm plain', 'Tautan baru'); b2.type = 'button';
-    b2.addEventListener('click', function () {
-      if (!confirm('Tautan lama milik ' + (q.nama || q.u) + ' berhenti berlaku. Lanjutkan?')) return;
+    b2.addEventListener('click', async function () {
+      if (!(await tanya('Tautan lama milik ' + (q.nama || q.u) + ' berhenti berlaku. Lanjutkan?'))) return;
       var sdi = trmAcak(14, 'abcdefghjkmnpqrstuvwxyz23456789'), tl = link + '#u=' + q.u + '&p=' + sdi;
       kelolaAdm({ op: 'penerima', nu: q.u, ns: sdi, nama: q.nama || q.u, hp: q.hp }, 'Tautan baru dibuat.').then(function (okk) { if (okk) { trmTautanSimpan(q.u, tl); TRM_BARU = { u: q.u, nama: q.nama || q.u, link: tl }; TRM_TAMBAH = false; } pasangPenerima(); });
     });
@@ -2014,7 +2014,7 @@ window.pasangPenerima = function () {
     ac.appendChild(b5);
     if (q.kunci) { var b3 = el('button', 'btn sm', 'Buka kunci'); b3.type = 'button'; b3.addEventListener('click', function () { kelolaAdm({ op: 'buka', nu: q.u }, 'Kunci dibuka.'); }); ac.appendChild(b3); }
     var b4 = el('button', 'btn sm plain', 'Hapus'); b4.type = 'button';
-    b4.addEventListener('click', function () { if (confirm('Hapus ' + (q.nama || q.u) + '? Tautannya berhenti berlaku.')) { trmTautanSimpan(q.u, ''); if (TRM_BARU && TRM_BARU.u === q.u) TRM_BARU = null; kelolaAdm({ op: 'hapuspenerima', nu: q.u }, 'Petugas penerima dihapus.'); } });
+    b4.addEventListener('click', async function () { if ((await tanya('Hapus ' + (q.nama || q.u) + '? Tautannya berhenti berlaku.'))) { trmTautanSimpan(q.u, ''); if (TRM_BARU && TRM_BARU.u === q.u) TRM_BARU = null; kelolaAdm({ op: 'hapuspenerima', nu: q.u }, 'Petugas penerima dihapus.'); } });
     ac.appendChild(b4); k.appendChild(ac); c.appendChild(k);
   });
 };
@@ -2034,8 +2034,8 @@ window.pasangPm = function () {
   c.textContent = ''; c.appendChild(el('h4', null, 'Mode tes dan pemeliharaan'));
   c.appendChild(el('p', 'hint', 'Saat menyala, semua kader dan petugas melihat "Aplikasi sedang dalam pemeliharaan" dan tidak bisa masuk atau mengirim. Admin kecamatan tetap bisa bekerja seperti biasa. Untuk mencoba aplikasi tanpa mengubah data asli, ketuk nomor versi 5 kali di aplikasi yang diuji dan masukkan kode: aplikasi itu memakai data tes yang terpisah.'));
   var st = el('p', 'st'); c.appendChild(st);
-  function nyalakan(j, tombol) {
-    if (!confirm('Kader dan petugas tidak bisa mengirim atau masuk selama ' + j + ' jam. Lanjutkan?')) return;
+  async function nyalakan(j, tombol) {
+    if (!(await tanya('Kader dan petugas tidak bisa mengirim atau masuk selama ' + j + ' jam. Lanjutkan?'))) return;
     tombol.disabled = true; st.textContent = 'Menyimpan…'; st.className = 'st';
     kirimAtur({ aksi: 'pemeliharaan', jam: j }).then(function (r) { window.PM_SAMPAI = r.pemeliharaan || 0; toast('Mode tes dan pemeliharaan menyala.'); pasangPm(); }).catch(function (e) { tombol.disabled = false; st.textContent = e.message; st.className = 'st bad'; });
   }
@@ -2070,8 +2070,8 @@ window.pasangPm = function () {
     if (tesOn) {
       var ti = window.TES_INFO; if (ti) { c.appendChild(el('p', 'hint', 'Data tes saat ini: ' + ti.lap + ' laporan, ' + ti.terima + ' penerimaan.')); c.lastChild.style.marginTop = '12px'; }
       var bk = el('button', 'btn sm plain', 'Kosongkan data tes'); bk.type = 'button';
-      bk.addEventListener('click', function () {
-        if (!confirm('Semua laporan dan penerimaan tes dihapus. Data asli tidak tersentuh. Lanjutkan?')) return;
+      bk.addEventListener('click', async function () {
+        if (!(await tanya('Semua laporan dan penerimaan tes dihapus. Data asli tidak tersentuh. Lanjutkan?'))) return;
         bk.disabled = true; st.textContent = 'Mengosongkan…'; st.className = 'st';
         kirimAtur({ aksi: 'kosongkantes' }).then(function (r) { window.TES_INFO = r.tes || null; toast('Data tes dikosongkan.'); location.reload(); }).catch(function (e) { bk.disabled = false; st.textContent = e.message; st.className = 'st bad'; });
       });
