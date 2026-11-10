@@ -67,7 +67,7 @@ function naikVer(n) {
    2) isi berkas honor, catatan aktivitas, dan profil disimpan juga di cache SESUDAH berhasil ditulis ke Drive, jadi pembacaan tidak ke Drive;
    3) selama satu permintaan simpan, semua penulisan dikumpulkan lalu dikirim ke Drive BERSAMAAN sebelum jawaban dikirim
       (jawaban "berhasil" hanya dikirim bila semua sudah tertulis). Bila cara bersamaan tidak bisa, berkas ditulis satu per satu seperti dulu. */
-var ANTRI = null, ANTRI_URUT = [], FID_MEM = {}, T_MULAI = 0, VIA_F = false;
+var ANTRI = null, ANTRI_URUT = [], FID_MEM = {}, T_MULAI = 0, T_KUNCI = 0, VIA_F = false, INFO_TULIS = null;
 function verRuang(ruang) { return verCache(ruang === 'H' ? 'H' : 'F'); }
 function folderRuang(ruang) { return ruang === 'H' ? folderHonor() : induk(); }
 function kunciFid(ruang, nb) { return 'fid_' + ruang + '_' + verRuang(ruang) + '_' + nb; }
@@ -132,6 +132,7 @@ function kirimAntri() {
   var tugas = urut.map(function (k) { return q[k]; }), sisa = [], siap = [], c = cacheSkr();
   tugas.forEach(function (x) { var id = fidTersimpan(x.ruang, x.nb); if (id === '-') id = null; else if (!id) { try { var f = berkasRuang(x.ruang, x.nb); if (f) id = f.getId(); } catch (e) {} } if (id) siap.push({ x: x, id: id }); else sisa.push(x); });
   var paralel = false; try { paralel = !c.get('tulis_paralel_mati'); } catch (e) {}
+  var t0 = Date.now(); INFO_TULIS = { m: paralel ? 'p' : 's', n: tugas.length, b: tugas.reduce(function (a, x) { return a + x.t.length; }, 0) };
   if (siap.length && paralel) {
     var gagal = siap;
     try {
@@ -141,8 +142,9 @@ function kirimAntri() {
                  method: 'patch', contentType: 'text/plain; charset=utf-8', payload: g.x.t, headers: { Authorization: 'Bearer ' + tok }, muteHttpExceptions: true };
       }));
       gagal = siap.filter(function (g, i) { var k = rs[i] && rs[i].getResponseCode(); return !(k >= 200 && k < 300); });
+      if (gagal.length) { var i0 = siap.indexOf(gagal[0]); try { INFO_TULIS.e = rs[i0].getResponseCode() + ' ' + String(rs[i0].getContentText()).slice(0, 160); } catch (e3) {} INFO_TULIS.m = 'c'; }
       if (gagal.length === siap.length) { try { c.put('tulis_paralel_mati', '1', 21600); } catch (e) {} }
-    } catch (e) { gagal = siap; try { c.put('tulis_paralel_mati', '1', 3600); } catch (e2) {} }
+    } catch (e) { gagal = siap; INFO_TULIS.m = 'c'; INFO_TULIS.e = String(e.message || e).slice(0, 160); try { c.put('tulis_paralel_mati', '1', 3600); } catch (e2) {} }
     siap = gagal;
   }
   siap.forEach(function (g) { sisa.push(g.x); });
@@ -154,6 +156,7 @@ function kirimAntri() {
     naikVer('H'); naikVer('F'); naikVer('PG'); PG_MEM = {};
     throw new Error('Gagal menyimpan ke Drive, coba lagi. (' + (err.message || err) + ')');
   }
+  INFO_TULIS.w = Date.now() - t0;
   tugas.forEach(function (x) { if (x.ck) { try { cacheTaruhTeks(x.ck, x.t); } catch (e) { cacheBuang(x.ck); } } });
 }
 function batalAntri() { ANTRI = null; ANTRI_URUT = []; }
@@ -162,6 +165,11 @@ function izinkanAkses() {
   var r = UrlFetchApp.fetch('https://www.googleapis.com/drive/v3/about?fields=user', { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
   try { CacheService.getScriptCache().removeAll(['tulis_paralel_mati', 'TES_tulis_paralel_mati']); } catch (x) {}
   var ok = r.getResponseCode() === 200;
+  if (ok) {   // uji menulis sungguhan ke satu berkas kecil (isi sama), memakai jalur yang sama dengan aplikasi
+    var f = berkasRuang('H', 'honor-indeks.json');
+    if (f) { var u = UrlFetchApp.fetch('https://www.googleapis.com/upload/drive/v3/files/' + f.getId() + '?uploadType=media&supportsAllDrives=true&fields=id', { method: 'patch', contentType: 'text/plain; charset=utf-8', payload: f.getBlob().getDataAsString(), headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+      if (u.getResponseCode() !== 200) { ok = false; r = u; } }
+  }
   Logger.log(ok ? 'BERHASIL: izin sudah diberikan, penyimpanan cepat aktif.' : 'Belum berhasil (kode ' + r.getResponseCode() + '): ' + r.getContentText().slice(0, 300));
   return ok;
 }
@@ -800,7 +808,7 @@ function doPost(e) {
     }
     var kunci = LockService.getScriptLock();
     try {
-      kunci.waitLock(30000);
+      kunci.waitLock(30000); T_KUNCI = Date.now();
       if (d.aksi !== 'catat' && d.aksi !== 'selesai') {
         // Permintaan yang sama dikirim ulang (mis. jalur cadangan): jawab dengan hasil yang sudah ada, jangan dikerjakan dua kali.
         var lamaH = cache.get('hasil_a_' + ID_AKTIF);
@@ -922,6 +930,7 @@ function sentuhStamp() { try { var lama = parseInt(bacaStamp(), 10) || 0; Proper
 
 function jawab(o) {
   o.t = TOKEN_BALAS; if (T_MULAI) o.sv = Date.now() - T_MULAI;
+  if (T_MULAI && T_KUNCI) { o.svx = { a: T_KUNCI - T_MULAI }; if (INFO_TULIS) { for (var kx in INFO_TULIS) o.svx[kx] = INFO_TULIS[kx]; } }
   if (VIA_F) return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
   var teks = JSON.stringify(o).replace(/</g, '\\u003c');
   return HtmlService.createHtmlOutput('<script>window.top.postMessage(' + teks + ',"*");</script>');
@@ -1687,9 +1696,16 @@ function hSimpanCfg(d, w) {
 /* ---------- riwayat ---------- */
 function hCatat(w, per, teks, lama, baruV) {
   try {
+    // Riwayat dibagi dua supaya setiap simpan hanya menulis berkas kecil: honor-riwayat.json (300 terbaru) dan
+    // honor-riwayat-arsip.json (yang lebih lama, ditulis sekali tiap ±100 perubahan). Total tetap 3000 entri seperti dulu.
     var l = hBaca('honor-riwayat.json', []) || [];
     l.unshift({ t: Date.now(), u: w ? w.u : '', per: per || '', a: hTeks(teks, 300), l: hTeks(lama, 300), b: hTeks(baruV, 300) });
-    hTulis('honor-riwayat.json', l.slice(0, 3000));
+    if (l.length > 400) {
+      var ar = hBaca('honor-riwayat-arsip.json', []) || [];
+      hTulis('honor-riwayat-arsip.json', l.slice(300).concat(ar).slice(0, 2700));
+      l = l.slice(0, 300);
+    }
+    hTulis('honor-riwayat.json', l);
   } catch (x) {}
   try { catatLog(w ? w.u : '', 'Honor: ' + hTeks(teks, 200)); } catch (x) {}
 }
@@ -2039,7 +2055,7 @@ function honorGet(p) {
     return out;
   }
   if (op === 'riwayat') {
-    var l = hBaca('honor-riwayat.json', []) || [];
+    var l = (hBaca('honor-riwayat.json', []) || []).concat(hBaca('honor-riwayat-arsip.json', []) || []);
     if (p.per) l = l.filter(function (x) { return x.per === p.per || !x.per; });
     return { ok: true, riwayat: l.slice(0, 1000).map(function (x) { return { w: hWaktu(x.t), u: x.u, per: x.per, a: x.a, l: x.l, b: x.b }; }) };
   }
