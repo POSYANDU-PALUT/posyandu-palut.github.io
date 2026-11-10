@@ -405,8 +405,8 @@ function vSemua() {
   return '<section class="cd tblc"><div class="hd"><h2>Semua periode honor</h2><div class="sp"></div><button class="bt ghost sm" type="button" data-hx="tutupsemua">Kembali</button></div>' +
     (L.length ? '<div class="tw"><table class="tbl"><thead><tr><th>Periode</th><th class="n">Bulan</th><th class="n">Kader</th><th class="n">Total bruto</th><th class="n">Potongan</th><th>Status</th><th></th></tr></thead><tbody>' + L.map(function (x) {
       return '<tr><td><b>Honor ' + e(x.label) + '</b></td><td class="n">' + x.n + (x.n > 1 ? ' (rapel)' : '') + '</td><td class="n">' + x.kader + '</td><td class="n">' + rp(x.bruto) + '</td><td class="n">' + rp(x.pot) + '</td><td>' + pilTahap(x) + '</td><td class="ac"><button class="bt out sm" type="button" data-hper="' + e(x.id) + '">Buka</button>' +
-        (x.kunci ? '<button class="bt ghost sm" type="button" data-hbuka="' + e(x.id) + '" data-label="' + e(x.label) + '">Buka kunci</button>' : '') + (x.tahap < 5 && !x.kunci ? '<button class="bt ghost sm" type="button" data-hhapus="' + e(x.id) + '" data-label="' + e(x.label) + '">Hapus</button>' : '') + '</td></tr>';
-    }).join('') + '</tbody></table></div>' : '<div class="kosong">Belum ada periode.</div>') + '<p class="hint" style="padding:0 4px">Periode yang daftar bayarnya sudah ditandatangani tidak bisa dihapus.</p></section>';
+        (x.kunci ? '<button class="bt ghost sm" type="button" data-hbuka="' + e(x.id) + '" data-label="' + e(x.label) + '">Buka kunci</button>' : '') + (x.tahap < 5 && !x.kunci ? '<button class="bt ghost sm" type="button" data-hhapus="' + e(x.id) + '" data-label="' + e(x.label) + '">Hapus</button>' : '<button class="bt ghost sm" type="button" data-hperm="' + e(x.id) + '" data-label="' + e(x.label) + '" style="color:var(--r)">Hapus permanen</button>') + '</td></tr>';
+    }).join('') + '</tbody></table></div>' : '<div class="kosong">Belum ada periode.</div>') + '<p class="hint" style="padding:0 4px">Periode yang sudah ditandatangani hanya bisa dihapus lewat "Hapus permanen" (harus mengetik konfirmasi).</p></section>';
 }
 
 /* ---------- modal ---------- */
@@ -598,6 +598,12 @@ function mMundur() {
 function mBukaKunci(id, label) {
   modal('Buka kunci Honor ' + label + '?', '<p>Untuk koreksi setelah selesai. Ketik <b>BUKA ' + e(String(label).toUpperCase()) + '</b> lalu tulis alasannya. Semua perubahan tetap tercatat di Riwayat.</p><div class="fl"><label for="mkK">Ketik konfirmasi</label><input class="in" id="mkK" autocomplete="off"></div><div class="fl"><label for="mkA">Alasan</label><input class="in" id="mkA"></div>', 'Buka kunci', function (w) {
     return kirim({ op: 'bukakunci', per: id, ketik: nilai(w, '#mkK'), alasan: nilai(w, '#mkA') }, 'Kunci periode dibuka.').then(function () { H.view = ''; gambar(); });
+  });
+}
+
+function mHapusPerm(id, label) {
+  modal('Hapus permanen Honor ' + label + '?', '<p>Seluruh isi periode ini (daftar bayar, potongan, status) akan <b>hilang dan tidak bisa dikembalikan</b>. Hanya jejak penghapusan yang tersisa di Riwayat. Ketik <b>HAPUS ' + e(String(label).toUpperCase()) + '</b> lalu tulis alasannya.</p><div class="fl"><label for="mhK">Ketik konfirmasi</label><input class="in" id="mhK" autocomplete="off"></div><div class="fl"><label for="mhA">Alasan</label><input class="in" id="mhA"></div>', 'Hapus permanen', function (w) {
+    return kirim({ op: 'hapuspermanen', per: id, ketik: nilai(w, '#mhK'), alasan: nilai(w, '#mhA') }, 'Periode dihapus permanen.').then(function () { H.view = 'semua'; return muat(); });
   });
 }
 
@@ -906,7 +912,7 @@ function unduhPdf(jenis, tombol) {
 function pasang(ct) {
   if (ct._hn) return; ct._hn = true;
   ct.addEventListener('click', function (ev) {
-    var t = ev.target.closest('[data-hx],[data-ht],[data-hj],[data-hper],[data-hubah],[data-hbayar],[data-hrek],[data-hlihat],[data-hpot],[data-hrf],[data-hbuka],[data-hhapus]'); if (!t || !ct.contains(t)) return;
+    var t = ev.target.closest('[data-hx],[data-ht],[data-hj],[data-hper],[data-hubah],[data-hbayar],[data-hrek],[data-hlihat],[data-hpot],[data-hrf],[data-hbuka],[data-hhapus],[data-hperm]'); if (!t || !ct.contains(t)) return;
     var d = t.dataset; ev.preventDefault(); ev.stopPropagation();
     try {
       if (d.ht) { H.tab = d.ht; H.view = ''; if (d.ht === 'rw') H.rw = null; return gambar(); }
@@ -919,6 +925,7 @@ function pasang(ct) {
       if (d.hlihat) { H.lihat[d.hlihat] = !H.lihat[d.hlihat]; return gambar(); }
       if (d.hpot) return mPot(d.hpot);
       if (d.hbuka) return mBukaKunci(d.hbuka, d.label);
+      if (d.hperm) return mHapusPerm(d.hperm, d.label);
       if (d.hhapus) { if (confirm('Hapus periode Honor ' + d.label + '? Hanya bisa sebelum daftar bayar ditandatangani.')) kirim({ op: 'hapus', per: d.hhapus }, 'Periode dihapus.').then(function () { return muat(); }).catch(gagal); return; }
       var x = d.hx;
       if (x.indexOf('tab:') === 0) { H.tab = x.slice(4); return gambar(); }

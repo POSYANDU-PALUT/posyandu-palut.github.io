@@ -1570,6 +1570,15 @@ function hHapusPer(d, w) {
   hTulis('honor-indeks.json', hIndeks().filter(function (x) { return x.id !== per.id; }));
   hCatat(w, per.id, 'Periode Honor ' + per.label + ' dihapus (belum ditandatangani)', '', '');
 }
+/** Hapus permanen periode yang sudah ditandatangani/terkunci (misalnya periode uji coba). Wajib ketik "HAPUS <PERIODE>" dan alasan. Jejaknya tetap di Riwayat. */
+function hHapusPermanen(d, w) {
+  var per = hBacaPer(d.per);
+  if (hTeks(d.ketik, 80).toUpperCase() !== 'HAPUS ' + per.label.toUpperCase()) throw new Error('Ketik persis: HAPUS ' + per.label.toUpperCase());
+  if (!hTeks(d.alasan, 200)) throw new Error('Tulis alasan penghapusan');
+  var it = folderHonor().getFilesByName('honor-' + per.id + '.json'); while (it.hasNext()) it.next().setTrashed(true);
+  hTulis('honor-indeks.json', hIndeks().filter(function (x) { return x.id !== per.id; }));
+  hCatat(w, per.id, 'Periode Honor ' + per.label + ' DIHAPUS PERMANEN (alasan: ' + hTeks(d.alasan, 150) + ')', 'ada', 'dihapus');
+}
 /** Perubahan penerima: sebelum ditandatangani bebas; sesudahnya wajib konfirmasi + alasan, dan dokumen dibuat ulang. */
 function hBolehUbahPenerima(per, d) {
   if (per.st.selesai) throw new Error('Periode sudah selesai dan terkunci. Buka kunci dulu.');
@@ -1830,6 +1839,7 @@ function honorPost(d) {
   if (op === 'pengaturan') r.cfg = hSimpanCfg(d, w);
   else if (op === 'buat') r.per = hBuat(d, w);
   else if (op === 'hapus') hHapusPer(d, w);
+  else if (op === 'hapuspermanen') hHapusPermanen(d, w);
   else if (op === 'baris') r.per = hBaris(d, w);
   else if (op === 'tambah') r.per = hTambah(d, w);
   else if (op === 'segarkan') r.per = hSegarkan(d, w);
