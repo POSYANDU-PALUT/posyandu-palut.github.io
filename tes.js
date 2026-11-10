@@ -75,8 +75,12 @@
   /* ---------- ketuk nomor versi 5 kali, atau tautan #tes ---------- */
   function tanyaKode() {
     if (baca()) { alert('Mode tes sedang menyala. Tekan Matikan di pita merah bagian atas untuk menutupnya.'); return; }
-    var k = prompt('Masukkan kode mode tes:'); if (!k) return; k = k.trim();
-    sha(k).then(function (h) { if (h === UH) { alert('Mode tes menyala selama 3 jam di perangkat ini. Data asli tidak berubah.'); W.TES_NYALA(k); } else alert('Kode salah.'); }, function () { alert('Peramban tidak mendukung mode tes.'); });
+    function lanjut(k) {
+      if (!k) return; k = k.trim();
+      sha(k).then(function (h) { if (h === UH) { alert('Mode tes menyala selama 3 jam di perangkat ini. Data asli tidak berubah.'); W.TES_NYALA(k); } else alert('Kode salah.'); }, function () { alert('Peramban tidak mendukung mode tes.'); });
+    }
+    if (window.isi) isi('Kode ini hanya untuk pengembang.', { judul: 'Mode tes', label: 'Kode mode tes', rahasia: true, min: 1, ok: 'Nyalakan' }).then(lanjut);
+    else lanjut(prompt('Masukkan kode mode tes:'));
   }
   function pasang() {
     bar();
