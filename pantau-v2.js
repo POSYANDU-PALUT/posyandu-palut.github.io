@@ -169,7 +169,8 @@ function tenggat(pr, selesai) {
     return '<section class="dl dls"><div class="dli"><b>Periode laporan ' + pr.bl + ' ' + pr.th + ' selesai</b><span>Semua berkas fisik diterima kecamatan. ' + (bt && bf ? ket : '') + '</span></div><div class="cnt f"><b>&#10003;</b><span>periode<br>selesai</span></div></section>';
   }
   if (!bt || !bf) return '<section class="dl"><div class="dli"><b>Periode laporan ' + pr.bl + ' ' + pr.th + '</b><span>Batas waktu belum diatur, jadi belum ada hitung mundur dan penanda terlambat.' + (utama() ? ' <a href="#" data-aksi="bbatur" data-bb="' + PX.bbKey(pr.th, pr.bl) + '">Atur sekarang</a>' : '') + '</span></div></section>';
-  var awal = new Date(ny, nm, 1), b1 = new Date(bt.getFullYear(), bt.getMonth(), bt.getDate()), b2 = new Date(bf.getFullYear(), bf.getMonth(), bf.getDate()), h0 = new Date(); h0.setHours(0, 0, 0, 0);
+  var b1 = new Date(bt.getFullYear(), bt.getMonth(), bt.getDate()), awal = new Date(b1.getFullYear(), b1.getMonth(), 1), awalLap = new Date(+pr.th, m, 1), b2 = new Date(bf.getFullYear(), bf.getMonth(), bf.getDate()), h0 = new Date(); h0.setHours(0, 0, 0, 0);
+  if (awal < awalLap) awal = awalLap;   // mulai = tanggal 1 bulan batas kader, tidak sebelum bulan laporan
   var tot = Math.max(1, (b2 - awal) / 864e5), now = Math.min(100, Math.max(0, (h0 - awal) / 864e5 * 100 / tot)), pk = Math.min(100, Math.max(0, (b1 - awal) / 864e5 * 100 / tot));
   var hk = Math.round((b1 - h0) / 864e5), hf = Math.round((b2 - h0) / 864e5), cnt;
   if (hk > 0) cnt = ['' + hk, 'hari lagi<br>batas kader'];
@@ -179,7 +180,7 @@ function tenggat(pr, selesai) {
   var tk = PX.teksBatas(pr.th, pr.bl), tf = PX.teksBatasKel(pr.th, pr.bl);
   var d = '<section class="dl"><div class="dli"><b>Periode laporan ' + pr.bl + ' ' + pr.th + '</b><span>Kader mengirim paling lambat <em>' + tk + '</em> · kelurahan mengantar berkas fisik paling lambat <em>' + tf + '</em></span></div>' +
     '<div class="tl2"><div class="tlb"><i style="width:' + now + '%"></i><u style="left:' + pk + '%"></u><u style="left:100%"></u><s style="left:' + now + '%"></s></div>' +
-    '<div class="tll"><div class="' + (hk > 0 ? '' : '') + '"><small>Mulai</small><b>1 ' + B3(nm) + '</b></div>' +
+    '<div class="tll"><div class="' + (hk > 0 ? '' : '') + '"><small>Mulai</small><b>1 ' + B3(awal.getMonth()) + '</b></div>' +
     '<div class="k' + (hk >= 0 ? ' on' : '') + '"><small>Batas kader</small><b>' + b1.getDate() + ' ' + B3(b1.getMonth()) + (b1 < awal ? ' ' + b1.getFullYear() : '') + '</b></div>' +
     '<div class="f' + (hk < 0 && hf >= 0 ? ' on' : '') + '"><small>Batas fisik</small><b>' + b2.getDate() + ' ' + B3(b2.getMonth()) + '</b></div></div></div>' +
     '<div class="cnt' + (hk < 0 ? ' f' : '') + '"><b>' + cnt[0] + '</b><span>' + cnt[1] + '</span></div></section>';
@@ -481,7 +482,7 @@ function modalBB(key) {
     var st = q('st'), kb = q('bulan').value, k = q('k').value, f = q('f').value;
     if (!k || !f) { st.textContent = 'Isi kedua tanggal.'; st.className = 'st bad'; return; }
     if (f < k) { st.textContent = 'Batas berkas fisik tidak boleh lebih awal dari batas kader.'; st.className = 'st bad'; return; }
-    var y0 = +kb.slice(0, 4), m00 = +kb.slice(5) - 1, awalIso = bbIso(m00 === 11 ? y0 + 1 : y0, (m00 + 1) % 12, 1);
+    var y0 = +kb.slice(0, 4), m00 = +kb.slice(5) - 1, awalIso = bbIso(y0, m00, 1);   // peringatan hanya bila batas sebelum bulan laporan dimulai
     if (k < awalIso && !q('simpan').dataset.ya) {
       Dlg.tanya('Batas kader (' + bbTgl(k) + ') lebih awal dari mulai pengumpulan laporan ' + bbLabel(kb) + ' (' + bbTgl(awalIso) + '). Tetap simpan?', { ok: 'Tetap simpan' }).then(function (ya) { if (ya) { q('simpan').dataset.ya = '1'; q('simpan').click(); } });
       return;
