@@ -1402,15 +1402,16 @@ async function kirimBagian(id, q, isi) {
 async function unggahSK(jenis, file, info) {
   if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) { alert('Pilih berkas PDF.'); return; }
   if (file.size > 7.5 * 1048576) { alert('Ukuran SK maksimal 7,5 MB. Kecilkan PDF-nya lalu coba lagi.'); return; }
+  var dl = window.Dlg ? Dlg.sibuk('Mengunggah SK…') : function () { };
   try {
     var data = await b64(file), CH = 94000, n = Math.ceil(data.length / CH), id = 'sk' + Math.random().toString(36).slice(2, 12) + Date.now().toString(36), antre = [], done = 0;
     for (var q = 0; q < n; q++) antre.push(q);
-    async function pekerja() { while (antre.length) { var qi = antre.shift(); await kirimBagian(id, qi, data.slice(qi * CH, (qi + 1) * CH)); done++; info.lastChild.textContent = 'Mengunggah… ' + done + ' dari ' + n; } }
+    async function pekerja() { while (antre.length) { var qi = antre.shift(); await kirimBagian(id, qi, data.slice(qi * CH, (qi + 1) * CH)); done++; info.lastChild.textContent = 'Mengunggah… ' + done + ' dari ' + n; if (dl.info) dl.info('Bagian ' + done + ' dari ' + n); } }
     await Promise.all([pekerja(), pekerja(), pekerja(), pekerja()]);
-    info.lastChild.textContent = 'Menyimpan di Drive…';
+    info.lastChild.textContent = 'Menyimpan di Drive…'; if (dl.info) dl.info('Menyimpan di Drive…');
     var r = await kirimAtur({ aksi: 'sk', id: id, jenis: jenis, n: n });
     SK = r.sk || SK; renderSK(); toast('SK tersimpan.');
-  } catch (e) { alert('Gagal mengunggah SK: ' + e.message); renderSK(); }
+  } catch (e) { alert('Gagal mengunggah SK: ' + e.message); renderSK(); } finally { dl(); }
 }
 
 /* ---------- Pengaturan lanjutan ---------- */

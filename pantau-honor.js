@@ -77,7 +77,7 @@ function muat(perId) {
 var SIBUK = false;
 function kirim(f, ok) {
   if (SIBUK) return Promise.reject(new Error('Masih menyimpan, tunggu sebentar'));
-  SIBUK = true; toast('Menyimpan…');
+  SIBUK = true;
   f.aksi = 'honor'; if (H.per && !f.per && f.op !== 'buat' && f.op !== 'pengaturan' && f.op !== 'rek' && f.op !== 'rekimpor') f.per = H.per.id;
   return kirimAtur(f).then(function (r) {
     SIBUK = false;
@@ -416,7 +416,7 @@ function modal(judul, html, tombol, fn) {
   var st0 = w.querySelector('[data-mst]'), ok = w.querySelector('[data-mx=ok]');
   w.querySelector('[data-mx=batal]').onclick = function () { PX.tutupModal(); };
   ok.onclick = function () {
-    st0.className = 'st'; st0.textContent = 'Menyimpan…'; ok.disabled = true;
+    st0.className = 'st'; st0.textContent = ''; ok.disabled = true;
     Promise.resolve().then(function () { return fn(w); }).then(function (tutup) { if (tutup !== false) PX.tutupModal(); else { ok.disabled = false; st0.textContent = ''; } })
       .catch(function (er) { ok.disabled = false; st0.className = 'st bad'; st0.textContent = er.message || String(er); });
   };
@@ -871,8 +871,8 @@ function pdfPenanda(doc, L, F, judul, isi) {
   isi.forEach(function (s, i) { K.teks(s, A4[0] / 2, 480 - i * 18, { al: 'c', s: 11 }); });
 }
 function buatPdf(jenis) {
-  var t0 = performance.now(), sb = window.sibukTombol ? window.sibukTombol('Menyiapkan PDF…') : function () { };
-  return buatPdf0(jenis).then(function (r) { if (window.perfCatat) perfCatat('Susun PDF honor: ' + jenis, t0, true); sb(); return r; }, function (er) { sb(); throw er; });
+  var t0 = performance.now(), sb = window.sibukTombol ? window.sibukTombol('Menyiapkan PDF…') : function () { }, dl = window.Dlg ? Dlg.sibuk('Menyusun PDF…') : function () { };
+  return buatPdf0(jenis).then(function (r) { if (window.perfCatat) perfCatat('Susun PDF honor: ' + jenis, t0, true); sb(); dl(); return r; }, function (er) { sb(); dl(); throw er; });
 }
 function buatPdf0(jenis) {
   return pdfLib().then(function (L) {

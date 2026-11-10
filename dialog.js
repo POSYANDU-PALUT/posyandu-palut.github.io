@@ -5,6 +5,8 @@
      isi(pesan, {label, nilai, min, ok, rahasia, banyak, kecil}) -> teks yang diisi, atau null bila Batal
      pilih(pesan, [daftar], {ok})              -> nomor pilihan (0, 1, ...) atau -1 bila Batal
      info(pesan, {judul})                       -> menunggu sampai ditutup
+     sibuk(label) -> fungsi 'selesai' (kotak loading penuh untuk simpan/ubah/hapus/unggah/PDF; muncul bila >0,4 dtk, minimal tampil 0,5 dtk, .info(teks) mengubah keterangan)
+     pita(label)  -> fungsi 'selesai' (pita kecil di atas layar untuk memuat data; tidak menghalangi)
    Pesan boleh memakai gaya lama (satu kalimat tanya, atau beberapa baris); judul, isi, dan label tombol disusun otomatis. */
 (function () {
   if (window.Dlg) return;
@@ -37,6 +39,20 @@
     '.dlg{max-width:none;border-radius:22px 22px 0 0;padding:14px 20px calc(22px + env(safe-area-inset-bottom,0px));animation:dlgs .2s ease-out}' +
     '.dlg::before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--dln);margin:0 auto 14px}' +
     '.dlg .drw{flex-direction:column-reverse}.dlg .dbt{width:100%;min-height:48px;font-size:15px}}' +
+    '.dlgld{--dp:var(--pri,#1f5d46);--dbg:#fff;--dfg:#16231c;--dmu:#4a5a51;--dln:#dbe6df;--dws:#fdf0d5;--dwf:#6b4500;position:fixed;left:0;right:0;top:0;bottom:0;z-index:2147482000;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(12,22,17,.5);cursor:progress;animation:dlgf .15s ease-out}' +
+    ':root[data-theme=dark] .dlgld{--dbg:#222a26;--dfg:#eef3f0;--dmu:#b4c0b9;--dln:#3d4a44;--dws:#4a3a10;--dwf:#f3d89a}' +
+    '@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .dlgld{--dbg:#222a26;--dfg:#eef3f0;--dmu:#b4c0b9;--dln:#3d4a44;--dws:#4a3a10;--dwf:#f3d89a}}' +
+    '.dlgld .ldc{width:100%;max-width:300px;box-sizing:border-box;background:var(--dbg);color:var(--dfg);border-radius:16px;padding:26px 22px 22px;text-align:center;box-shadow:0 14px 40px rgba(10,25,18,.32);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}' +
+    '.dlgld .lds{width:44px;height:44px;margin:0 auto 14px;border-radius:50%;border:4px solid var(--dln);border-top-color:var(--dp);animation:dlgr .9s linear infinite}' +
+    '.dlgld h2{margin:0 0 4px;font-size:16px;line-height:1.3;font-weight:700;color:var(--dfg)}' +
+    '.dlgld p{margin:0;font-size:13px;color:var(--dmu);overflow-wrap:anywhere}' +
+    '.dlgld .ldh{margin-top:12px;padding:8px 10px;border-radius:10px;background:var(--dws);color:var(--dwf);font-size:12.5px;line-height:1.4}' +
+    '.dlgpt{position:fixed;left:0;right:0;top:0;height:4px;z-index:2147481000;pointer-events:none;background:rgba(31,93,70,.18);overflow:hidden;opacity:0;transition:opacity .2s}' +
+    '.dlgpt.on{opacity:1}.dlgpt i{display:block;height:100%;width:35%;background:var(--pri,#1f5d46);border-radius:2px;animation:dlgp 1.2s ease-in-out infinite}' +
+    '.dlgpc{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:2147481000;pointer-events:none;background:#16231c;color:#fff;border-radius:18px;padding:6px 16px;font:12.5px system-ui,-apple-system,"Segoe UI",sans-serif;opacity:0;transition:opacity .2s}' +
+    '.dlgpc.on{opacity:.92}.dlgsb .dlgpt,.dlgsb .dlgpc{display:none}' +
+    '@keyframes dlgr{to{transform:rotate(360deg)}}@keyframes dlgp{0%{margin-left:-35%}100%{margin-left:100%}}' +
+    '@media (prefers-reduced-motion:reduce){.dlgld .lds{animation-duration:2.4s}.dlgpt i{animation-duration:3s}}' +
     '@keyframes dlgf{from{opacity:0}to{opacity:1}}@keyframes dlgu{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}' +
     '@keyframes dlgs{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}' +
     '@media (prefers-reduced-motion:reduce){.dlgov,.dlg{animation:none}}';
@@ -148,6 +164,75 @@
   }
   function antri(q) { return new Promise(function (ok) { q.sel = ok; ANTRI.push(q); jalan(); }); }
 
+  /* ---------- kotak loading (proses yang harus ditunggu) dan pita kecil (memuat data) ---------- */
+  var SB = { daftar: [], el: null, jam: null, tampil: null, mulai: 0, terbuka: 0, aman: null };
+  var MUNCUL_MS = 400, MIN_MS = 500, PETUNJUK_MS = 15000, BATAS_MS = 150000;
+  function sbKunci(e) {
+    if (!SB.el || document.querySelector('.dlgov')) return;
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Tab' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); }
+  }
+  function sbRender() {
+    var t = SB.daftar[SB.daftar.length - 1]; if (!t || !SB.el) return;
+    SB.el.querySelector('h2').textContent = t.label;
+    var detik = Math.floor((Date.now() - SB.mulai) / 1000), p = SB.el.querySelector('p'), h = SB.el.querySelector('.ldh');
+    p.textContent = t.info || (detik >= 15 ? 'Sudah ' + detik + ' detik.' : 'Mohon tunggu, jangan tutup halaman ini.');
+    if (t.info && detik >= 15) p.textContent = t.info + ' · ' + detik + ' detik';
+    if (detik >= PETUNJUK_MS / 1000) {
+      if (!h) { h = el('p', 'ldh', 'Masih diproses, sinyal mungkin lambat. Jangan tekan tombol lagi supaya data tidak ganda.'); SB.el.querySelector('.ldc').appendChild(h); }
+    }
+  }
+  function sbBuka() {
+    if (SB.el || !SB.daftar.length) return;
+    gaya();
+    var ov = el('div', 'dlgld'), c = el('div', 'ldc'); ov.setAttribute('role', 'status'); ov.setAttribute('aria-live', 'polite');
+    c.appendChild(el('div', 'lds')); c.appendChild(el('h2', null, '')); c.appendChild(el('p', null, ''));
+    ov.appendChild(c); document.body.appendChild(ov); SB.el = ov; SB.terbuka = Date.now();
+    document.documentElement.classList.add('dlgsb');
+    document.addEventListener('keydown', sbKunci, true);
+    try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (x) {}
+    sbRender(); SB.jam = setInterval(sbRender, 1000);
+    SB.aman = setTimeout(function () { SB.daftar = []; sbTutup(true); }, BATAS_MS);
+  }
+  function sbTutup(paksa) {
+    clearTimeout(SB.tampil); SB.tampil = null;
+    if (!SB.el) return;
+    var sisa = MIN_MS - (Date.now() - SB.terbuka);
+    if (sisa > 0 && !paksa) { setTimeout(function () { if (!SB.daftar.length) sbTutup(true); }, sisa); return; }
+    if (SB.daftar.length && !paksa) return;
+    clearInterval(SB.jam); clearTimeout(SB.aman);
+    document.removeEventListener('keydown', sbKunci, true);
+    if (SB.el.parentNode) SB.el.parentNode.removeChild(SB.el);
+    SB.el = null; document.documentElement.classList.remove('dlgsb');
+  }
+  function sibuk(label) {
+    var t = { label: label || 'Memproses…', info: '' }; SB.daftar.push(t);
+    if (SB.daftar.length === 1 && !SB.el) { SB.mulai = Date.now(); clearTimeout(SB.tampil); SB.tampil = setTimeout(sbBuka, MUNCUL_MS); }
+    else if (SB.el) sbRender();
+    var selesai = function () {
+      var i = SB.daftar.indexOf(t); if (i < 0) return; SB.daftar.splice(i, 1);
+      if (!SB.daftar.length) sbTutup(false); else sbRender();
+    };
+    selesai.info = function (x) { t.info = x || ''; sbRender(); };
+    return selesai;
+  }
+  var PT = { n: 0, bar: null, cap: null, tm: null };
+  function pita(label) {
+    PT.n++;
+    if (PT.n === 1) {
+      clearTimeout(PT.tm);
+      PT.tm = setTimeout(function () {
+        if (!PT.n) return; gaya();
+        if (!PT.bar) { PT.bar = el('div', 'dlgpt'); PT.bar.setAttribute('aria-hidden', 'true'); PT.bar.appendChild(el('i')); PT.cap = el('div', 'dlgpc', label || 'Memuat data…'); PT.cap.setAttribute('role', 'status'); document.body.appendChild(PT.bar); document.body.appendChild(PT.cap); }
+        PT.cap.textContent = label || 'Memuat data…'; PT.bar.className = 'dlgpt on'; PT.cap.className = 'dlgpc on';
+      }, 600);
+    }
+    var sudah = false;
+    return function () {
+      if (sudah) return; sudah = true; PT.n = Math.max(0, PT.n - 1);
+      if (!PT.n) { clearTimeout(PT.tm); if (PT.bar) { PT.bar.className = 'dlgpt'; PT.cap.className = 'dlgpc'; } }
+    };
+  }
+
   window.Dlg = {
     tanya: function (msg, o) {
       o = o || {}; var t = o.judul ? { judul: o.judul, isi: String(msg || '') } : pecah(msg);
@@ -162,6 +247,7 @@
       o = o || {}; var t = pecah(msg);
       return antri({ jenis: 'pilih', judul: o.judul || t.judul, isi: o.judul ? String(msg || '') : t.isi, daftar: daftar || [] });
     },
+    sibuk: sibuk, pita: pita,
     info: function (msg, o) {
       o = o || {}; var t = o.judul ? { judul: o.judul, isi: String(msg || '') } : pecah(msg);
       return antri({ jenis: 'info', judul: t.judul, isi: t.isi, ok: o.ok, bahaya: !!o.bahaya });

@@ -298,7 +298,7 @@ footer.dsk{display:none}
 <link rel="stylesheet" href="pantau-tema.css?v=20261105ze">
 <link rel="stylesheet" href="pantau-modern.css?v=20261107f">
 <link rel="stylesheet" href="pantau-baru.css?v=20261108d">
-<link rel="stylesheet" href="pantau-v2.css?v=20261110d">
+<link rel="stylesheet" href="pantau-v2.css?v=20261110e">
 <style id="loginKaca">
 /* ---------- Gaya kaca: halaman masuk ---------- */
 html .login{background:#fff8e1}
@@ -364,7 +364,7 @@ html .login .lfoot{color:var(--fg,#241b00);opacity:.8}
     <div class="lerr" id="lerr" role="alert"></div>
     <button class="btn" id="lb" type="submit">Masuk</button>
   </form>
-  <div class="lfoot">Developed by <b>Max Juniar Ratowo</b><br>© 2026 All Rights Reserved<br><small id="ver" style="opacity:.55;font-size:10px">tampilan 20261110d</small></div>
+  <div class="lfoot">Developed by <b>Max Juniar Ratowo</b><br>© 2026 All Rights Reserved<br><small id="ver" style="opacity:.55;font-size:10px">tampilan 20261110e</small></div>
 </section>
 
 <div id="app" class="hidden" data-view="b">
@@ -524,7 +524,7 @@ html .login .lfoot{color:var(--fg,#241b00);opacity:.8}
 <script src="pembaruan.js?v=1"></script>
 <script src="tes.js?v=4"></script>
 <script src="seed-posyandu.js"></script>
-<script src="dialog.js?v=20261110d"></script>
+<script src="dialog.js?v=20261110e"></script>
 <script>
 /* ===== Kecepatan: catatan waktu, indikator tombol, muat-saat-perlu ===== */
 var PERF_K='pantau-perf';
@@ -573,8 +573,8 @@ function muatHonor(){
 }
 window.muatHonor=muatHonor;
 </script>
-<script src="pantau-ext.js?v=20261110d" defer></script>
-<script src="pantau-v2.js?v=20261110d" defer></script>
+<script src="pantau-ext.js?v=20261110e" defer></script>
+<script src="pantau-v2.js?v=20261110e" defer></script>
 <script>
 var ARSIP_URL='https://script.google.com/macros/s/AKfycbwnaGeg2gGim7aViuugfbN8TWg3XeTBxjE041tp6dd9PSyUpadGqOUD_d4EFsojjqgugw/exec';
 var BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -796,8 +796,9 @@ function q(v){v=v==null?'':String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,
 var PROFIL={nama:'Admin Posyandu',foto:'',jabatan:'',unit:''},PEND={foto:null},profilOk=false;
 var AV_SVG='<svg class="ic"><use href="#i-user"/></svg>';
 function jsonp(params,ms){
-  var t0=performance.now(),a=(params&&params.aksi)||'?',sb=a==='pdf'?sibukTombol('Menyiapkan PDF…'):null;
-  return jsonp0(params,ms).then(function(r){perfCatat('Ambil data: '+a,t0,true);if(sb)sb();return r},function(e){perfCatat('Ambil data: '+a,t0,false);if(sb)sb();throw e});
+  var t0=performance.now(),a=(params&&params.aksi)||'?',sb=a==='pdf'?sibukTombol('Menyiapkan PDF…'):null,
+    dl=window.Dlg?(a==='pdf'?Dlg.sibuk('Menyiapkan PDF…'):Dlg.pita('Memuat data…')):function(){};
+  return jsonp0(params,ms).then(function(r){perfCatat('Ambil data: '+a,t0,true);if(sb)sb();dl();return r},function(e){perfCatat('Ambil data: '+a,t0,false);if(sb)sb();dl();throw e});
 }
 function jsonp0(params,ms){
   return new Promise(function(res,rej){
@@ -859,8 +860,10 @@ function ambilProfil(){
 }
 function tunda(ms){return new Promise(function(r){setTimeout(r,ms)})}
 function kirimAtur(f){
-  var t0=performance.now(),n='Simpan: '+(f.aksi||'atur')+(f.op?'/'+f.op:''),sb=sibukTombol(f.aksi==='sk'?'Mengunggah…':'Menyimpan…');
-  return kirimAtur0(f).then(function(r){perfCatat(n,t0,true);sb();return r},function(e){perfCatat(n,t0,false);sb();throw e});
+  var t0=performance.now(),n='Simpan: '+(f.aksi||'atur')+(f.op?'/'+f.op:''),sb=sibukTombol(f.aksi==='sk'?'Mengunggah…':'Menyimpan…'),
+    lb=(f.aksi==='sk'||f.banner||f.foto)?'Mengunggah…':/hapus/i.test(String(f.op||'')+String(f.aksi||''))?'Menghapus…':'Menyimpan…',
+    dl=window.Dlg?Dlg.sibuk(lb):function(){};
+  return kirimAtur0(f).then(function(r){perfCatat(n,t0,true);sb();dl();return r},function(e){perfCatat(n,t0,false);sb();dl();throw e});
 }
 async function kirimAtur0(f){
   if(!CRED)throw new Error('Silakan masuk lagi');
@@ -1060,7 +1063,7 @@ function cek(){if(window.matchMedia('(min-width:900px)').matches){if(k){t.classL
 var y=window.pageYOffset||document.documentElement.scrollTop||0;
 if(!k&&y>90){t.classList.add('kecil');k=true}else if(k&&y<12){t.classList.remove('kecil');k=false}}
 window.addEventListener('scroll',cek,{passive:true});window.addEventListener('resize',cek)})();</script>
-<script>if(window.PB)PB.mulai({app:'pantau',v:'20261110d'});</script>
+<script>if(window.PB)PB.mulai({app:'pantau',v:'20261110e'});</script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',function(){try{navigator.serviceWorker.register('sw-terima.js').then(function(){return navigator.serviceWorker.ready}).then(function(g){var l=[location.href,'pantau.webmanifest','icon-pantau-192.png','apple-touch-icon-pantau.png'];try{performance.getEntriesByType('resource').forEach(function(x){l.push(x.name)})}catch(e){}if(g.active)g.active.postMessage({simpan:l})}).catch(function(){})}catch(e){}})</script>
 </body>
 </html>
