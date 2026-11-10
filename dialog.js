@@ -5,7 +5,7 @@
      isi(pesan, {label, nilai, min, ok, rahasia, banyak, kecil}) -> teks yang diisi, atau null bila Batal
      pilih(pesan, [daftar], {ok})              -> nomor pilihan (0, 1, ...) atau -1 bila Batal
      info(pesan, {judul})                       -> menunggu sampai ditutup
-     sibuk(label) -> fungsi 'selesai' (kotak loading penuh untuk simpan/ubah/hapus/unggah/PDF; muncul bila >0,4 dtk, minimal tampil 0,5 dtk, .info(teks) mengubah keterangan)
+     sibuk(label, {lama}) -> fungsi 'selesai' (.persen(angka, teks) menampilkan bar persen; {lama:true} untuk proses panjang tanpa petunjuk sinyal dan batas 15 menit; kotak loading penuh untuk simpan/ubah/hapus/unggah/PDF; muncul bila >0,4 dtk, minimal tampil 0,5 dtk, .info(teks) mengubah keterangan)
      pita(label)  -> fungsi 'selesai' (pita kecil di atas layar untuk memuat data; tidak menghalangi)
    Pesan boleh memakai gaya lama (satu kalimat tanya, atau beberapa baris); judul, isi, dan label tombol disusun otomatis. */
 (function () {
@@ -46,6 +46,8 @@
     '.dlgld .lds{width:44px;height:44px;margin:0 auto 14px;border-radius:50%;border:4px solid var(--dln);border-top-color:var(--dp);animation:dlgr .9s linear infinite}' +
     '.dlgld h2{margin:0 0 4px;font-size:16px;line-height:1.3;font-weight:700;color:var(--dfg)}' +
     '.dlgld p{margin:0;font-size:13px;color:var(--dmu);overflow-wrap:anywhere}' +
+    '.dlgld .ldb{height:8px;border-radius:4px;background:var(--dln);overflow:hidden;margin:14px 0 6px}.dlgld .ldb i{display:block;height:100%;width:0;background:var(--dp);border-radius:4px;transition:width .25s ease-out}' +
+    '.dlgld .ldn{margin:12px 0 0;font-size:20px;font-weight:700;color:var(--dfg)}' +
     '.dlgld .ldh{margin-top:12px;padding:8px 10px;border-radius:10px;background:var(--dws);color:var(--dwf);font-size:12.5px;line-height:1.4}' +
     '.dlgpt{position:fixed;left:0;right:0;top:0;height:4px;z-index:2147481000;pointer-events:none;background:rgba(31,93,70,.18);overflow:hidden;opacity:0;transition:opacity .2s}' +
     '.dlgpt.on{opacity:1}.dlgpt i{display:block;height:100%;width:35%;background:var(--pri,#1f5d46);border-radius:2px;animation:dlgp 1.2s ease-in-out infinite}' +
@@ -166,7 +168,7 @@
 
   /* ---------- kotak loading (proses yang harus ditunggu) dan pita kecil (memuat data) ---------- */
   var SB = { daftar: [], el: null, jam: null, tampil: null, mulai: 0, terbuka: 0, aman: null };
-  var MUNCUL_MS = 400, MIN_MS = 500, PETUNJUK_MS = 15000, BATAS_MS = 150000;
+  var MUNCUL_MS = 400, MIN_MS = 500, PETUNJUK_MS = 15000, BATAS_MS = 150000, BATAS_LAMA_MS = 900000;
   function sbKunci(e) {
     if (!SB.el || document.querySelector('.dlgov')) return;
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'Tab' || e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); }
@@ -175,9 +177,12 @@
     var t = SB.daftar[SB.daftar.length - 1]; if (!t || !SB.el) return;
     SB.el.querySelector('h2').textContent = t.label;
     var detik = Math.floor((Date.now() - SB.mulai) / 1000), p = SB.el.querySelector('p'), h = SB.el.querySelector('.ldh');
+    var ada = typeof t.p === 'number', bar = SB.el.querySelector('.ldb'), pn = SB.el.querySelector('.ldn');
+    if (ada && !bar) { bar = el('div', 'ldb'); bar.appendChild(el('i')); pn = el('div', 'ldn', ''); var ldc = SB.el.querySelector('.ldc'); ldc.insertBefore(pn, ldc.querySelector('h2')); ldc.insertBefore(bar, p); ldc.removeChild(SB.el.querySelector('.lds')); }
+    if (ada) { var pc = Math.max(0, Math.min(100, Math.round(t.p))); bar.firstChild.style.width = pc + '%'; pn.textContent = pc + '%'; bar.setAttribute('role', 'progressbar'); bar.setAttribute('aria-valuenow', pc); }
     p.textContent = t.info || (detik >= 15 ? 'Sudah ' + detik + ' detik.' : 'Mohon tunggu, jangan tutup halaman ini.');
-    if (t.info && detik >= 15) p.textContent = t.info + ' · ' + detik + ' detik';
-    if (detik >= PETUNJUK_MS / 1000) {
+    if (t.info && detik >= 15 && !ada) p.textContent = t.info + ' · ' + detik + ' detik';
+    if (detik >= PETUNJUK_MS / 1000 && !t.lama) {
       if (!h) { h = el('p', 'ldh', 'Masih diproses, sinyal mungkin lambat. Jangan tekan tombol lagi supaya data tidak ganda.'); SB.el.querySelector('.ldc').appendChild(h); }
     }
   }
@@ -191,7 +196,7 @@
     document.addEventListener('keydown', sbKunci, true);
     try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch (x) {}
     sbRender(); SB.jam = setInterval(sbRender, 1000);
-    SB.aman = setTimeout(function () { SB.daftar = []; sbTutup(true); }, BATAS_MS);
+    SB.aman = setTimeout(function () { SB.daftar = []; sbTutup(true); }, SB.batas || BATAS_MS);
   }
   function sbTutup(paksa) {
     clearTimeout(SB.tampil); SB.tampil = null;
@@ -202,10 +207,11 @@
     clearInterval(SB.jam); clearTimeout(SB.aman);
     document.removeEventListener('keydown', sbKunci, true);
     if (SB.el.parentNode) SB.el.parentNode.removeChild(SB.el);
-    SB.el = null; document.documentElement.classList.remove('dlgsb');
+    SB.el = null; SB.batas = 0; document.documentElement.classList.remove('dlgsb');
   }
-  function sibuk(label) {
-    var t = { label: label || 'Memproses…', info: '' }; SB.daftar.push(t);
+  function sibuk(label, o) {
+    var t = { label: label || 'Memproses…', info: '', lama: !!(o && o.lama), p: null }; SB.daftar.push(t);
+    if (t.lama) { SB.batas = BATAS_LAMA_MS; if (SB.el) { clearTimeout(SB.aman); SB.aman = setTimeout(function () { SB.daftar = []; sbTutup(true); }, SB.batas); } }
     if (SB.daftar.length === 1 && !SB.el) { SB.mulai = Date.now(); clearTimeout(SB.tampil); SB.tampil = setTimeout(sbBuka, MUNCUL_MS); }
     else if (SB.el) sbRender();
     var selesai = function () {
@@ -213,6 +219,7 @@
       if (!SB.daftar.length) sbTutup(false); else sbRender();
     };
     selesai.info = function (x) { t.info = x || ''; sbRender(); };
+    selesai.persen = function (p, x) { t.p = p == null ? null : +p; if (x != null) t.info = x; sbRender(); };
     return selesai;
   }
   var PT = { n: 0, bar: null, cap: null, tm: null };

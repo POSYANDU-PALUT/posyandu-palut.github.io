@@ -92,3 +92,17 @@
   #v2 .hn .hcard .hca{display:flex;gap:6px;align-items:center;margin-top:4px}
   #v2 .hn .hcard.hjc{justify-content:space-between;background:var(--th)}
 }
+
+/* Gabung PDF untuk SIPD */
+.v2m .gbs{padding:12px 0;border-top:1px solid var(--line)}
+.v2m .gbh{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.v2m .gbn{flex:none;width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.v2m .gbf{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:5px 6px 5px 12px;margin:6px 0;font-size:13px}
+.v2m .gbf.bad{border-color:var(--r,#b3261e)}
+.v2m .gbf .gnm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.v2m .gbf .gmt{flex:none;color:var(--mu);font-size:12.5px}
+.v2m .gbf.bad .gmt{color:var(--r,#b3261e);white-space:normal;max-width:55%}
+.v2m .gib{flex:none;width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:transparent;color:inherit;font:inherit;cursor:pointer}
+.v2m .gib:disabled{opacity:.35;cursor:default}
+.v2m .gbadd{margin-top:2px;cursor:pointer}
+.v2m .gbt{padding:10px 0 0;border-top:1px solid var(--line)}

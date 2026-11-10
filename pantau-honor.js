@@ -321,7 +321,7 @@ function vBerkas() {
     item(2, 'Rekapitulasi honor', 'Total ' + rp(t.bruto) + ' · sama dengan kwitansi ✓', 'rekap', '<button class="bt out sm" type="button" data-hx="pdfrk">PDF</button>') +
     item(3, 'Daftar bayar yang sudah ditandatangani', 'Kertas asli bertanda tangan ' + t.n + ' kader (tidak perlu scan). Tanda tangan dikonfirmasi ' + (s.ttd ? tglId(new Date(s.ttd)) : '') + '.', 'daftar', '') +
     item(4, 'SK sebagai dasar acuan', skTeks + '. Isi SK tidak diubah.', 'sk', adaJ.filter(function (j) { return !sk[j]; }).map(function (j) { return '<label class="bt out sm">Unggah SK ' + j + '<input type="file" accept="application/pdf" data-hsk="' + j + '" hidden></label>'; }).join(''));
-  h += '<div class="acts" style="margin-top:14px"><span class="mu sm" style="flex:1">Berkas gabungan berisi Kwitansi → Rekap → halaman penanda “sisipkan Daftar Bayar bertanda tangan di sini” → SK.</span><button class="bt out sm" type="button" data-hx="pdfberkas">' + ic('dl') + ' Unduh berkas gabungan (PDF)</button>' +
+  h += '<div class="acts" style="margin-top:14px"><span class="mu sm" style="flex:1">Berkas gabungan berisi Kwitansi → Rekap → halaman penanda “sisipkan Daftar Bayar bertanda tangan di sini” → SK.</span><button class="bt out sm" type="button" data-hx="pdfberkas">' + ic('dl') + ' Unduh berkas gabungan (PDF)</button><button class="bt ' + (s.berkas ? 'pri' : 'out') + ' sm" type="button" data-hx="gabung">Gabung PDF untuk SIPD</button>' +
     (!s.berkas && !kunci() ? '<button class="bt pri sm" type="button" data-hx="berkasok">' + ic('check') + ' Tandai berkas lengkap</button>' : '') + '</div></section>';
   h += '<div class="g2"><section class="cd"><div class="hd"><h2>Setor ke DPPKAD</h2></div>' + (s.setor ? '<p><span class="pl g">Disetor ' + e(s.setorTgl || tglId(new Date(s.setor))) + '</span></p>' : '<p class="mu sm">Tandai setelah berkas Anda bawa dan setor ke DPPKAD.</p>' + (s.berkas && !kunci() ? '<button class="bt pri sm" type="button" data-hx="setor">Tandai sudah disetor…</button>' : '')) + '</section>' +
     '<section class="cd"><div class="hd"><h2>Dana masuk rekening kantor</h2></div>' + (s.dana ? '<p><span class="pl g">' + rp(s.danaJml) + ' · ' + e(s.danaTgl || tglId(new Date(s.dana))) + '</span></p>' + (s.danaJml !== t.bruto ? '<div class="info w">' + ic('alert') + 'Berbeda dari pengajuan ' + rp(t.bruto) + '.</div>' : '') : '<p class="mu sm">Setelah pengajuan disetujui dan dana masuk, catat jumlah dan tanggalnya.</p>' + (s.setor && !kunci() ? '<button class="bt pri sm" type="button" data-hx="dana">Catat dana masuk…</button>' : '')) + '</section></div>';
@@ -915,6 +915,101 @@ function unduhPdf(jenis, tombol) {
   }).catch(function (er) { if (tombol) { tombol.disabled = false; tombol.innerHTML = lama; } alert('PDF gagal dibuat: ' + er.message); });
 }
 
+/* ---------- Gabung PDF untuk SIPD: scan berkas pengajuan bertanda tangan + scan laporan Posyandu, digabung di perangkat ---------- */
+function mbSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+function tik() { return new Promise(function (r) { setTimeout(r, 0); }); }
+function detikTeks(d) { d = Math.max(1, Math.round(d)); return d < 60 ? d + ' detik' : Math.floor(d / 60) + ' menit ' + (d % 60) + ' detik'; }
+async function mGabung() {
+  var L; try { L = await pdfLib(); } catch (er) { alert(er.message); return; }
+  var G = { A: [], B: [] }, uid = 0;
+  var w = modal('Gabung PDF untuk SIPD',
+    '<p class="mu sm">Berkas digabung di komputer Anda dan tidak diunggah ke mana pun. Hasilnya: berkas pengajuan bertanda tangan, lalu laporan Posyandu.</p>' +
+    '<div class="gbs"><div class="gbh"><span class="gbn">1</span><b>Berkas pengajuan bertanda tangan</b></div><p class="mu sm">Hasil scan setelah ditandatangani Camat dan PPTK (sudah berisi SPM-LS, kwitansi, rekap, daftar bayar, dan SK).</p><div data-gl="A"></div>' +
+    '<label class="bt out sm gbadd">+ Tambah berkas<input type="file" multiple hidden accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" data-gf="A"></label><span class="mu sm"> PDF, atau foto JPG/PNG bila scan terbagi beberapa berkas</span></div>' +
+    '<div class="gbs"><div class="gbh"><span class="gbn">2</span><b>Laporan Posyandu</b></div><p class="mu sm">Satu berkas gabungan Balita, Lansia, dan Poskesdes. Dipasang sesudah berkas pengajuan.</p><div data-gl="B"></div>' +
+    '<label class="bt out sm gbadd">+ Tambah berkas<input type="file" multiple hidden accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" data-gf="B"></label></div>' +
+    '<div class="gbt" data-gt></div>', 'Gabung dan unduh untuk SIPD', async function () {
+    if (!G.A.length) throw new Error('Pilih dulu berkas pengajuan bertanda tangan (bagian 1).');
+    if (!G.B.length) throw new Error('Pilih dulu laporan Posyandu (bagian 2).');
+    var urut = G.A.concat(G.B), bad = urut.filter(function (x) { return x.err; });
+    if (bad.length) throw new Error('Ada berkas yang tidak bisa dibaca: ' + bad[0].nama + '. Hapus dari daftar atau ganti.');
+    var N = urut.reduce(function (a, x) { return a + x.hal; }, 0), dl = Dlg.sibuk('Menggabungkan PDF…', { lama: true }), t0 = Date.now(), selesaiHal = 0, jam = null;
+    try {
+      dl.persen(0, 'Menyiapkan berkas');
+      var out = await L.PDFDocument.create();
+      for (var i = 0; i < urut.length; i++) {
+        var x = urut[i];
+        if (x.doc) {
+          var idx = x.doc.getPageIndices();
+          for (var k = 0; k < idx.length; k += 10) {
+            var pgs = await out.copyPages(x.doc, idx.slice(k, k + 10)); pgs.forEach(function (p) { out.addPage(p); });
+            selesaiHal += pgs.length;
+            var el = (Date.now() - t0) / 1000, sisa = el / selesaiHal * (N - selesaiHal) + el / selesaiHal * N * 0.25;
+            dl.persen(selesaiHal / N * 85, 'Menyatukan halaman ' + selesaiHal + ' dari ' + N + (el > 2 ? ' · sekitar ' + detikTeks(sisa) + ' lagi' : ''));
+            await tik();
+          }
+        } else {
+          var img = x.jpg ? await out.embedJpg(x.bytes) : await out.embedPng(x.bytes), sk = Math.min(1, 595 / img.width), pg = out.addPage([img.width * sk, img.height * sk]);
+          pg.drawImage(img, { x: 0, y: 0, width: img.width * sk, height: img.height * sk }); selesaiHal++;
+          dl.persen(selesaiHal / N * 85, 'Menyatukan halaman ' + selesaiHal + ' dari ' + N); await tik();
+        }
+      }
+      var tS = Date.now(), perk = Math.max(2000, (tS - t0) * 0.3);
+      dl.persen(86, 'Menyimpan hasil, mohon tunggu');
+      jam = setInterval(function () { var f = Math.min(0.97, (Date.now() - tS) / perk); dl.persen(86 + f * 12, 'Menyimpan hasil, mohon tunggu'); }, 300);
+      await tik();
+      var bytes = await out.save({ useObjectStreams: false }); clearInterval(jam); jam = null;
+      dl.persen(100, 'Selesai'); await tik();
+      var blob = new Blob([bytes], { type: 'application/pdf' }), a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'Berkas Pengajuan dan Laporan ' + H.per.label + '.pdf'; document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 8000);
+      window.GABUNG_TERAKHIR = { hal: N, bytes: bytes.length, detik: (Date.now() - t0) / 1000 };
+      G.A = []; G.B = [];
+      setTimeout(function () { alert('Selesai. ' + N + ' halaman, ' + mbSize(bytes.length) + '. Berkas sudah diunduh.'); }, 600);
+    } catch (er) {
+      throw new Error('Penggabungan gagal: ' + (er && er.message || er) + '. Berkas asli Anda tidak berubah. Coba tutup tab lain lalu ulangi.');
+    } finally { if (jam) clearInterval(jam); dl(); }
+  });
+  var tot = w.querySelector('[data-gt]'), okb = w.querySelector('[data-mx=ok]');
+  function gambar() {
+    ['A', 'B'].forEach(function (g) {
+      w.querySelector('[data-gl=' + g + ']').innerHTML = G[g].map(function (x, i) {
+        return '<div class="gbf' + (x.err ? ' bad' : '') + '"><span class="gnm" title="' + e(x.nama) + '">' + e(x.nama) + '</span><span class="gmt">' + (x.err ? e(x.err) : x.hal + ' hal · ' + mbSize(x.ukuran)) + '</span>' +
+          (G[g].length > 1 ? '<button class="gib" type="button" data-gb="atas" data-g="' + g + '" data-i="' + i + '" aria-label="Naikkan"' + (i ? '' : ' disabled') + '>↑</button><button class="gib" type="button" data-gb="bawah" data-g="' + g + '" data-i="' + i + '" aria-label="Turunkan"' + (i < G[g].length - 1 ? '' : ' disabled') + '>↓</button>' : '') +
+          '<button class="gib" type="button" data-gb="hapus" data-g="' + g + '" data-i="' + i + '" aria-label="Hapus">✕</button></div>';
+      }).join('');
+    });
+    var semua = G.A.concat(G.B), ok = semua.filter(function (x) { return !x.err; }), hal = ok.reduce(function (a, x) { return a + x.hal; }, 0), byt = ok.reduce(function (a, x) { return a + x.ukuran; }, 0);
+    tot.innerHTML = semua.length ? '<b>Perkiraan hasil: ' + hal + ' halaman · ' + mbSize(byt) + '</b>' + (byt > 314572800 ? '<div class="warnb">Berkas sangat besar (di atas 300 MB). Tutup tab lain dulu supaya komputer tidak kehabisan memori.</div>' : '') : '<span class="mu sm">Belum ada berkas dipilih.</span>';
+    okb.disabled = !G.A.length || !G.B.length;
+  }
+  async function baca(g, files) {
+    var dl = Dlg.sibuk('Membaca berkas…', { lama: true });
+    try {
+      for (var i = 0; i < files.length; i++) {
+        var f = files[i], x = { id: ++uid, nama: f.name, ukuran: f.size, hal: 0 };
+        dl.info((files.length > 1 ? 'Berkas ' + (i + 1) + ' dari ' + files.length + ': ' : '') + f.name); if (files.length > 1) dl.persen(i / files.length * 100);
+        await tik();
+        try {
+          var isImg = /\.(jpe?g|png)$/i.test(f.name) || /^image\/(jpeg|png)$/.test(f.type);
+          if (isImg) { x.bytes = new Uint8Array(await f.arrayBuffer()); x.jpg = /jpe?g/i.test(f.name) || f.type === 'image/jpeg'; x.hal = 1; }
+          else { x.doc = await L.PDFDocument.load(await f.arrayBuffer(), { ignoreEncryption: true, updateMetadata: false }); x.hal = x.doc.getPageCount(); }
+        } catch (er) { x.err = 'Tidak bisa dibaca (rusak, terkunci, atau bukan PDF/JPG/PNG)'; x.doc = null; x.bytes = null; }
+        G[g].push(x);
+      }
+    } finally { dl(); }
+    gambar();
+  }
+  w.addEventListener('change', function (ev) { var i = ev.target.closest('[data-gf]'); if (!i || !i.files.length) return; var fs = Array.prototype.slice.call(i.files); i.value = ''; baca(i.dataset.gf, fs); });
+  w.addEventListener('click', function (ev) {
+    var b = ev.target.closest('[data-gb]'); if (!b) return; var g = b.dataset.g, i = +b.dataset.i, d = b.dataset.gb;
+    if (d === 'hapus') G[g].splice(i, 1);
+    else { var j = d === 'atas' ? i - 1 : i + 1; if (j < 0 || j >= G[g].length) return; var tmp = G[g][i]; G[g][i] = G[g][j]; G[g][j] = tmp; }
+    gambar();
+  });
+  gambar();
+}
+
 /* ---------- klik ---------- */
 function pasang(ct) {
   if (ct._hn) return; ct._hn = true;
@@ -962,6 +1057,7 @@ function pasang(ct) {
         case 'pdfkw': return unduhPdf('kw', t);
         case 'pdftf': return unduhPdf('tf', t);
         case 'pdfberkas': return unduhPdf('berkas', t);
+        case 'gabung': return mGabung();
         case 'xlsdb': return xlsDaftar();
         case 'xlsrk': return xlsRekap();
         case 'xlstf': return xlsTransfer();
