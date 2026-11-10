@@ -159,8 +159,15 @@ function kerangka() {
 function titikBel() { var s = 0; try { s = parseInt(localStorage.getItem('pantau-seen') || '0', 10) || 0; } catch (x) { } return DATA.length > s; }
 
 /* ---------- komponen Beranda ---------- */
-function tenggat(pr) {
+function periodeSelesai(pr) {
+  try { var D = data(pr), rs = D.rows || []; return !!(D.ada && rs.length && rs.every(function (x) { return x.tg; })); } catch (x) { return false; }
+}
+function tenggat(pr, selesai) {
   var bt = PX.batasTgl(pr.th, pr.bl), bf = PX.batasFisikTgl(pr.th, pr.bl), m = BULAN.indexOf(pr.bl), ny = +pr.th + (m === 11 ? 1 : 0), nm = (m + 1) % 12;
+  if (selesai) {
+    var ket = (bt && bf) ? 'Batas kader ' + PX.teksBatas(pr.th, pr.bl) + ' · berkas fisik ' + PX.teksBatasKel(pr.th, pr.bl) : 'Semua berkas fisik sudah diterima kecamatan.';
+    return '<section class="dl dls"><div class="dli"><b>Periode laporan ' + pr.bl + ' ' + pr.th + ' selesai</b><span>Semua berkas fisik diterima kecamatan. ' + (bt && bf ? ket : '') + '</span></div><div class="cnt f"><b>&#10003;</b><span>periode<br>selesai</span></div></section>';
+  }
   if (!bt || !bf) return '<section class="dl"><div class="dli"><b>Periode laporan ' + pr.bl + ' ' + pr.th + '</b><span>Batas waktu belum diatur, jadi belum ada hitung mundur dan penanda terlambat.' + (utama() ? ' <a href="#" data-aksi="bbatur" data-bb="' + PX.bbKey(pr.th, pr.bl) + '">Atur sekarang</a>' : '') + '</span></div></section>';
   var awal = new Date(ny, nm, 1), b1 = new Date(bt.getFullYear(), bt.getMonth(), bt.getDate()), b2 = new Date(bf.getFullYear(), bf.getMonth(), bf.getDate()), h0 = new Date(); h0.setHours(0, 0, 0, 0);
   var tot = Math.max(1, (b2 - awal) / 864e5), now = Math.min(100, Math.max(0, (h0 - awal) / 864e5 * 100 / tot)), pk = Math.min(100, Math.max(0, (b1 - awal) / 864e5 * 100 / tot));
@@ -171,7 +178,10 @@ function tenggat(pr) {
   else cnt = ['✓', 'periode<br>sudah ditutup'];
   var tk = PX.teksBatas(pr.th, pr.bl), tf = PX.teksBatasKel(pr.th, pr.bl);
   var d = '<section class="dl"><div class="dli"><b>Periode laporan ' + pr.bl + ' ' + pr.th + '</b><span>Kader mengirim paling lambat <em>' + tk + '</em> · kelurahan mengantar berkas fisik paling lambat <em>' + tf + '</em></span></div>' +
-    '<div class="tl' + (pk > 40 ? ' dk' : '') + '"><div class="tlb"><i style="width:' + now + '%"></i><u style="left:' + pk + '%"></u><u style="left:100%"></u><s style="left:' + now + '%"></s></div><div class="tlm"><span style="left:0">1 ' + B3(nm) + '</span><span style="left:' + pk + '%" class="m1' + (pk > 40 ? ' m3' : '') + '">' + b1.getDate() + ' ' + B3(b1.getMonth()) + ' · batas kader</span><span style="left:100%" class="m2">' + b2.getDate() + ' ' + B3(b2.getMonth()) + ' · batas fisik</span></div></div>' +
+    '<div class="tl2"><div class="tlb"><i style="width:' + now + '%"></i><u style="left:' + pk + '%"></u><u style="left:100%"></u><s style="left:' + now + '%"></s></div>' +
+    '<div class="tll"><div class="' + (hk > 0 ? '' : '') + '"><small>Mulai</small><b>1 ' + B3(nm) + '</b></div>' +
+    '<div class="k' + (hk >= 0 ? ' on' : '') + '"><small>Batas kader</small><b>' + b1.getDate() + ' ' + B3(b1.getMonth()) + (b1 < awal ? ' ' + b1.getFullYear() : '') + '</b></div>' +
+    '<div class="f' + (hk < 0 && hf >= 0 ? ' on' : '') + '"><small>Batas fisik</small><b>' + b2.getDate() + ' ' + B3(b2.getMonth()) + '</b></div></div></div>' +
     '<div class="cnt' + (hk < 0 ? ' f' : '') + '"><b>' + cnt[0] + '</b><span>' + cnt[1] + '</span></div></section>';
   var hdl = '<div class="hdl"><div><b>' + (hk > 0 ? hk + ' hari lagi' : hk === 0 ? 'Hari ini' : hf >= 0 ? (hf ? hf + ' hari lagi' : 'Hari ini') : 'Periode ditutup') + '</b><span>batas kader ' + b1.getDate() + ' ' + B3(b1.getMonth()) + ' · fisik ' + b2.getDate() + ' ' + B3(b2.getMonth()) + '</span></div>' +
     '<div class="tlb"><i style="width:' + now + '%"></i></div></div>';
@@ -279,7 +289,7 @@ function hlmBeranda(ct) {
   if (menungguData()) { ct.innerHTML = kerangkaMuat(); return; }
   if (window.ADA === false && window.MUAT_GAGAL && !window.loading) { ct.innerHTML = gagalMuatKartu(); return; }
   var pr = per(), D = data(pr); PX.muatSetor(pr);
-  var h = '<div class="hpper">' + selPer(true) + '</div>' + tenggat(pr) + tahap(D) + (op() ? kartuAntarCd(D) : tabelKel(D));
+  var h = '<div class="hpper">' + selPer(true) + '</div>' + tenggat(pr, periodeSelesai(pr)) + tahap(D) + (op() ? kartuAntarCd(D) : tabelKel(D));
   if (D.h.asing.length) h += '<div class="info w">' + ic('alert') + D.h.asing.length + ' laporan memakai nama Posyandu yang belum cocok dengan Data Posyandu, sehingga tidak dihitung. ' + (utama() ? 'Periksa ejaan di menu Posyandu.' : '') + '</div>';
   if (op() && PX.PENGUMUMAN) h = '<div class="info">' + e(PX.PENGUMUMAN) + '</div>' + h;
   h += tabelUtama(D);
@@ -471,6 +481,11 @@ function modalBB(key) {
     var st = q('st'), kb = q('bulan').value, k = q('k').value, f = q('f').value;
     if (!k || !f) { st.textContent = 'Isi kedua tanggal.'; st.className = 'st bad'; return; }
     if (f < k) { st.textContent = 'Batas berkas fisik tidak boleh lebih awal dari batas kader.'; st.className = 'st bad'; return; }
+    var y0 = +kb.slice(0, 4), m00 = +kb.slice(5) - 1, awalIso = bbIso(m00 === 11 ? y0 + 1 : y0, (m00 + 1) % 12, 1);
+    if (k < awalIso && !q('simpan').dataset.ya) {
+      Dlg.tanya('Batas kader (' + bbTgl(k) + ') lebih awal dari mulai pengumpulan laporan ' + bbLabel(kb) + ' (' + bbTgl(awalIso) + '). Tetap simpan?', { ok: 'Tetap simpan' }).then(function (ya) { if (ya) { q('simpan').dataset.ya = '1'; q('simpan').click(); } });
+      return;
+    }
     st.textContent = 'Menyimpan…'; st.className = 'st'; q('simpan').disabled = true;
     kirimAtur({ bb: { key: kb, k: k, f: f } }).then(function () { var nb = Object.assign({}, PX.BB); nb[kb] = { k: k, f: f }; PX.setBB(nb); PX.tutupModal(); PX.toast('Batas ' + bbLabel(kb) + ' tersimpan.'); render(); PX.renderBeranda(); })
       .catch(function (er) { q('simpan').disabled = false; st.textContent = er.message || 'Gagal menyimpan'; st.className = 'st bad'; });
@@ -480,7 +495,7 @@ function psJadwal(c) {
   var v = S.simpan, pg = v.pengumuman != null ? v.pengumuman : PX.PENGUMUMAN, wa = v.wa != null ? v.wa : (PX.WABANTU ? '+' + PX.WABANTU : '');
   var n = Object.keys(v).length, on = PX.fisikSaja(), BBm = PX.BB || {}, pa = PX.periodeAktif(new Date()), kunciPa = PX.bbKey(pa.th, pa.bl);
   var ks = Object.keys(BBm).sort().reverse();
-  var rem = BBm[kunciPa] ? '' : '<section class="cd" style="background:var(--as);border-color:color-mix(in srgb,var(--a) 30%,transparent);display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><b>Batas waktu laporan ' + e(pa.bl + ' ' + pa.th) + ' belum diatur</b><p class="mu sm" style="margin:2px 0 0">Tanpa batas, aplikasi kader tidak menampilkan hitung mundur dan tidak ada penanda terlambat.</p></div><button class="bt pri sm" type="button" data-aksi="bbtambah" data-bb="' + kunciPa + '">Atur sekarang</button></section>';
+  var rem = (BBm[kunciPa] || periodeSelesai(pa)) ? '' : '<section class="cd" style="background:var(--as);border-color:color-mix(in srgb,var(--a) 30%,transparent);display:flex;align-items:center;gap:14px;flex-wrap:wrap"><div style="flex:1;min-width:220px"><b>Batas waktu laporan ' + e(pa.bl + ' ' + pa.th) + ' belum diatur</b><p class="mu sm" style="margin:2px 0 0">Tanpa batas, aplikasi kader tidak menampilkan hitung mundur dan tidak ada penanda terlambat.</p></div><button class="bt pri sm" type="button" data-aksi="bbtambah" data-bb="' + kunciPa + '">Atur sekarang</button></section>';
   var baris = ks.map(function (k) { return '<tr><td><b>' + e(bbLabel(k)) + '</b></td><td>' + e(bbTgl(BBm[k].k)) + '</td><td>' + e(bbTgl(BBm[k].f)) + '</td><td style="text-align:right;white-space:nowrap"><button class="bt out sm" type="button" data-aksi="bbubah" data-bb="' + k + '">Ubah</button> <button class="bt out sm" type="button" data-aksi="bbhapus" data-bb="' + k + '">Hapus</button></td></tr>'; }).join('');
   c.insertAdjacentHTML('beforeend', rem + '<section class="cd form"><div class="hd"><div><h2>Batas waktu per bulan</h2><p class="mu sm">Atur batas untuk setiap bulan laporan. Bulan yang tidak ada di daftar tidak punya batas.</p></div><div class="sp"></div><button class="bt pri sm" type="button" data-aksi="bbtambah">' + ic('plus') + ' Tambah batas bulan</button></div>' +
     (ks.length ? '<div class="tw"><table class="tbl"><thead><tr><th>Laporan bulan</th><th>Batas kader</th><th>Batas berkas fisik</th><th></th></tr></thead><tbody>' + baris + '</tbody></table></div>' : '<p class="mu sm">Belum ada batas waktu yang diatur.</p>') + '</section>' +
