@@ -146,7 +146,7 @@ function doGet(e) {
       .map(function (x) {
         return { nama: x.nama, kel: x.kel, jenis: x.jenis,
                  kader: (x.kader || []).filter(function (k) { return k.aktif !== false; }).map(function (k) { return { nama: k.nama, jabatan: k.jabatan }; }) };
-      }), info: ps.pengumuman, infoTgl: ps.pengumumanTgl, wa: ps.wa, batas: ps.batas, pemeliharaan: MODE_TES ? 0 : pemeliharaanSampai() };
+      }), info: ps.pengumuman, infoTgl: ps.pengumumanTgl, wa: ps.wa, batas: ps.batas, bb: ps.bb || {}, pemeliharaan: MODE_TES ? 0 : pemeliharaanSampai() };
   }
   else if (p.aksi === 'posyandu') {
     if (masuk(p.u, p.p)) {
@@ -171,7 +171,7 @@ function doGet(e) {
     if (w2) {
       var c = bacaPengaturan(w2.u), bs = bacaPengaturan(PANTAU_USER);
       hasil = { ok: true, nama: c.nama, nip: c.nip, jabatan: c.jabatan, unit: c.unit, foto: c.foto,
-                banners: bs.banners, batas: bs.batas, batasKel: bs.batasKel, sk: bs.sk, pengumuman: bs.pengumuman, wa: bs.wa, fisik: bs.fisik, peran: w2.peran, kel: w2.kel || '' };
+                banners: bs.banners, batas: bs.batas, batasKel: bs.batasKel, bb: bs.bb || {}, sk: bs.sk, pengumuman: bs.pengumuman, wa: bs.wa, fisik: bs.fisik, peran: w2.peran, kel: w2.kel || '' };
       if (w2.peran === 'utama') { hasil.admins = daftarAdmin(); hasil.ruang = bacaRuang(); hasil.penerima = infoPenerima(); hasil.pemeliharaan = pemeliharaanSampai(); if (MODE_TES) hasil.tes = infoTes(); }
       hasil.modeTes = MODE_TES;
     } else {
@@ -441,6 +441,7 @@ function bacaPengaturanAsli(u) {
     c.banners = [String(bn[0] || ''), String(bn[1] || ''), String(bn[2] || '')];
     c.batas = parseInt(o.batas, 10) || 25;
     c.batasKel = parseInt(o.batasKel, 10) || 0;
+    c.bb = bersihBB(o.bb, c.batas, c.batasKel);
     c.sk = (o.sk && typeof o.sk === 'object') ? o.sk : {};
     c.pengumuman = String(o.pengumuman || '');
     c.pengumumanTgl = String(o.pengumumanTgl || '');
@@ -448,6 +449,28 @@ function bacaPengaturanAsli(u) {
     c.fisik = o.fisik === false ? false : (o.fisik === true ? true : null);   // masa peralihan: null = belum pernah diatur di server
   }
   return c;
+}
+/** Batas waktu per bulan laporan: { 'YYYY-MM': { k: 'YYYY-MM-DD' (batas kader), f: 'YYYY-MM-DD' (batas berkas fisik) } }.
+    Bulan yang tidak ada di daftar tidak punya batas. Bila belum pernah diatur, bulan laporan yang sedang berjalan diisi dari angka tanggal lama (satu kali). */
+function tglIsoValid(t) {
+  var m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(String(t || '')); if (!m) return false;
+  var d = new Date(+m[1], +m[2] - 1, +m[3]); return d.getFullYear() === +m[1] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[3];
+}
+function bersihBB(bb, batas, batasKel) {
+  var out = {}, p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  if (bb && typeof bb === 'object' && !Array.isArray(bb)) {
+    Object.keys(bb).sort().slice(-60).forEach(function (k) {
+      var e = bb[k]; if (!/^20\d\d-(0[1-9]|1[0-2])$/.test(k) || !e || !tglIsoValid(e.k) || !tglIsoValid(e.f)) return;
+      out[k] = { k: String(e.k), f: String(e.f) };
+    });
+    return out;
+  }
+  var tz = Session.getScriptTimeZone(), nw = new Date(), y = +Utilities.formatDate(nw, tz, 'yyyy'), m = +Utilities.formatDate(nw, tz, 'MM'), h = +Utilities.formatDate(nw, tz, 'dd');
+  var bt = parseInt(batas, 10) || 25, bf = parseInt(batasKel, 10) || Math.min(31, bt + 7);
+  var my = y, mm = m; if (h <= bt) { mm--; if (mm < 1) { mm = 12; my--; } }
+  var ny = mm === 12 ? my + 1 : my, nm = mm === 12 ? 1 : mm + 1, akhir = new Date(ny, nm, 0).getDate();
+  out[my + '-' + p2(mm)] = { k: ny + '-' + p2(nm) + '-' + p2(Math.min(bt, akhir)), f: ny + '-' + p2(nm) + '-' + p2(Math.min(bf, akhir)) };
+  return out;
 }
 /** Pengaturan dibaca sekali per permintaan dan disimpan sementara antar permintaan (dibuang otomatis saat ada perubahan).
  *  ringan = true: tanpa foto profil dan banner (cukup untuk pembacaan biasa); yang menyimpan perubahan harus memakai bentuk lengkap. */
@@ -459,7 +482,8 @@ function bacaPengaturan(u, ringan) {
     var v = cache.get(pre);
     if (v) {
       c = JSON.parse(v);
-      if (!ringan) {
+      if (k === PANTAU_USER && c.bb === undefined) c = null;   // tembolok lama (sebelum ada batas per bulan)
+      else if (!ringan) {
         var f = cache.get(pre + '_f'), b = [0, 1, 2].map(function (i) { return cache.get(pre + '_b' + i); });
         if (f === null || (c.banners && b.some(function (x) { return x === null; }))) c = null;
         else { c.foto = f.slice(1); if (c.banners) c.banners = b.map(function (x) { return x.slice(1); }); }
@@ -522,6 +546,19 @@ function atur(d) {
     if (!(bk >= 1 && bk <= 31)) throw new Error('Batas tanggal 1 sampai 31');
     c.batasKel = bk;
   }
+  if (d.bb !== undefined) {
+    if (w.peran !== 'utama') throw new Error('Hanya admin utama yang boleh mengubah batas waktu');
+    var eb = d.bb || {}, kb = String(eb.key || '');
+    if (!/^20\d\d-(0[1-9]|1[0-2])$/.test(kb)) throw new Error('Bulan laporan tidak valid');
+    c.bb = bersihBB(c.bb || {}, c.batas, c.batasKel);
+    if (eb.hapus === true || eb.hapus === 'true') { delete c.bb[kb]; }
+    else {
+      if (!tglIsoValid(eb.k) || !tglIsoValid(eb.f)) throw new Error('Isi tanggal batas kader dan batas berkas fisik dengan benar');
+      if (String(eb.f) < String(eb.k)) throw new Error('Batas berkas fisik tidak boleh lebih awal dari batas kader');
+      if (!c.bb[kb] && Object.keys(c.bb).length >= 60) throw new Error('Daftar batas terlalu banyak, hapus yang lama dulu');
+      c.bb[kb] = { k: String(eb.k), f: String(eb.f) };
+    }
+  }
   if (d.pengumuman !== undefined) {
     if (w.peran !== 'utama') throw new Error('Hanya admin utama yang boleh mengubah pengumuman');
     var pbaru = String(d.pengumuman).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
@@ -553,6 +590,7 @@ function atur(d) {
   if (d.bannerIdx !== undefined) cl.push('mengubah banner ' + (parseInt(d.bannerIdx, 10) + 1));
   if (d.batas !== undefined) cl.push('mengubah batas waktu menjadi tanggal ' + c.batas);
   if (d.batasKel !== undefined) cl.push('mengubah batas waktu kelurahan mengantar laporan menjadi tanggal ' + c.batasKel);
+  if (d.bb !== undefined) cl.push(d.bb && (d.bb.hapus === true || d.bb.hapus === 'true') ? 'menghapus batas waktu laporan ' + d.bb.key : 'mengatur batas waktu laporan ' + (d.bb && d.bb.key) + ': kader ' + (d.bb && d.bb.k) + ', berkas fisik ' + (d.bb && d.bb.f));
   if (d.pengumuman !== undefined) cl.push(c.pengumuman ? 'mengubah pengumuman untuk kader' : 'menghapus pengumuman untuk kader');
   if (d.wa !== undefined) cl.push(c.wa ? 'mengubah nomor WhatsApp bantuan' : 'menghapus nomor WhatsApp bantuan');
   if (d.fisik !== undefined) cl.push(c.fisik ? 'menghidupkan masa peralihan' : 'mematikan masa peralihan');

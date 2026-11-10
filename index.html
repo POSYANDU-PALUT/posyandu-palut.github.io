@@ -801,7 +801,7 @@ body.pl{
 </header>
 
 <main id="main" tabindex="-1"></main>
-<footer class="foot">Developed by <b>Max Juniar Ratowo</b> · © 2026<br><span id="ver">Versi 47</span> · Kecamatan Palu Utara</footer>
+<footer class="foot">Developed by <b>Max Juniar Ratowo</b> · © 2026<br><span id="ver">Versi 48</span> · Kecamatan Palu Utara</footer>
 
 <div class="dock"><div class="dock-in">
   <button type="button" class="btn back" id="btn-back">Kembali</button>
@@ -849,7 +849,7 @@ var LBL={sibu:"Sasaran",kibu:"Kunjungan",sbalita:"Sasaran (S)",kms:"Punya KMS (K
 var INFOSVG='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>';
 var DOCSVG='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
 var PGOPEN=null,PGOK=0,BAG=null;
-var APP_V="47";
+var APP_V="48";
 var KEY="laporan-posyandu-v3", MAXFOTO=12, uid=0;
 var main=document.getElementById("main"), btnBack=document.getElementById("btn-back"), btnNext=document.getElementById("btn-next"), btnMake=document.getElementById("btn-make");
 
@@ -937,8 +937,8 @@ function evaluasiText(){return (S.evaluasi||"").trim()||evaluasiAuto()}
 function applyKel(){var d=KEL[S.kelurahan]||{alamat:"",jabatan:"",lurah:"",nip:""};S.alamat=d.alamat;S.jabatan=d.jabatan;S.lurah=d.lurah;S.nip=d.nip}
 
 /* ---------- validasi ---------- */
-var POSLIST=[],INFO="",INFOTGL="",WA="",BATAS=0,PASANG=null;
-try{INFO=localStorage.getItem("lp-info")||"";INFOTGL=localStorage.getItem("lp-infotgl")||"";WA=localStorage.getItem("lp-wa")||"";BATAS=parseInt(localStorage.getItem("lp-batas")||"0",10)||0}catch(e){}
+var POSLIST=[],INFO="",INFOTGL="",WA="",BB={},PASANG=null;
+try{INFO=localStorage.getItem("lp-info")||"";INFOTGL=localStorage.getItem("lp-infotgl")||"";WA=localStorage.getItem("lp-wa")||"";BB=JSON.parse(localStorage.getItem("lp-bb")||"{}")||{}}catch(e){BB={}}
 function lsGet(k){try{return localStorage.getItem(k)||""}catch(e){return ""}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 function infoTertutup(){return lsGet("lp-infotutup")===INFO+"|"+INFOTGL+"|"+todayISO()}
@@ -977,7 +977,7 @@ function muatDaftarPos(){
     var ubah=false;
     if(r&&r.ok&&typeof r.info==="string"&&(r.info!==INFO||(r.infoTgl||"")!==INFOTGL)){INFO=r.info;INFOTGL=r.infoTgl||"";ubah=true;lsSet("lp-info",INFO);lsSet("lp-infotgl",INFOTGL)}
     if(r&&r.ok&&typeof r.wa==="string"&&r.wa!==WA){WA=r.wa;ubah=true;lsSet("lp-wa",WA)}
-    if(r&&r.ok&&+r.batas>=1&&+r.batas<=31&&+r.batas!==BATAS){BATAS=+r.batas;ubah=true;lsSet("lp-batas",String(BATAS))}
+    if(r&&r.ok&&r.bb&&typeof r.bb==="object"&&!Array.isArray(r.bb)){var sbb=JSON.stringify(r.bb);if(sbb!==JSON.stringify(BB)){BB=r.bb;ubah=true;lsSet("lp-bb",sbb)}}
     if(r&&r.ok){MAINT=+r.pemeliharaan||0}
     if(r&&r.ok&&Array.isArray(r.list)&&r.list.length){POSLIST=r.list;ubah=true;try{localStorage.setItem("lp-poslist",JSON.stringify(r.list))}catch(e){}}
     if(ubah&&typeof step!=="undefined"&&(step===0||step===-1))render(true)
@@ -1087,24 +1087,21 @@ function viewHome(){
 }
 var PANAH='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="c1" d="M5 6l6 6-6 6"/><path class="c2" d="M12 6l6 6-6 6"/></svg>';
 function batasHtml(){
-  if(!(BATAS>=1&&BATAS<=31))return "";
-  /* Laporan bulan X dikumpulkan paling lambat tanggal BATAS di bulan berikutnya. Sampai tanggal batas, yang dikumpulkan masih bulan lalu. */
-  /* Dari tanggal 1 sampai tanggal batas, dua bulan laporan terbuka sekaligus: satu kartu (yang mendesak) dengan baris "Berikutnya". */
-  var n=new Date(),y=n.getFullYear(),m=n.getMonth();
-  var cur=batasSatu(n,m,y);
-  if(n.getDate()<=BATAS){
-    var py=m===0?y-1:y,pm=m===0?11:m-1,pr=batasSatu(n,pm,py);
-    return batasKartu(pr,'<small class="bnx">Berikutnya: laporan '+BULAN[m]+', batas '+esc(cur.tgl)+' ('+cur.sisa+' hari lagi)</small>');
-  }
-  return batasKartu(cur,"");
+  /* Batas waktu diatur per bulan laporan oleh admin (BB). Bulan tanpa batas tidak menampilkan kartu. */
+  var n=new Date(),y=n.getFullYear(),m=n.getMonth(),py=m===0?y-1:y,pm=m===0?11:m-1;
+  var pr=batasSatu(n,pm,py),cur=batasSatu(n,m,y);
+  if(pr&&pr.sisa>=0)return batasKartu(pr,cur?'<small class="bnx">Berikutnya: laporan '+BULAN[m]+', batas '+esc(cur.tgl)+' ('+cur.sisa+' hari lagi)</small>':"");
+  if(cur)return batasKartu(cur,"");
+  return "";
 }
 function batasKartu(o,extra){
   return '<div class="batas '+o.kls+'" role="status"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg><span><b>'+esc(o.t1)+'</b>'+esc(o.t2)+extra+'</span></div>';
 }
 function batasSatu(n,m,y){
-  var dm=(m+1)%12,dy=m===11?y+1:y,akhir=new Date(dy,dm+1,0).getDate(),tg=Math.min(BATAS,akhir);
-  var a=new Date(n.getFullYear(),n.getMonth(),n.getDate()),b=new Date(dy,dm,tg),sisa=Math.round((b-a)/86400000),kls="ok",t1,t2;
-  var lap="laporan "+BULAN[m],tgl=tg+" "+BULAN[dm];
+  var e=BB[y+"-"+("0"+(m+1)).slice(-2)],p=e&&/^(\d{4})-(\d\d)-(\d\d)$/.exec(e.k||"");
+  if(!p)return null;
+  var a=new Date(n.getFullYear(),n.getMonth(),n.getDate()),b=new Date(+p[1],+p[2]-1,+p[3]),sisa=Math.round((b-a)/86400000),kls="ok",t1,t2;
+  var lap="laporan "+BULAN[m],tgl=(+p[3])+" "+BULAN[+p[2]-1];
   if(sisa>7){t1="Batas "+lap+": "+tgl;t2="Tinggal "+sisa+" hari lagi"}
   else if(sisa>3){kls="mep";t1="Batas "+lap+": "+tgl;t2="Tinggal "+sisa+" hari lagi"}
   else if(sisa>0){kls="dekat";t1="Segera buat "+lap;t2="Tinggal "+sisa+" hari lagi (batas "+tgl+")"}

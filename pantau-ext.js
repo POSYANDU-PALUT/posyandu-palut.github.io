@@ -105,11 +105,16 @@ function pilihEl(id, opts, val) { var s = $(id); s.textContent = ''; opts.forEac
 /* ---------- perhitungan ---------- */
 function tglKirim(d) { var m = /^(\d\d)\/(\d\d)\/(\d{4})/.exec(d.tk || ''); return m ? new Date(+m[3], +m[2] - 1, +m[1], 12) : null; }
 /* Batas laporan bulan X jatuh pada tanggal BATAS di bulan berikutnya (laporan Oktober, batas 8 November). */
-function batasTgl(th, bl) {
-  var m = BULAN.indexOf(bl), ny = +th + (m === 11 ? 1 : 0), nm = (m + 1) % 12, last = new Date(ny, nm + 1, 0).getDate();
-  return new Date(ny, nm, Math.min(BATAS, last), 23, 59, 59);
-}
-function teksBatas(th, bl) { var d = batasTgl(th, bl); return d.getDate() + ' ' + BULAN[d.getMonth()] + (d.getFullYear() !== +th ? ' ' + d.getFullYear() : ''); }
+/* Batas waktu diatur per bulan laporan (BB: 'YYYY-MM' -> {k: batas kader, f: batas berkas fisik}). Bulan yang tidak ada di BB tidak punya batas (null). */
+var BB = {};
+function bbKey(th, bl) { return th + '-' + ('0' + (BULAN.indexOf(bl) + 1)).slice(-2); }
+function bbIsoTgl(t, akhir) { var m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(t || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3], akhir ? 23 : 0, akhir ? 59 : 0, akhir ? 59 : 0) : null; }
+function batasTgl(th, bl) { var e = BB[bbKey(th, bl)]; return e ? bbIsoTgl(e.k, true) : null; }
+function batasFisikTgl(th, bl) { var e = BB[bbKey(th, bl)]; return e ? bbIsoTgl(e.f, true) : null; }
+function teksTglBatas(d, th) { return d ? d.getDate() + ' ' + BULAN[d.getMonth()] + (d.getFullYear() !== +th ? ' ' + d.getFullYear() : '') : 'belum diatur'; }
+function teksBatas(th, bl) { return teksTglBatas(batasTgl(th, bl), th); }
+/* "tanggal 20 Desember" atau "belum diatur" untuk kalimat. */
+function kalBatas(th, bl) { var d = batasTgl(th, bl); return d ? 'tanggal ' + teksTglBatas(d, th) : 'belum diatur'; }
 /* Bulan laporan yang sedang dikumpulkan: sampai tanggal batas masih bulan lalu, setelah itu bulan berjalan. */
 function periodeAktif(now) {
   now = now || new Date(); var y = now.getFullYear(), m = now.getMonth();
@@ -125,8 +130,8 @@ function hitung(th, bl) {
     var k = kunci(p.kel, p.jenis, p.nama), d = idx[k], st;
     dikenal[k] = 1;
     (p.alias || []).forEach(function (a) { var ka = kunci(p.kel, p.jenis, a); dikenal[ka] = 1; if (!d && idx[ka]) d = idx[ka]; });
-    if (d) { var tk = tglKirim(d); st = (tk && tk > batas) ? 'telat' : 'tepat'; }
-    else st = now > batas ? 'lewat' : 'belum';
+    if (d) { var tk = tglKirim(d); st = (batas && tk && tk > batas) ? 'telat' : 'tepat'; }
+    else st = (batas && now > batas) ? 'lewat' : 'belum';
     return { p: p, d: d, st: st };
   });
   var asing = uniq.filter(function (d) { return !dikenal[kunci(d.kel, d.jenis, d.pos)]; });
@@ -362,8 +367,9 @@ function renderBeranda() {
 }
 /* ---- komponen Beranda baru ---- */
 function kartuWaktu(pr) {
-  var c = el('div', 'nb-c nb-wkt'), bt = batasTgl(pr.th, pr.bl), m = BULAN.indexOf(pr.bl), ny = +pr.th + (m === 11 ? 1 : 0), nm = (m + 1) % 12;
-  var awal = new Date(ny, nm, 1), b1 = new Date(ny, nm, bt.getDate()), b2 = new Date(ny, nm, Math.min(batasKelHari(), new Date(ny, nm + 1, 0).getDate())), hr0 = new Date(); hr0.setHours(0, 0, 0, 0);
+  var c = el('div', 'nb-c nb-wkt'), bt = batasTgl(pr.th, pr.bl), bf = batasFisikTgl(pr.th, pr.bl), m = BULAN.indexOf(pr.bl), ny = +pr.th + (m === 11 ? 1 : 0), nm = (m + 1) % 12;
+  if (!bt || !bf) { var a0 = el('div', 'wk-a'); a0.appendChild(el('b', null, 'Periode laporan ' + pr.bl + ' ' + pr.th)); a0.appendChild(el('span', null, 'Batas waktu belum diatur.')); c.appendChild(a0); return c; }
+  var awal = new Date(ny, nm, 1), b1 = new Date(bt.getFullYear(), bt.getMonth(), bt.getDate()), b2 = new Date(bf.getFullYear(), bf.getMonth(), bf.getDate()), hr0 = new Date(); hr0.setHours(0, 0, 0, 0);
   var tot = Math.max(1, Math.round((b2 - awal) / 864e5)), pos = Math.min(100, Math.max(0, Math.round((hr0 - awal) / 864e5) * 100 / tot)), pk = Math.min(100, Math.round((b1 - awal) / 864e5) * 100 / tot);
   var hari = Math.round((b1 - hr0) / 864e5);
   var a = el('div', 'wk-a'); a.appendChild(el('b', null, 'Periode laporan ' + pr.bl + ' ' + pr.th));
@@ -729,10 +735,12 @@ function pesanWA(p, pr, lewat) {
   var j = new Date().getHours(), sapa = j < 11 ? 'pagi' : j < 15 ? 'siang' : j < 18 ? 'sore' : 'malam', nm = namaKontak(p), url;
   try { url = new URL('./', location.href).href; } catch (e) { url = ''; }
   return 'Selamat ' + sapa + ' Bapak/Ibu' + (nm ? ' ' + nm : '') + ', kami dari Kecamatan Palu Utara. Laporan ' + p.jenis + ' ' + p.nama + ' bulan ' + pr.bl + ' ' + pr.th +
-    ' belum kami terima. Batas pembuatan laporan tanggal ' + teksBatas(pr.th, pr.bl) + (lewat ? ' sudah terlewat' : '') + '. Mohon segera dibuat lewat aplikasi laporan' + (url ? ': ' + url : '') + '\nTerima kasih.';
+    ' belum kami terima.' + (batasTgl(pr.th, pr.bl) ? ' Batas pembuatan laporan tanggal ' + teksBatas(pr.th, pr.bl) + (lewat ? ' sudah terlewat' : '') + '.' : '') + ' Mohon segera dibuat lewat aplikasi laporan' + (url ? ': ' + url : '') + '\nTerima kasih.';
 }
 function hitungMundur(pr) {
-  var now = new Date(), b = batasTgl(pr.th, pr.bl), sel = Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000), fmt = 'Batas pembuatan laporan ' + pr.bl + ': tanggal ' + teksBatas(pr.th, pr.bl) + ' · ';
+  var now = new Date(), b = batasTgl(pr.th, pr.bl);
+  if (!b) return { t: 'Batas pembuatan laporan ' + pr.bl + ' belum diatur', c: 'warn' };
+  var sel = Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000), fmt = 'Batas pembuatan laporan ' + pr.bl + ': tanggal ' + teksBatas(pr.th, pr.bl) + ' · ';
   if (sel > 0) return { t: fmt + 'tinggal ' + sel + ' hari', c: sel > 3 ? 'ok' : 'warn' };
   if (sel === 0) return { t: fmt + 'hari ini hari terakhir', c: 'warn' };
   return { t: fmt + 'sudah lewat ' + (-sel) + ' hari', c: 'warn' };
@@ -951,7 +959,7 @@ function renderRekap() {
   isi.appendChild(c4);
   // 5 terlambat
   var c5 = el('div', 'card'); c5.appendChild(el('h4', null, 'Daftar Posyandu yang terlambat'));
-  c5.appendChild(el('div', 'lt', 'Batas pengumpulan laporan ' + R.bl + ' ' + R.th + ': tanggal ' + teksBatas(R.th, R.bl) + '. Belum masuk setelah batas, atau dikirim setelah batas.'));
+  c5.appendChild(el('div', 'lt', (batasTgl(R.th, R.bl) ? 'Batas pengumpulan laporan ' + R.bl + ' ' + R.th + ': tanggal ' + teksBatas(R.th, R.bl) + '. Belum masuk setelah batas, atau dikirim setelah batas.' : 'Batas pengumpulan laporan ' + R.bl + ' ' + R.th + ' belum diatur, jadi belum ada Posyandu yang dihitung terlambat.')));
   if (!h.terlambat.length) c5.appendChild(el('div', 'ok2', 'Tidak ada Posyandu yang terlambat.'));
   h.terlambat.forEach(function (r) {
     var it = el('div', 'item'); it.appendChild(el('div', 'a', r.p.nama));
@@ -1081,7 +1089,7 @@ function cetakRekap() {
     '@media print{.bar{display:none}body{padding:0}}</style></head><body>' +
     '<div class="bar">Pilih <b>Cetak</b>, lalu tujuan <b>Simpan sebagai PDF</b> untuk membuat berkas PDF. <button onclick="print()">Cetak / PDF</button></div>' +
     '<div class="kop"><img src="' + logo + '" alt=""><div><b>PEMERINTAH KOTA PALU</b><b>KECAMATAN PALU UTARA</b>' + (op ? '<b>KELURAHAN ' + esc(KELSAYA.toUpperCase()) + '</b>' : '') + '<small>Rekapitulasi Laporan Posyandu</small></div></div>' +
-    '<h1>Rekapitulasi Laporan Posyandu</h1><p class="sb">Bulan ' + esc(R.bl) + ' ' + esc(R.th) + ' &middot; Batas pengumpulan tanggal ' + esc(teksBatas(R.th, R.bl)) + '</p>' +
+    '<h1>Rekapitulasi Laporan Posyandu</h1><p class="sb">Bulan ' + esc(R.bl) + ' ' + esc(R.th) + ' &middot; Batas pengumpulan ' + esc(kalBatas(R.th, R.bl)) + '</p>' +
     '<h2>1. Ringkasan</h2><p class="ring">Total Posyandu terdaftar: <b>' + tot + '</b>. Laporan sudah masuk: <b>' + msk + '</b>. Belum masuk: <b>' + (tot - msk) + '</b>. Terlambat: <b>' + h.terlambat.length + '</b>. Capaian: <b>' + persen(msk, tot) + '%</b>.</p>' +
     '<h2>2. Rekap per kelurahan</h2><table><tr><th>Kelurahan</th><th>Balita</th><th>Lansia</th><th>Total</th><th>%</th></tr>' + rk + '</table>' +
     '<h2>3. Rincian per Posyandu</h2><table><tr><th>No</th><th>Nama Posyandu</th><th>Kelurahan</th><th>Jenis</th><th>Status</th><th>Tanggal kirim</th></tr>' + rin + '</table>' +
@@ -1628,10 +1636,7 @@ function qrBuat(teks, paksaMask) {
 
 var BATAS_KEL = 0, LEMB = {}, LEMB_T = {}, LEMB_BUSY = 0;
 function batasKelHari() { return BATAS_KEL || Math.min(31, BATAS + 7); }
-function teksBatasKel(th, bl) {
-  var m = BULAN.indexOf(bl), ny = +th + (m === 11 ? 1 : 0), nm = (m + 1) % 12, last = new Date(ny, nm + 1, 0).getDate(), d = Math.min(batasKelHari(), last);
-  return d + ' ' + BULAN[nm] + (ny !== +th ? ' ' + ny : '');
-}
+function teksBatasKel(th, bl) { return teksTglBatas(batasFisikTgl(th, bl), th); }
 function muatLembarKel(pr, paksa) {
   var k = perKey(pr); if (!CRED) return;
   if (!paksa && LEMB_T[k] && Date.now() - LEMB_T[k] < 30000) return;
@@ -1732,7 +1737,7 @@ async function unduhGabungan(lm, info) {
 function kartuAntar(box, h, pr, gabung) {
   muatLembarKel(pr); var k = perKey(pr), D = LEMB[k], S = SETOR[k] || {}, c = gabung ? box : el('div', 'card antar');
   if (gabung) { var sj = el('div', 'kh', 'Centang yang akan diantar ke kecamatan'); sj.style.marginTop = '12px'; c.appendChild(sj); } else c.appendChild(el('h4', null, 'Antar laporan ke kecamatan' + (periodeOpList().length > 1 ? ' · ' + pr.bl : '')));
-  c.appendChild(el('div', 'lt', 'Batas mengantar laporan fisik ke kecamatan: tanggal ' + teksBatasKel(pr.th, pr.bl) + '.'));
+  c.appendChild(el('div', 'lt', 'Batas mengantar laporan fisik ke kecamatan: ' + (batasFisikTgl(pr.th, pr.bl) ? 'tanggal ' + teksBatasKel(pr.th, pr.bl) : 'belum diatur') + '.'));
   c.appendChild(el('p', 'hint', (gabung ? '' : 'Centang laporan yang akan diantar. ') + 'Setelah lembar dibuat, laporan yang ikut tidak bisa dikirim ulang oleh kader kecuali Anda membukanya kembali.'));
   var cek = {}, rows = h.rows.slice().sort(function (a, b) { return a.p.jenis.localeCompare(b.p.jenis) || a.p.nama.localeCompare(b.p.nama); }), siap = 0;
   rows.forEach(function (r) {
@@ -1782,7 +1787,7 @@ function kartuAntar(box, h, pr, gabung) {
 /* ---------- kait ke aplikasi utama ---------- */
 window.terimaProfil = function (r) {
   BANNERS = (r.banners || ['', '', '']).slice(0, 3); while (BANNERS.length < 3) BANNERS.push('');
-  if (r.batas) BATAS = r.batas; if (r.batasKel !== undefined) BATAS_KEL = r.batasKel || 0; if (r.sk) SK = r.sk; if (r.pengumuman !== undefined) PENGUMUMAN = r.pengumuman || ''; if (r.wa !== undefined) WABANTU = r.wa || '';
+  if (r.bb && typeof r.bb === 'object') BB = r.bb; if (r.batas) BATAS = r.batas; if (r.batasKel !== undefined) BATAS_KEL = r.batasKel || 0; if (r.sk) SK = r.sk; if (r.pengumuman !== undefined) PENGUMUMAN = r.pengumuman || ''; if (r.wa !== undefined) WABANTU = r.wa || '';
   if (r.ruang !== undefined) RUANG = r.ruang;
   /* Sekali saja: filter bawaan ikut bulan laporan yang sedang dikumpulkan, bila belum diubah pengguna. */
   if (!window.__filterAwal) {
@@ -1914,7 +1919,7 @@ if (document.readyState !== 'loading') bangunBanner();
   var _rs = renderSK; renderSK = function () { try { _rs.apply(this, arguments); } finally { segar(); } };
   window.PX = {
     hitung: hitung, periodeAktif: periodeAktif, perKey: perKey, hariIni: hariIni, tglId: tglId, persen: persen,
-    batasTgl: batasTgl, teksBatas: teksBatas, teksBatasKel: teksBatasKel, batasKelHari: batasKelHari,
+    batasTgl: batasTgl, batasFisikTgl: batasFisikTgl, kalBatas: kalBatas, bbKey: bbKey, teksBatas: teksBatas, teksBatasKel: teksBatasKel, batasKelHari: batasKelHari,
     fisikSaja: fisikSaja, fisikOK: fisikOK, fisikTanda: fisikTanda, isOp: isOp, utama: utama, posAktif: posAktif, dasarPos: dasarPos, aktifKader: aktifKader,
     muatSetor: muatSetor, simpanSetor: simpanSetor, unduhPoster: unduhPoster, unduhPdf: unduhPdf, angkaLap: angkaLap,
     nomorWA: nomorWA, pesanWA: pesanWA, namaKontak: namaKontak, formNomor: formNomor, formPos: function (p) { formPos(p); },
@@ -1930,7 +1935,7 @@ if (document.readyState !== 'loading') bangunBanner();
     get SETOR() { return SETOR; }, get SETOR_VIA() { return SETOR_VIA; }, get POS() { return POS; }, get SK() { return SK; },
     get BATAS() { return BATAS; }, get BATAS_KEL() { return BATAS_KEL; }, get PENGUMUMAN() { return PENGUMUMAN; }, get WABANTU() { return WABANTU; },
     get RUANG() { return RUANG; }, get CAD() { return CAD; }, get KELSAYA() { return KELSAYA; }, get LEMB() { return LEMB; },
-    setBatas: function (v) { BATAS = v; }, setBatasKel: function (v) { BATAS_KEL = v; }, setPengumuman: function (v) { PENGUMUMAN = v; }, setWA: function (v) { WABANTU = v; },
+    setBB: function (v) { BB = v || {}; }, get BB() { return BB; }, setBatas: function (v) { BATAS = v; }, setBatasKel: function (v) { BATAS_KEL = v; }, setPengumuman: function (v) { PENGUMUMAN = v; }, setWA: function (v) { WABANTU = v; },
     setCAD: function (v) { CAD = v; }, setPOS: function (v) { POS = v; }
   };
 })();

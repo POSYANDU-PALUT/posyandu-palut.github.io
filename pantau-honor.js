@@ -173,7 +173,7 @@ function langkahBerikut() {
   var m = [
     null,
     ['Buat daftar bayar', 'Periksa nama dan nominal, lalu unduh PDF daftar bayar.', 'Buka Daftar Bayar', 'tab:db'],
-    ['Cetak daftar bayar', 'Setelah dicetak, tandai sudah dicetak.', 'Buka Daftar Bayar', 'tab:db'],
+    ['Kumpulkan tanda tangan kader', 'Cetak daftar bayar, lalu setelah semua tanda tangan terkumpul, tandai sudah ditandatangani.', 'Tandai sudah ditandatangani', 'ttd'],
     ['Kumpulkan tanda tangan kader', 'Daftar bayar dicetak ' + (s.cetak ? tglId(new Date(s.cetak)) : '') + '. Setelah semua tanda tangan terkumpul, tandai sudah ditandatangani.', 'Tandai sudah ditandatangani', 'ttd'],
     ['Kumpulkan tanda tangan kader', '', 'Tandai sudah ditandatangani', 'ttd'],
     ['Buat rekapitulasi honor', 'Rekap dihitung otomatis dari daftar bayar.', 'Buka Rekap', 'tab:rk'],
@@ -225,13 +225,17 @@ function grupRekap() {
 /* ---------- Daftar Bayar ---------- */
 function vDaftar() {
   var s = st(), kr = kurangRek(), h = '';
-  var sb = [['Belum dicetak', !!s.dbt || !!s.cetak, !s.cetak && !s.dbt], ['Sudah dicetak', !!s.cetak, !s.cetak && !!s.dbt], ['Menunggu tanda tangan', !!s.ttd, !!s.cetak && !s.ttd], ['Sudah ditandatangani', !!s.ttd, false]];
-  h += '<section class="cd"><div class="hd"><h2>Status daftar bayar</h2><div class="sp"></div><span class="mu sm">' + (s.cetak ? 'Dicetak ' + tglId(new Date(s.cetak)) + ' · cetak ke-' + (s.cetakN || 1) : 'Belum dicetak') + '</span></div><div class="sbx4">' +
-    sb.map(function (x) { return '<div class="' + (x[1] ? 'ok' : x[2] ? 'now' : '') + '">' + (x[1] ? ic('check') : '') + x[0] + '</div>'; }).join('') + '</div>';
+  /* Tiga langkah: unduh (otomatis dianggap dicetak), tanda tangan, sudah ditandatangani. Hanya tanda tangan yang ditandai manual. */
+  var o1 = !!(s.dbt || s.cetak), o2 = !!s.ttd, tUnduh = s.cetak || s.dbt;
+  var langkahBox = function (no, judul, ket, ok, now) { return '<div class="sp3' + (ok ? ' ok' : now ? ' now' : '') + '"><span class="stn">' + (ok ? '&#10003;' : no) + '</span><div><b>' + judul + '</b>' + (ket ? '<small>' + ket + '</small>' : '') + '</div></div>'; };
+  h += '<section class="cd"><div class="hd"><h2>Status daftar bayar</h2><div class="sp"></div><span class="mu sm">' + (o2 ? 'Ditandatangani ' + tglId(new Date(s.ttd)) : o1 ? 'Diunduh ' + tglId(new Date(tUnduh)) : 'Belum diunduh') + '</span></div>' +
+    '<div class="sbx3">' + langkahBox(1, 'Unduh dan cetak', o1 ? tglId(new Date(tUnduh)) : 'Belum diunduh', o1, !o1) + '<span class="ln' + (o1 ? ' ok' : '') + '"></span>' +
+    langkahBox(2, 'Tanda tangan', o2 ? tglId(new Date(s.ttd)) : o1 ? 'Menunggu' : '', o2, o1 && !o2) + '<span class="ln' + (o2 ? ' ok' : '') + '"></span>' +
+    langkahBox(3, 'Sudah ditandatangani', o2 ? 'Nama dan nominal dikunci' : '', o2, false) + '</div>';
   if (!kunci()) {
-    h += '<div class="acts" style="margin-top:12px"><span class="mu sm" style="flex:1">' + (s.ttd ? 'Tanda tangan dikonfirmasi ' + tglId(new Date(s.ttd)) + '. Nama dan nominal dikunci; perubahan perlu konfirmasi dan dicatat di Riwayat.' : s.cetak ? 'Sudah memeriksa semua tanda tangan di kertas?' : 'Unduh PDF, cetak, lalu tandai sudah dicetak.') + '</span>' +
-      (!s.ttd && s.dbt ? '<button class="bt out sm" type="button" data-hx="cetak">' + ic('check') + (s.cetak ? ' Cetak ulang' : ' Tandai sudah dicetak') + '</button>' : '') +
-      (s.cetak && !s.ttd ? '<button class="bt pri sm" type="button" data-hx="ttd">Tandai sudah ditandatangani…</button>' : '') + '</div>';
+    h += '<div class="acts" style="margin-top:14px"><span class="mu sm" style="flex:1">' + (o2 ? 'Nama dan nominal dikunci. Perubahan perlu konfirmasi dan tercatat di Riwayat.' : o1 ? 'Setelah semua tanda tangan di kertas lengkap dan sudah Anda periksa, tandai di sini.' : 'Unduh PDF daftar bayar, lalu cetak untuk ditandatangani.') + '</span>' +
+      (!o2 && !o1 ? '<button class="bt pri sm" type="button" data-hx="pdfdb">' + ic('dl') + ' Unduh PDF daftar bayar</button>' : '') +
+      (!o2 && o1 ? '<button class="bt out sm" type="button" data-hx="pdfdb">' + ic('dl') + ' Unduh ulang PDF</button><button class="bt pri sm" type="button" data-hx="ttd">Tandai sudah ditandatangani…</button>' : '') + '</div>';
   }
   h += '</section>';
   if (kr.length) h += '<div class="info w">' + ic('alert') + '<span style="flex:1"><b>' + kr.length + ' kader</b> belum punya nomor rekening atau NIK. Kolomnya kosong (abu-abu) di daftar bayar.</span><a href="#" data-ht="rek">Lengkapi di Rekening Kader</a></div>';
@@ -485,7 +489,7 @@ function mTtd() {
     '<p class="hint">Tombol baru bisa dipakai setelah semua centang terisi.</p>', 'Ya, sudah ditandatangani', function (w) {
       var cek = {}; adaJ.forEach(function (j) { cek[j] = w.querySelector('[data-cj=' + j + ']').checked; });
       if (adaJ.some(function (j) { return !cek[j]; })) throw new Error('Centang semua pemeriksaan dulu');
-      return kirim({ op: 'langkah', l: 'ttd', cek: cek }, 'Daftar bayar ditandai sudah ditandatangani.').then(function () { H.tab = 'rk'; gambar(); });
+      return (st().cetak ? Promise.resolve() : kirim({ op: 'langkah', l: 'cetak' })).then(function () { return kirim({ op: 'langkah', l: 'ttd', cek: cek }, 'Daftar bayar ditandai sudah ditandatangani.'); }).then(function () { H.tab = 'rk'; gambar(); });
     });
   var ok = w.querySelector('[data-mx=ok]'); function cek() { ok.disabled = adaJ.some(function (j) { return !w.querySelector('[data-cj=' + j + ']').checked; }); }
   w.addEventListener('change', cek); cek();
@@ -723,7 +727,11 @@ function ttdBlok(K, x, y, judul, nama, nip, o) {
 }
 function bulanJudul() { var b = H.per.bulan; return b.length === 1 ? BLN[+b[0].slice(5) - 1].toUpperCase() : (BLN[+b[0].slice(5) - 1] + ' S.D. ' + BLN[+b[b.length - 1].slice(5) - 1]).toUpperCase(); }
 function tahunPer() { return String(H.per.bulan[H.per.bulan.length - 1]).slice(0, 4); }
-function tandaiDibuat() { if (H.per && !st().dbt && !kunci()) kirim({ op: 'langkah', l: 'dbt' }).catch(function () { }); }
+/* Mengunduh PDF daftar bayar otomatis dicatat sebagai "dibuat" dan "dicetak" (tidak ada lagi tombol tandai dicetak). */
+function tandaiDibuat() {
+  if (!H.per || kunci() || st().cetak) return;
+  (st().dbt ? Promise.resolve() : kirim({ op: 'langkah', l: 'dbt' })).then(function () { return kirim({ op: 'langkah', l: 'cetak' }); }).catch(function () { });
+}
 
 function pdfDaftarBayar(doc, L, F) {
   var c = H.d.cfg.ttd, A4 = [595.28, 841.89], K = Kanvas(L, doc, F, A4), M = 30;

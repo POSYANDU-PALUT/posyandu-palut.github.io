@@ -106,3 +106,17 @@
 .v2m .gib:disabled{opacity:.35;cursor:default}
 .v2m .gbadd{margin-top:2px;cursor:pointer}
 .v2m .gbt{padding:10px 0 0;border-top:1px solid var(--line)}
+
+/* Status daftar bayar: tiga langkah */
+#v2 .hn .sbx3{display:flex;align-items:center;gap:0}
+#v2 .hn .sbx3 .sp3{flex:1;display:flex;align-items:center;gap:10px;padding:0 4px;min-width:0}
+#v2 .hn .sbx3 .stn{flex:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:var(--ns,#eef0f3);color:var(--mu)}
+#v2 .hn .sbx3 .stn .i{width:16px;height:16px}
+#v2 .hn .sbx3 .ok .stn{background:var(--g);color:#fff}
+#v2 .hn .sbx3 .now .stn{background:var(--sf);border:2px solid var(--gold);color:var(--a)}
+#v2 .hn .sbx3 .sp3 b{display:block;font-size:14px}
+#v2 .hn .sbx3 .now b{color:var(--a)}
+#v2 .hn .sbx3 .sp3 small{display:block;font-size:12px;color:var(--mu);font-weight:400}
+#v2 .hn .sbx3 .ln{flex:none;width:28px;height:2px;background:var(--line)}
+#v2 .hn .sbx3 .ln.ok{background:var(--g)}
+@media (max-width:640px){#v2 .hn .sbx3{flex-direction:column;align-items:stretch;gap:10px}#v2 .hn .sbx3 .ln{display:none}}
