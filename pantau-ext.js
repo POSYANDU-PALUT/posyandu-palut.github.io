@@ -1027,6 +1027,7 @@ function kartuAngka(isi) {
   return c2;
 }
 function unduhAngka() {
+  if (!window.XLSX) { var _ar = arguments; return window.denganXlsx(function () { unduhAngka.apply(null, _ar); }); }
   if (!ADA) { alert('Data belum dimuat.'); return; }
   var a = angDaftar(); if (a.muat) { alert('Status penerimaan laporan fisik masih dimuat. Coba lagi sebentar.'); return; }
   var bag = [], kl = ANG.k;
@@ -1092,6 +1093,7 @@ function cetakRekap() {
   setTimeout(function () { try { w.focus(); } catch (x) { } }, 300);
 }
 function unduhRekap() {
+  if (!window.XLSX) { var _ar = arguments; return window.denganXlsx(function () { unduhRekap.apply(null, _ar); }); }
   if (!ADA) { alert('Data belum dimuat.'); return; }
   var R = rkData(), h = R.h, now = new Date();
   var s1 = R.bulanan.map(function (o) { return { Bulan: o.b, 'Balita masuk': o.sb.masuk, 'Balita total': o.sb.total, 'Lansia masuk': o.sl.masuk, 'Lansia total': o.sl.total, 'Total masuk': o.m, 'Total Posyandu': o.tot, 'Capaian (%)': persen(o.m, o.tot) }; });
@@ -1228,6 +1230,7 @@ function formPos(p) {
 /* ekspor dan impor Excel */
 var KOLOM = ['Nama Posyandu', 'Kelurahan', 'Jenis (Balita/Lansia)', 'Alamat', 'Puskesmas', 'Ketua/Penanggung Jawab', 'Nomor HP', 'Jadwal Kegiatan', 'Status (Aktif/Nonaktif)', 'Kader (pisahkan dengan titik koma; format: Nama - Jabatan)', 'Nama lama (isi hanya jika ganti nama)'];
 function ekspor() {
+  if (!window.XLSX) { var _ar = arguments; return window.denganXlsx(function () { ekspor.apply(null, _ar); }); }
   var data = dasarPos().map(function (p) {
     var o = {}; o[KOLOM[0]] = p.nama; o[KOLOM[1]] = p.kel; o[KOLOM[2]] = p.jenis.replace('Posyandu ', ''); o[KOLOM[3]] = p.alamat || ''; o[KOLOM[4]] = p.puskesmas || ''; o[KOLOM[5]] = p.ketua || ''; o[KOLOM[6]] = p.hp || ''; o[KOLOM[7]] = p.jadwal || '';
     o[KOLOM[8]] = p.aktif === false ? 'Nonaktif' : 'Aktif'; o[KOLOM[10]] = ''; o[KOLOM[9]] = (p.kader || []).map(function (k) { return k.nama + (k.jabatan ? ' - ' + k.jabatan : '') + (k.aktif === false ? ' (nonaktif)' : ''); }).join('; '); return o;
@@ -1344,7 +1347,7 @@ function rakitImpor(rows, nama, baris, nonaktifkan) {
   return { nama: nama, baris: baris, rows: rows, hasil: H, daftar: daftar, nonaktifkan: nonaktifkan, jmlBaru: jmlBaru };
 }
 function imporPratinjau(file) {
-  if (!window.XLSX) { alert('Fitur Excel belum termuat. Periksa internet lalu coba lagi.'); return; }
+  if (!window.XLSX) { var _ar = arguments; return window.denganXlsx(function () { imporPratinjau.apply(null, _ar); }); }
   var rd = new FileReader();
   rd.onload = function () {
     try {

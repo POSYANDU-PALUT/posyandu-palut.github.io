@@ -45,6 +45,10 @@ function cacheSkr() {
     removeAll: function (ks) { return c.removeAll((ks || []).map(function (k) { return P + k; })); }
   };
 }
+/** Versi simpanan sementara. Dinaikkan setiap kali berkas pengaturan atau berkas honor berubah, sehingga simpanan lama otomatis tidak terpakai lagi. */
+function verCache(n) { try { return PropertiesService.getScriptProperties().getProperty('VER_' + n + (MODE_TES ? '_TES' : '')) || '0'; } catch (x) { return '0'; } }
+function naikVer(n) { try { var lama = parseInt(verCache(n), 10) || 0; PropertiesService.getScriptProperties().setProperty('VER_' + n + (MODE_TES ? '_TES' : ''), String(Math.max(Date.now(), lama + 1))); } catch (x) {} }
+var PG_MEM = {};
 /** Waktu selesai pemeliharaan (milidetik) bila sedang menyala, selain itu 0. */
 function pemeliharaanSampai() {
   try {
@@ -113,7 +117,7 @@ function kosongkanTes(d) {
   while (it.hasNext()) it.next().setTrashed(true);
   var props = PropertiesService.getScriptProperties(), sid = props.getProperty('SHEET_ID_TES');
   if (sid) { try { DriveApp.getFileById(sid).setTrashed(true); } catch (x) {} props.deleteProperty('SHEET_ID_TES'); }
-  TES_MEM = null; props.setProperty('STAMP_TES', String(Date.now()));
+  TES_MEM = null; HFOLD_MEM = null; PG_MEM = {}; props.setProperty('STAMP_TES', String(Date.now())); props.setProperty('VER_PG_TES', String(Date.now())); props.setProperty('VER_H_TES', String(Date.now()));
   return simpanHasil({ ok: true, tes: infoTes() }, 'a');
 }
 
@@ -137,7 +141,7 @@ function doGet(e) {
   }
   else if (p.aksi === 'daftarpos') {
     // Publik (untuk aplikasi kader): nama, kelurahan, jenis, dan nama kader aktif sesuai SK. Nomor HP tidak ikut.
-    var ps = bacaPengaturan(PANTAU_USER);
+    var ps = bacaPengaturan(PANTAU_USER, true);
     hasil = { ok: true, list: bacaPos().filter(function (x) { return x.aktif !== false; })
       .map(function (x) {
         return { nama: x.nama, kel: x.kel, jenis: x.jenis,
@@ -148,7 +152,7 @@ function doGet(e) {
     if (masuk(p.u, p.p)) {
       var w0 = masuk(p.u, p.p);
       hasil = { ok: true, list: bacaPos().filter(function (x) { return w0.peran !== 'admin' || x.kel === w0.kel; }),
-                sk: bacaPengaturan(PANTAU_USER).sk, kel: w0.kel || '', fitur: ['alias'] };
+                sk: bacaPengaturan(PANTAU_USER, true).sk, kel: w0.kel || '', fitur: ['alias'] };
     } else {
       hasil = gagalLogin();
     }
@@ -343,7 +347,7 @@ function cekKonfirmasi(w, k) {
 }
 function daftarAdmin() {
   var a = bacaAdmin();
-  return Object.keys(a).sort().map(function (k) { var c = bacaPengaturan(k); return { u: k, nama: c.nama, nip: c.nip, kel: bacaKelAdmin()[k] || '', kunci: statusKunci(k) }; });
+  return Object.keys(a).sort().map(function (k) { var c = bacaPengaturan(k, true); return { u: k, nama: c.nama, nip: c.nip, kel: bacaKelAdmin()[k] || '', kunci: statusKunci(k) }; });
 }
 /** Hanya admin utama: tambah, hapus, atau ganti kata sandi admin tambahan. */
 function kelola(d) {
@@ -413,6 +417,7 @@ function kelola(d) {
     var k3 = bacaKelAdmin(); delete k3[nu]; simpanKelAdmin(k3);
     var it = induk().getFilesByName(berkasProfil(nu));
     while (it.hasNext()) it.next().setTrashed(true);
+    PG_MEM = {}; naikVer('PG');
     catatLog(w.u, 'menghapus operator ' + nu);
   } else if (d.op !== 'daftar') {
     throw new Error('Perintah tidak dikenal');
@@ -427,7 +432,7 @@ function bacaBerkas(nb) {
   return {};
 }
 /** Profil satu admin. Untuk admin utama ikut berisi pengaturan bersama: banner (maks 3), batas tanggal, SK. */
-function bacaPengaturan(u) {
+function bacaPengaturanAsli(u) {
   var o = bacaBerkas(berkasProfil(u));
   var c = { nama: o.nama ? String(o.nama) : 'Admin Posyandu', nip: String(o.nip || ''), jabatan: String(o.jabatan || ''),
             unit: String(o.unit || ''), foto: String(o.foto || '') };
@@ -444,9 +449,38 @@ function bacaPengaturan(u) {
   }
   return c;
 }
+/** Pengaturan dibaca sekali per permintaan dan disimpan sementara antar permintaan (dibuang otomatis saat ada perubahan).
+ *  ringan = true: tanpa foto profil dan banner (cukup untuk pembacaan biasa); yang menyimpan perubahan harus memakai bentuk lengkap. */
+function bacaPengaturan(u, ringan) {
+  var k = String(u || PANTAU_USER), mk = k + (ringan ? '|r' : '');
+  if (PG_MEM[mk] !== undefined) return JSON.parse(PG_MEM[mk]);
+  var cache = cacheSkr(), pre = 'pg_' + verCache('PG') + '_' + k, c = null;
+  try {
+    var v = cache.get(pre);
+    if (v) {
+      c = JSON.parse(v);
+      if (!ringan) {
+        var f = cache.get(pre + '_f'), b = [0, 1, 2].map(function (i) { return cache.get(pre + '_b' + i); });
+        if (f === null || (c.banners && b.some(function (x) { return x === null; }))) c = null;
+        else { c.foto = f.slice(1); if (c.banners) c.banners = b.map(function (x) { return x.slice(1); }); }
+      }
+    }
+  } catch (x) { c = null; }
+  if (!c) {
+    c = bacaPengaturanAsli(u);
+    var ringkas = JSON.parse(JSON.stringify(c)); ringkas.foto = ''; if (ringkas.banners) ringkas.banners = ['', '', ''];
+    try { cache.put(pre, JSON.stringify(ringkas), 21600); } catch (x) {}
+    try { cache.put(pre + '_f', 'x' + String(c.foto || ''), 21600); } catch (x) {}
+    if (c.banners) c.banners.forEach(function (bn, i) { try { cache.put(pre + '_b' + i, 'x' + String(bn || ''), 21600); } catch (x) {} });
+    if (ringan) c = ringkas;
+  }
+  PG_MEM[mk] = JSON.stringify(c);
+  return c;
+}
 function simpanPengaturan(c, u) {
   var nb = berkasProfil(u), teks = JSON.stringify(c), f = induk(), it = f.getFilesByName(nb);
   if (it.hasNext()) it.next().setContent(teks); else f.createFile(nb, teks, MimeType.PLAIN_TEXT);
+  PG_MEM = {}; naikVer('PG');
   if (!u || u === PANTAU_USER) { try { cacheSkr().removeAll(['cfg_batas', 'nm_' + PANTAU_USER]); } catch (x) {} }
 }
 function cekGambar(s, maks) {
@@ -529,6 +563,25 @@ function atur(d) {
 
 /** Untuk aplikasi pemantau (hanya setelah login): data laporan beserta angka hasil kegiatan dan nama kader. */
 function daftarLaporan(kel) {
+  // Hasil disimpan sementara (dipotong per 80 KB) dan otomatis tidak terpakai begitu ada laporan baru (penanda STAMP berubah); paling lama 5 menit.
+  var cache = cacheSkr(), pre = 'dl_' + bacaStamp() + '_' + (kel || '*');
+  try {
+    var jml = parseInt(cache.get(pre + '_n'), 10);
+    if (jml > 0) {
+      var ks = []; for (var q = 0; q < jml; q++) ks.push(cache.get(pre + '_' + q));
+      if (ks.every(function (x) { return x !== null; })) { var oc = JSON.parse(ks.join('')); oc.waktu = Date.now(); return oc; }
+    }
+  } catch (x) {}
+  var hasil = daftarLaporanAsli(kel);
+  if (hasil && hasil.ok) {
+    try {
+      var js = JSON.stringify(hasil), np = Math.ceil(js.length / 80000);
+      if (np <= 30) { for (var z = 0; z < np; z++) cache.put(pre + '_' + z, js.slice(z * 80000, (z + 1) * 80000), 300); cache.put(pre + '_n', String(np), 300); }
+    } catch (x) {}
+  }
+  return hasil;
+}
+function daftarLaporanAsli(kel) {
   try {
     var sh = lembar(), n = sh.getLastRow();
     if (n < 2) return { ok: true, data: [], waktu: Date.now() };
@@ -735,7 +788,7 @@ function bacaBerkasCepat(nb) {
 function bacaBatas() {
   var cache = cacheSkr();
   try { var v = cache.get('cfg_batas'); if (v) return parseInt(v, 10) || 25; } catch (x) {}
-  var b = bacaPengaturan(PANTAU_USER).batas;
+  var b = bacaPengaturan(PANTAU_USER, true).batas;
   try { cache.put('cfg_batas', String(b), 21600); } catch (x) {}
   return b;
 }
@@ -1097,7 +1150,7 @@ function namaOperator(w) {
   if (w.peran === 'terima') return w.nama || w.u;
   var cache = cacheSkr(), k = 'nm_' + w.u, utama = (w.u === PANTAU_USER);
   if (utama) { try { var v = cache.get(k); if (v) return v; } catch (x) {} }
-  var n = bacaPengaturan(w.u).nama || w.u;
+  var n = bacaPengaturan(w.u, true).nama || w.u;
   if (utama) { try { cache.put(k, n, 21600); } catch (x) {} }
   return n;
 }
@@ -1398,14 +1451,22 @@ var H_NAMA_LANGKAH = { dbt: 'Daftar bayar dibuat', cetak: 'Daftar bayar dicetak'
   berkas: 'Berkas pengajuan lengkap', setor: 'Berkas disetor ke DPPKAD', dana: 'Dana masuk rekening kantor', pot: 'Potongan selesai dicatat', serah: 'Daftar transfer diserahkan ke bendahara', selesai: 'Administrasi honor selesai' };
 var H_MAKS_NOM = 10000000;
 
-function folderHonor() { return anak(induk(), 'Honor'); }
+var HFOLD_MEM = null;
+function folderHonor() { if (!HFOLD_MEM) HFOLD_MEM = anak(induk(), 'Honor'); return HFOLD_MEM; }
+/** Berkas honor dibaca dari simpanan sementara bila ada (versi 'H' naik setiap ada tulis/hapus, jadi tidak pernah basi). Berkas besar (>90 KB) tetap dibaca langsung. */
 function hBaca(nb, def) {
-  try { var it = folderHonor().getFilesByName(nb); if (it.hasNext()) return JSON.parse(it.next().getBlob().getDataAsString()); } catch (x) {}
+  var cache = cacheSkr(), ck = 'hb_' + verCache('H') + '_' + nb;
+  try { var v = cache.get(ck); if (v) return JSON.parse(v); } catch (x) {}
+  try {
+    var it = folderHonor().getFilesByName(nb);
+    if (it.hasNext()) { var t = it.next().getBlob().getDataAsString(), o = JSON.parse(t); if (t.length < 90000) { try { cache.put(ck, t, 21600); } catch (x) {} } return o; }
+  } catch (x) {}
   return def;
 }
 function hTulis(nb, o) {
   var f = folderHonor(), t = JSON.stringify(o), it = f.getFilesByName(nb);
   if (it.hasNext()) it.next().setContent(t); else f.createFile(nb, t, MimeType.PLAIN_TEXT);
+  naikVer('H');
 }
 function hInt(v, def) { var n = parseInt(v, 10); return isFinite(n) ? n : def; }
 function hTeks(s, maks) { return String(s == null ? '' : s).replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maks || 120); }
@@ -1567,6 +1628,7 @@ function hHapusPer(d, w) {
   var per = hBacaPer(d.per);
   if (per.st.ttd) throw new Error('Periode yang daftar bayarnya sudah ditandatangani tidak bisa dihapus');
   var it = folderHonor().getFilesByName('honor-' + per.id + '.json'); while (it.hasNext()) it.next().setTrashed(true);
+  naikVer('H');
   hTulis('honor-indeks.json', hIndeks().filter(function (x) { return x.id !== per.id; }));
   hCatat(w, per.id, 'Periode Honor ' + per.label + ' dihapus (belum ditandatangani)', '', '');
 }
@@ -1576,6 +1638,7 @@ function hHapusPermanen(d, w) {
   if (hTeks(d.ketik, 80).toUpperCase() !== 'HAPUS ' + per.label.toUpperCase()) throw new Error('Ketik persis: HAPUS ' + per.label.toUpperCase());
   if (!hTeks(d.alasan, 200)) throw new Error('Tulis alasan penghapusan');
   var it = folderHonor().getFilesByName('honor-' + per.id + '.json'); while (it.hasNext()) it.next().setTrashed(true);
+  naikVer('H');
   hTulis('honor-indeks.json', hIndeks().filter(function (x) { return x.id !== per.id; }));
   hCatat(w, per.id, 'Periode Honor ' + per.label + ' DIHAPUS PERMANEN (alasan: ' + hTeks(d.alasan, 150) + ')', 'ada', 'dihapus');
 }
@@ -1816,7 +1879,7 @@ function hPot(d, w) {
 function honorGet(p) {
   var w = hUtama(p.u, p.p), op = String(p.op || 'muat');
   if (op === 'muat') {
-    var cfg = hCfg(), out = { ok: true, cfg: cfg, daftar: hIndeks(), rek: hRekDb(), tujuan: hBaca('honor-tujuan.json', []) || [], sk: bacaPengaturan(PANTAU_USER).sk || {} };
+    var cfg = hCfg(), out = { ok: true, cfg: cfg, daftar: hIndeks(), rek: hRekDb(), tujuan: hBaca('honor-tujuan.json', []) || [], sk: bacaPengaturan(PANTAU_USER, true).sk || {} };
     try { out.calon = hCalon(cfg); } catch (x) { out.calon = []; out.calonPesan = String(x.message || x); }
     if (p.per) { try { out.per = hBacaPer(p.per); } catch (x) { out.per = null; } }
     else if (out.daftar.length) { try { out.per = hBacaPer(out.daftar[0].id); } catch (x) { out.per = null; } }
@@ -1828,7 +1891,7 @@ function honorGet(p) {
     return { ok: true, riwayat: l.slice(0, 1000).map(function (x) { return { w: hWaktu(x.t), u: x.u, per: x.per, a: x.a, l: x.l, b: x.b }; }) };
   }
   if (op === 'sk') {
-    var s = (bacaPengaturan(PANTAU_USER).sk || {})[String(p.jenis || '')];
+    var s = (bacaPengaturan(PANTAU_USER, true).sk || {})[String(p.jenis || '')];
     if (!s || !s.id) return { ok: false, pesan: 'SK ' + p.jenis + ' belum diunggah' };
     return { ok: true, b64: Utilities.base64Encode(DriveApp.getFileById(s.id).getBlob().getBytes()) };
   }

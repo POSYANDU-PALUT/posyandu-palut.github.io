@@ -146,7 +146,7 @@ function kerangka() {
     '</nav><div class="sbf"><button class="me" type="button" data-akun>' + avatar() + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + '</small></div></button></div></aside>';
   var adaPer = (S.pg === 'b' || S.pg === 'r');
   var tb = '<header class="tb"><div class="tbt"><h1>' + e(j[0]) + '</h1>' + (j[1] ? '<p>' + e(j[1]) + '</p>' : '') + '</div><div class="sp"></div>' + (adaPer ? selPer() : '') +
-    '<button class="upd" type="button" data-muat title="Muat ulang data">' + ic('sync') + '<span>' + (jamMuat() ? 'Diperbarui ' + e(jamMuat()) : 'Muat ulang') + '</span></button>' +
+    '<button class="upd" type="button" data-muat title="Muat ulang data">' + ic('sync') + '<span>' + (jamMuat() ? 'Diperbarui ' + e(jamMuat()) : (window.TERSIMPAN_JAM ? 'Data tersimpan ' + e(window.TERSIMPAN_JAM) + (window.TERSIMPAN_MEMBARUI ? ' · memperbarui…' : '') : 'Muat ulang')) + '</span></button>' +
     '<button class="ib" type="button" data-tema aria-label="Ganti tampilan terang atau gelap">' + ic('moon') + '</button>' +
     '<button class="ib" type="button" data-bel aria-label="Laporan terbaru">' + ic('bell') + (titikBel() ? '<i class="dt"></i>' : '') + '</button></header>';
   var hj = S.pg === 'b' ? (op() ? ['Kel. ' + PX.KELSAYA, 'Operator kelurahan'] : ['Pantau Posyandu', 'Kecamatan Palu Utara']) : S.pg === 'r' ? ['Rekap', per().bl + ' ' + per().th] : [S.pg === 'h' ? 'Honor' : j[0], S.pg === 'd' ? 'Data Posyandu dan SK' : S.pg === 'h' ? 'Administrasi honor kader' : ''];
@@ -270,7 +270,13 @@ function kartuAntarCd(D) {
     '<button class="bt out" type="button" data-aksi="antar">Pilih yang diantar</button><button class="bt pri" type="button" data-aksi="antar">' + ic('file') + ' Buat lembar pengantar (PDF)</button></section>' +
     '<div class="cd antar hp"><b>' + ic('box') + ' Siap diantar ke kecamatan</b><span class="mu sm">' + siap + ' laporan · batas ' + tf + '</span><button class="bt pri wide" type="button" data-aksi="antar">Buat lembar pengantar (PDF)</button></div>';
 }
+/* Selama data laporan pertama kali dimuat (belum ada data sama sekali), tampilkan kerangka abu-abu, bukan angka 0 yang menyesatkan. */
+function menungguData() { return window.ADA === false && window.loading === true; }
+function gagalMuatKartu() { return '<div class="info w" role="alert">' + ic('alert') + '<span>' + e(window.MUAT_GAGAL) + '</span> <button class="bt ghost sm" type="button" data-muat>Coba lagi</button></div>'; }
+function kerangkaMuat() { return '<div class="skel" role="status" aria-label="Memuat data laporan"><div class="skb" style="height:88px"></div><div class="skg"><div class="skb"></div><div class="skb"></div><div class="skb"></div></div><div class="skb" style="height:280px"></div></div>'; }
 function hlmBeranda(ct) {
+  if (menungguData()) { ct.innerHTML = kerangkaMuat(); return; }
+  if (window.ADA === false && window.MUAT_GAGAL && !window.loading) { ct.innerHTML = gagalMuatKartu(); return; }
   var pr = per(), D = data(pr); PX.muatSetor(pr);
   var h = '<div class="hpper">' + selPer(true) + '</div>' + tenggat(pr) + tahap(D) + (op() ? kartuAntarCd(D) : tabelKel(D));
   if (D.h.asing.length) h += '<div class="info w">' + ic('alert') + D.h.asing.length + ' laporan memakai nama Posyandu yang belum cocok dengan Data Posyandu, sehingga tidak dihitung. ' + (utama() ? 'Periksa ejaan di menu Posyandu.' : '') + '</div>';
@@ -315,6 +321,8 @@ function laci() {
 
 /* ---------- Rekap ---------- */
 function hlmRekap(ct) {
+  if (menungguData()) { ct.innerHTML = kerangkaMuat(); return; }
+  if (window.ADA === false && window.MUAT_GAGAL && !window.loading) { ct.innerHTML = gagalMuatKartu(); return; }
   var pr = per(), D = data(pr), th = pr.th, bmax = (+th < new Date().getFullYear()) ? 11 : (+th > new Date().getFullYear() ? -1 : new Date().getMonth());
   for (var i = 0; i <= Math.min(11, bmax); i++) PX.muatSetor({ bl: BULAN[i], th: th });
   var g = '', ringkas = '';
@@ -542,7 +550,15 @@ function psWarna(c) { c.insertAdjacentHTML('beforeend', kartuWarna()); }
 function psSistem(c) {
   c.insertAdjacentHTML('beforeend', '<div id="v2pm"></div><section class="cd"><div class="hd"><div><h2>Tentang aplikasi</h2></div></div><div class="kvl"><span>Versi</span><b>v11 · tampilan baru</b></div><div class="kvl"><span>Jenis Posyandu</span><b>Balita, Lansia</b></div><div class="kvl"><span>Kelurahan</span><b>' + e(KEL.join(', ')) + '</b></div><div class="kvl"><span>Pengembang</span><b>Max Juniar Ratowo</b></div></section>');
   var pm = $('cardPm'); if (pm) { $('v2pm').appendChild(pm); pm.style.display = ''; }
-  var ts = $('cardTes'); if (ts && ts.style.display !== 'none') $('v2pm').appendChild(ts);
+  c.insertAdjacentHTML('beforeend', kartuKecepatan());
+}
+/* Catatan kecepatan: waktu nyata yang tercatat di perangkat ini (bukan perkiraan). */
+function kartuKecepatan() {
+  var L = window.perfRingkas ? perfRingkas() : [];
+  var tr = L.map(function (x) { return '<tr><td>' + e(x.n) + '</td><td class="n">' + x.j + '</td><td class="n"><b>' + (x.rata / 1000).toFixed(1).replace('.', ',') + ' dtk</b></td><td class="n">' + (x.maks / 1000).toFixed(1).replace('.', ',') + ' dtk</td><td class="n">' + (x.gagal || '-') + '</td></tr>'; }).join('');
+  return '<section class="cd"><div class="hd"><div><h2>Catatan kecepatan</h2><p class="mu sm">Lama setiap proses yang tercatat di perangkat ini (150 terakhir). Dipakai untuk membandingkan sebelum dan sesudah perbaikan.</p></div><div class="sp"></div>' +
+    '<button class="bt ghost sm" type="button" data-aksi="perfhapus">Hapus catatan</button></div>' +
+    (L.length ? '<div class="tw"><table class="tbl"><thead><tr><th>Proses</th><th class="n">Kali</th><th class="n">Rata-rata</th><th class="n">Terlama</th><th class="n">Gagal</th></tr></thead><tbody>' + tr + '</tbody></table></div>' : '<div class="kosong">Belum ada catatan.</div>') + '</section>';
 }
 function psAkun(c) {
   c.insertAdjacentHTML('beforeend', '<section class="cd prof2"><div class="prof">' + avatar('lg') + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + ' · ' + e((window.CRED && (CRED.as || CRED.u)) || '') + '</small></div></div></section><div id="v2akun"></div>' +
@@ -602,7 +618,7 @@ function render() {
   if (!aktif()) { document.body.classList.remove('v2on'); root.innerHTML = ''; return; }
   document.body.classList.add('v2on');
   if (op() && (S.pg === 'd' || S.pg === 'p' || S.pg === 'm')) S.pg = 'b';
-  if (S.pg === 'h' && (!utama() || !window.HONOR)) S.pg = 'b';
+  if (S.pg === 'h' && !utama()) S.pg = 'b';
   if (!op() && S.pg === 'a') { S.pg = 'p'; S.ps = 'a'; }
   root.className = 'pg-' + S.pg + (op() ? ' isop' : '');
   var ae = document.activeElement, fid = ae && ae.id && root.contains(ae) ? ae.id : null, ss = fid && ae.selectionStart != null ? [ae.selectionStart, ae.selectionEnd] : null;
@@ -616,7 +632,13 @@ function render() {
     else if (S.pg === 'r') hlmRekap(ct);
     else if (S.pg === 'd') hlmPosyandu(ct);
     else if (S.pg === 'p') hlmPengaturan(ct);
-    else if (S.pg === 'h') HONOR.render(ct);
+    else if (S.pg === 'h') {
+      if (window.HONOR) HONOR.render(ct);
+      else {
+        ct.innerHTML = '<div class="cd" style="padding:28px;display:flex;gap:10px;align-items:center;color:var(--mu)"><span class="spinx" aria-hidden="true"></span>Menyiapkan modul Honor…</div>';
+        window.muatHonor().then(function () { if (S.pg === 'h') render(); }, function (er) { if (S.pg === 'h') ct.innerHTML = '<div class="info w">' + ic('alert') + e(er.message) + ' <button class="bt ghost sm" type="button" data-aksi="honormuat">Coba lagi</button></div>'; });
+      }
+    }
     else if (S.pg === 'a') { ct.innerHTML = '<div class="pcol" id="v2pcol"></div>'; psAkun($('v2pcol')); }
     else if (S.pg === 'm') { if (!hp()) { S.pg = 'p'; return render(); } hlmLainnya(ct); }
   } catch (er) { ct.innerHTML = '<div class="info w">' + ic('alert') + 'Halaman gagal ditampilkan: ' + e(er.message) + '</div>'; if (window.console) console.error(er); }
@@ -632,6 +654,7 @@ function pulangkan() {
   });
 }
 function segar() { if (jadwalT) return; jadwalT = setTimeout(render, 40); }
+window.segarkanV2 = segar;
 function go(pg) {
   S.pg = pg; S.menu = null; S.laci = null;
   var lama = { b: 'b', r: 'r', d: 'd', p: 'p', a: 'p', m: 'p', h: 'b' }[pg];
@@ -736,6 +759,8 @@ function aksi(a, t) {
     case 'unduhjson':
       var blob = new Blob([JSON.stringify({ versi: 1, tanggal: new Date().toISOString(), batas: PX.BATAS, posyandu: PX.POS }, null, 1)], { type: 'application/json' }), aa = document.createElement('a');
       aa.href = URL.createObjectURL(blob); aa.download = 'cadangan-pantau-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(aa); aa.click(); setTimeout(function () { URL.revokeObjectURL(aa.href); aa.remove(); }, 1000); return;
+    case 'honormuat': render(); return;
+    case 'perfhapus': if (confirm('Hapus catatan kecepatan di perangkat ini?')) { perfHapus(); render(); } return;
     case 'log': t.disabled = true; jsonp({ aksi: 'log', u: CRED.u, p: CRED.p }).then(function (r) { if (!r || !r.ok) throw new Error((r && r.pesan) || 'Gagal memuat'); LOG = r.log || []; LOGN = 10; render(); }).catch(function (er) { alert(er.message); t.disabled = false; }); return;
     case 'logmore': LOGN += 30; var lb = $('v2log'); if (lb) lb.innerHTML = logHtml(); return;
     case 'sebagai': if (window.CRED && CRED.as) return PX.gantiAs(''); return PX.pilihOperator();

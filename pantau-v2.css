@@ -446,3 +446,19 @@ body.v2on>div.ok2{left:50%!important;right:auto!important;transform:translateX(-
 #v2 .wpv span{flex:1;min-width:110px;padding:10px 12px;border-radius:10px;font-size:12.5px;color:#fff;font-weight:550}
 #v2 .wfoot{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}
 @media (max-width:760px){#v2 .wrn{grid-template-columns:repeat(2,1fr)}}
+
+/* indikator proses kecil di tombol dan tabel catatan kecepatan */
+.spinx{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;margin-right:7px;vertical-align:-2px;animation:spinx .7s linear infinite}
+@keyframes spinx{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinx{animation-duration:2s}}
+#v2 .tbl td.n,#v2 .tbl th.n{text-align:right;white-space:nowrap}
+button[aria-busy="true"]{opacity:.8;cursor:progress}
+
+/* kerangka ringan selama data dimuat */
+#v2 .skel{display:flex;flex-direction:column;gap:16px}
+#v2 .skg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+#v2 .skg .skb{height:190px}
+#v2 .skb{border-radius:12px;background:linear-gradient(90deg,var(--line2,#eceff3) 25%,var(--line,#e2e6ec) 50%,var(--line2,#eceff3) 75%);background-size:200% 100%;animation:skx 1.3s linear infinite}
+@keyframes skx{to{background-position:-200% 0}}
+@media (max-width:760px){#v2 .skg{grid-template-columns:1fr}#v2 .skg .skb{height:120px}}
+@media (prefers-reduced-motion:reduce){#v2 .skb{animation:none}}

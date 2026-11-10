@@ -6,7 +6,7 @@
    - Pustaka dari cdnjs dan huruf Google disimpan sekali (alamatnya berversi, isinya tidak berubah).
    Server Apps Script dan versi.json tidak pernah dicegat. Halaman memberi tahu berkas apa saja yang ia pakai
    (pesan "simpan"), jadi HP hanya menyimpan berkas aplikasi yang memang dibuka di HP itu. */
-var NAMA = 'posyandu-v15';
+var NAMA = 'posyandu-v17';
 var TERIMA = ['terima.html', 'terima', 'pindah.js', 'kantor.jpg', 'jsQR.js', 'tes.js', 'logo.png', 'icon-terima-192.png', 'icon-terima-512.png', 'apple-touch-icon-terima.png'];
 var DULU_JARINGAN = ['index.html', 'pantau', 'pantau.html', 'pantau-ext.js', 'pantau-tema.css', 'pantau-modern.css', 'pantau-baru.css', 'pantau-v2.css', 'pantau-v2.js', 'pantau-honor.css', 'pantau-honor.js', 'seed-posyandu.js',
   'pembaruan.js', 'banner.jpg', 'palu.jpg', 'palu-kader.jpg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest',
@@ -59,13 +59,31 @@ self.addEventListener('fetch', function (e) {
     return;
   }
 
-  /* kader & Pantau: internet dulu; simpanan bila tidak ada sinyal atau lebih dari 7 detik belum ada jawaban */
+  /* berkas JS/CSS berversi (alamatnya memuat ?v=...): isi tidak berubah untuk alamat yang sama, jadi langsung dari simpanan di HP (tanpa menunggu sinyal);
+     versi baru = alamat baru, otomatis diambil dari internet sekali. Salinan versi lama dibuang. */
+  if (DULU_JARINGAN.indexOf(k) >= 0 && k.indexOf('pantau') === 0 && /[?&]v=/.test(u.search) && /\.(js|css)$/.test(k)) {
+    e.respondWith(caches.open(NAMA).then(function (c) {
+      return c.match(r.url).then(function (ada) {
+        if (ada) return ada;
+        return fetch(r).then(function (res) {
+          if (res && res.ok && !res.redirected) {
+            c.put(r.url, res.clone());
+            c.keys().then(function (ks) { ks.forEach(function (q) { var x = new URL(q.url); if (x.origin === u.origin && x.pathname === u.pathname && x.search !== u.search && x.search) c.delete(q); }); });
+          }
+          return res;
+        }, function (err) { return c.match(k).then(function (a) { if (a) return a; throw err; }); });
+      });
+    }));
+    return;
+  }
+
+  /* kader & Pantau: internet dulu; simpanan bila tidak ada sinyal atau lebih dari 4 detik belum ada jawaban */
   if (DULU_JARINGAN.indexOf(k) >= 0) {
     e.respondWith(caches.open(NAMA).then(function (c) {
       return new Promise(function (ok, gagal) {
         var selesai = false;
         function jawab(x) { if (!selesai) { selesai = true; ok(x); } }
-        var t = setTimeout(function () { c.match(k).then(function (a) { if (a) jawab(a); }); }, 7000);
+        var t = setTimeout(function () { c.match(k).then(function (a) { if (a) jawab(a); }); }, 4000);
         fetch(r).then(function (res) {
           clearTimeout(t);
           if (res && res.ok && !res.redirected) c.put(k, res.clone());

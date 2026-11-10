@@ -609,6 +609,7 @@ function mHapusPerm(id, label) {
 
 /* ---------- impor rekening dari Excel ---------- */
 function imporRek(file) {
+  if (!window.XLSX) { var _ar = arguments; return window.denganXlsx(function () { imporRek.apply(null, _ar); }); }
   if (!window.XLSX) { alert('Alat Excel belum termuat. Periksa internet lalu coba lagi.'); return; }
   var rd = new FileReader();
   rd.onload = function () {
@@ -645,6 +646,7 @@ function imporRek(file) {
 
 /* ---------- Excel ---------- */
 function unduhXls(nama, sheets) {
+  if (!window.XLSX) { var _ar = arguments; return window.denganXlsx(function () { unduhXls.apply(null, _ar); }); }
   if (!window.XLSX) { alert('Alat Excel belum termuat. Periksa internet lalu coba lagi.'); return; }
   var wb = XLSX.utils.book_new();
   sheets.forEach(function (s) { var ws = XLSX.utils.aoa_to_sheet(s.rows); if (s.cols) ws['!cols'] = s.cols.map(function (w) { return { wch: w }; }); XLSX.utils.book_append_sheet(wb, ws, s.nama); });
@@ -677,6 +679,7 @@ function xlsTransfer() {
   unduhXls(nmBerkas('Daftar Transfer Honor'), [{ nama: 'Daftar transfer', rows: rows, cols: [5, 16, 18, 12, 26, 18, 18, 6, 11, 10, 50, 14] }]);
 }
 function xlsRek() {
+  if (!window.XLSX) { var _ar = arguments; return window.denganXlsx(function () { xlsRek.apply(null, _ar); }); }
   var rows = [['Kunci (jangan diubah)', 'Nama', 'Posyandu / Poskesdes', 'Jenis', 'Kelurahan', 'Nama Bank', 'Nomor Rekening', 'Nama Pemilik Rekening', 'NIK']];
   daftarRek().forEach(function (r) { var x = r.x || {}; rows.push([r.k, r.nama, r.pos, r.jenis, r.kel, x.bank || '', x.no || '', x.pemilik || '', x.nik || '']); });
   if (!window.XLSX) { alert('Alat Excel belum termuat.'); return; }
@@ -868,6 +871,10 @@ function pdfPenanda(doc, L, F, judul, isi) {
   isi.forEach(function (s, i) { K.teks(s, A4[0] / 2, 480 - i * 18, { al: 'c', s: 11 }); });
 }
 function buatPdf(jenis) {
+  var t0 = performance.now(), sb = window.sibukTombol ? window.sibukTombol('Menyiapkan PDF…') : function () { };
+  return buatPdf0(jenis).then(function (r) { if (window.perfCatat) perfCatat('Susun PDF honor: ' + jenis, t0, true); sb(); return r; }, function (er) { sb(); throw er; });
+}
+function buatPdf0(jenis) {
   return pdfLib().then(function (L) {
     return L.PDFDocument.create().then(function (doc) {
       return Promise.all([doc.embedFont(L.StandardFonts.Helvetica), doc.embedFont(L.StandardFonts.HelveticaBold), doc.embedFont(L.StandardFonts.TimesRoman), doc.embedFont(L.StandardFonts.TimesRomanBold)]).then(function (f) {
