@@ -75,7 +75,56 @@ function muat(perId) {
     .catch(function (er) { H.muat = false; H.err = er.message; gambar(); });
 }
 var SIBUK = false;
+/* Tandai langkah: tampilan langsung berubah, simpan berjalan di latar (antrean berurutan). Gagal = dikembalikan ke data server terakhir. */
+var LATAR_L = { dbt: '"Daftar bayar dibuat"', cetak: '"Daftar bayar dicetak"', ttd: '"Sudah ditandatangani"', rekap: '"Rekap selesai"', kw: 'kwitansi', berkas: '"Berkas lengkap"',
+  setor: '"Sudah disetor"', dana: '"Dana masuk"', pot: '"Potongan selesai"', serah: '"Diserahkan ke bendahara"' };
+var ANTRE = [], ANTRE_JALAN = false, PER_SERVER = null;
+function adaAntre() { return ANTRE_JALAN || ANTRE.length > 0; }
+function tandaSibuk() { if (H.ct) H.ct.classList.toggle('h-tunggu', adaAntre()); }
+function terapLokal(per, f) {
+  var s = per.st = per.st || {}, l = f.l;
+  if (l === 'cetak') s.cetakN = (s.cetakN || 0) + 1;
+  if (l === 'kw' && f.kw) per.kw = f.kw;
+  if (l === 'berkas' && f.cek) per.cek = f.cek;
+  if (l === 'setor') s.setorTgl = f.tgl;
+  if (l === 'dana') { s.danaJml = f.jumlah; s.danaTgl = f.tgl; }
+  if (l === 'serah') s.serahTgl = f.tgl;
+  if (l === 'ttd') per.ulang = [];
+  s[l] = Date.now();
+}
+function kirimLatar(f) {
+  f.aksi = 'honor'; f.per = H.per.id;
+  if (!adaAntre()) PER_SERVER = JSON.parse(JSON.stringify(H.per));
+  terapLokal(H.per, f); ANTRE.push(f); tandaSibuk(); gambar();
+  jalankanAntre();
+  return Promise.resolve({ ok: true, per: H.per });
+}
+async function jalankanAntre() {
+  if (ANTRE_JALAN) return; ANTRE_JALAN = true;
+  var pt = null;
+  while (ANTRE.length) {
+    var f = ANTRE[0]; pt = window.Dlg && Dlg.simpan ? Dlg.simpan(LATAR_L[f.l]) : null;
+    try {
+      var r = await kirimAtur(f, { latar: true }); ANTRE.shift();
+      if (r.daftar && H.d) H.d.daftar = r.daftar;
+      if (r.per) PER_SERVER = r.per;
+    } catch (er) {
+      var fg = ANTRE[0]; ANTRE = []; ANTRE_JALAN = false;
+      if (H.per && PER_SERVER && H.per.id === PER_SERVER.id) { H.per = PER_SERVER; var tb = { dbt: 'db', cetak: 'db', ttd: 'db', rekap: 'rk', kw: 'kw', berkas: 'bk', setor: 'bk', dana: 'bk', pot: 'pt', serah: 'tf' }[fg.l]; if (tb && !terbuka(H.tab)) H.tab = tb; }
+      tandaSibuk(); H.rw = null; gambar();
+      var msg = 'Gagal menyimpan ' + LATAR_L[fg.l] + '. Status dikembalikan.' + (er && er.message ? ' (' + er.message + ')' : '');
+      if (pt) pt.gagal(msg, function () { if (H.per && H.per.id === fg.per) kirim(fg); }); else alert(msg);
+      return;
+    }
+  }
+  ANTRE_JALAN = false;
+  if (H.per && PER_SERVER && H.per.id === PER_SERVER.id) H.per = PER_SERVER;
+  tandaSibuk(); H.rw = null; gambar(); if (pt) pt.ok();
+}
+window.addEventListener('beforeunload', function (ev) { if (adaAntre()) { ev.preventDefault(); ev.returnValue = ''; } });
 function kirim(f, ok) {
+  if (f.op === 'langkah' && LATAR_L[f.l] && H.per && !kunci() && !SIBUK) return kirimLatar(f);
+  if (adaAntre()) return Promise.reject(new Error('Tunggu sampai perubahan sebelumnya tersimpan'));
   if (SIBUK) return Promise.reject(new Error('Masih menyimpan, tunggu sebentar'));
   SIBUK = true;
   f.aksi = 'honor'; if (H.per && !f.per && f.op !== 'buat' && f.op !== 'pengaturan' && f.op !== 'rek' && f.op !== 'rekimpor') f.per = H.per.id;

@@ -120,3 +120,6 @@
 #v2 .hn .sbx3 .ln{flex:none;width:28px;height:2px;background:var(--line)}
 #v2 .hn .sbx3 .ln.ok{background:var(--g)}
 @media (max-width:640px){#v2 .hn .sbx3{flex-direction:column;align-items:stretch;gap:10px}#v2 .hn .sbx3 .ln{display:none}}
+
+/* simpan di latar: tombol aksi honor menunggu sampai tersimpan */
+.h-tunggu [data-hx]:not([data-hx="tab"]):not([data-hx="muatulang"]){opacity:.5;pointer-events:none;cursor:progress}

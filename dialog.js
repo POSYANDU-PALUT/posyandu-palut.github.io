@@ -53,6 +53,12 @@
     '.dlgpt.on{opacity:1}.dlgpt i{display:block;height:100%;width:35%;background:var(--pri,#1f5d46);border-radius:2px;animation:dlgp 1.2s ease-in-out infinite}' +
     '.dlgpc{position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:2147481000;pointer-events:none;background:#16231c;color:#fff;border-radius:18px;padding:6px 16px;font:12.5px system-ui,-apple-system,"Segoe UI",sans-serif;opacity:0;transition:opacity .2s}' +
     '.dlgpc.on{opacity:.92}.dlgsb .dlgpt,.dlgsb .dlgpc{display:none}' +
+    '.dlgsp{position:fixed;right:24px;bottom:24px;z-index:2147481500;display:flex;align-items:center;gap:10px;max-width:min(520px,calc(100vw - 32px));box-sizing:border-box;padding:10px 16px;border-radius:999px;background:#fff;color:#2b2530;border:1px solid #e3dee6;box-shadow:0 6px 20px rgba(0,0,0,.14);font:600 13.5px system-ui,-apple-system,"Segoe UI",sans-serif;opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .18s,transform .18s}' +
+    '.dlgsp.on{opacity:1;transform:none;pointer-events:auto}.dlgsp.ok{background:#e6f4ec;color:#1f7a4d;border-color:#cfe9da}.dlgsp.er{background:#fbe9ee;color:#a3203f;border-color:#f3cdd8;border-radius:14px;flex-wrap:wrap}' +
+    '.dlgspin{flex:none;width:14px;height:14px;border-radius:50%;border:2px solid #e3dee6;border-top-color:#a8295f;animation:dlgspr .8s linear infinite}@keyframes dlgspr{to{transform:rotate(360deg)}}' +
+    '.dlgsp button{font:inherit;font-size:13px;border:0;border-radius:8px;cursor:pointer;min-height:32px}.dlgsp .dlgspb{background:#a3203f;color:#fff;padding:5px 12px}.dlgsp .dlgspx{background:transparent;color:#a3203f;padding:4px 8px}' +
+    '@media (max-width:640px){.dlgsp{right:12px;left:12px;bottom:calc(84px + env(safe-area-inset-bottom));border-radius:14px}}' +
+    '@media (prefers-color-scheme:dark){.dlgsp{background:#2a2430;color:#f2eef5;border-color:#463d4d}}' +
     '@keyframes dlgr{to{transform:rotate(360deg)}}@keyframes dlgp{0%{margin-left:-35%}100%{margin-left:100%}}' +
     '@media (prefers-reduced-motion:reduce){.dlgld .lds{animation-duration:2.4s}.dlgpt i{animation-duration:3s}}' +
     '@keyframes dlgf{from{opacity:0}to{opacity:1}}@keyframes dlgu{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}' +
@@ -240,7 +246,26 @@
     };
   }
 
+  /* Pita simpan di latar (pojok kanan bawah): Menyimpan… -> ✓ Tersimpan (hilang sendiri) / Gagal + Coba lagi. */
+  var SP = { el: null, tm: null, cur: null };
+  function simpan(label) {
+    gaya();
+    if (!SP.el) { SP.el = el('div', 'dlgsp'); SP.el.setAttribute('role', 'status'); SP.el.setAttribute('aria-live', 'polite'); document.body.appendChild(SP.el); }
+    var me = {}; SP.cur = me; clearTimeout(SP.tm);
+    SP.el.className = 'dlgsp on'; SP.el.innerHTML = ''; SP.el.appendChild(el('span', 'dlgspin')); SP.el.appendChild(el('span', null, 'Menyimpan ' + (label || '') + '…'));
+    return {
+      ok: function () { if (SP.cur !== me) return; SP.el.className = 'dlgsp on ok'; SP.el.textContent = '✓ Tersimpan'; SP.tm = setTimeout(function () { if (SP.cur === me) SP.el.className = 'dlgsp ok'; }, 2000); },
+      gagal: function (msg, coba) {
+        SP.cur = me; clearTimeout(SP.tm); SP.el.className = 'dlgsp on er'; SP.el.innerHTML = ''; SP.el.setAttribute('role', 'alert');
+        SP.el.appendChild(el('span', null, msg));
+        if (coba) { var b = el('button', 'dlgspb', 'Coba lagi'); b.type = 'button'; b.onclick = function () { SP.el.className = 'dlgsp'; coba(); }; SP.el.appendChild(b); }
+        var x = el('button', 'dlgspx', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'Tutup pesan'); x.onclick = function () { SP.el.className = 'dlgsp'; }; SP.el.appendChild(x);
+      }
+    };
+  }
+
   window.Dlg = {
+    simpan: simpan,
     tanya: function (msg, o) {
       o = o || {}; var t = o.judul ? { judul: o.judul, isi: String(msg || '') } : pecah(msg);
       var bhy = o.bahaya != null ? !!o.bahaya : bahayaOtomatis(String(msg || ''));

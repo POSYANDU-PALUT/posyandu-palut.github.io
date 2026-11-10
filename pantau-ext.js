@@ -409,10 +409,13 @@ function simpanSetor(pr, ids, tgl) {
   var k = perKey(pr), m = SETOR[k] = SETOR[k] || {};
   ids.forEach(function (id) { if (tgl) m[id] = tgl; else delete m[id]; });
   renderBeranda(); SETOR_BUSY++;
-  kirimAtur({ aksi: 'setor', per: k, ids: ids, tgl: tgl }).then(function () {
-    SETOR_BUSY--; if (!SETOR_BUSY) toast(tgl ? 'Penyerahan laporan dicatat.' : 'Catatan penyerahan dibatalkan.');
+  var lb = (tgl ? '"Fisik diterima"' : 'pembatalan "Fisik diterima"') + (ids.length > 1 ? ' (' + ids.length + ' Posyandu)' : ''), pt = window.Dlg && Dlg.simpan ? Dlg.simpan(lb) : null;
+  kirimAtur({ aksi: 'setor', per: k, ids: ids, tgl: tgl }, { latar: true }).then(function () {
+    SETOR_BUSY--; if (pt) pt.ok(); else if (!SETOR_BUSY) toast(tgl ? 'Penyerahan laporan dicatat.' : 'Catatan penyerahan dibatalkan.');
   }).catch(function (er) {
-    SETOR_BUSY--; toast(er.message || 'Gagal menyimpan'); SETOR_T[k] = 0; if (!SETOR_BUSY) muatSetor(pr, true);
+    SETOR_BUSY--; SETOR_T[k] = 0; if (!SETOR_BUSY) muatSetor(pr, true);
+    if (pt) pt.gagal('Gagal menyimpan ' + lb + '. Status dikembalikan. ' + (er.message || ''), function () { simpanSetor(pr, ids, tgl); });
+    else toast(er.message || 'Gagal menyimpan');
   });
 }
 var SETOR_TAB = 'semua', SETOR_Q = '', SETOR_KELF = '', SETOR_JNS = '', SETOR_PIL = {}, SETOR_HAL = 1;
