@@ -11,9 +11,9 @@ var KELURAHAN   = ['Kayumalue Ngapa','Kayumalue Pajeko','Mamboro','Mamboro Barat
 var JENIS       = ['Posyandu Balita','Posyandu Lansia'];
 var BULAN       = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 var HEADER      = ['Nomor Laporan','Tanggal Kirim','Tahun','Bulan','Kelurahan','Posyandu','Jenis','Tanggal Kegiatan','Nama Kader','Versi','Nama File','Link File','Hasil Kegiatan','Status PDF','Kode QR'];
-// Login aplikasi Pantau. GANTI kedua nilai ini di Apps Script Anda sebelum diterapkan.
+// Login aplikasi Pantau. Kata sandi TIDAK ditulis di kode ini (kode ini publik di GitHub). Sandi disimpan sebagai hash
+// di Script Properties (PANTAU_SANDI_HASH), diatur dari menu Pengaturan di Pantau atau lewat fungsi periksaSandiAdmin().
 var PANTAU_USER = 'admin';
-var PANTAU_SANDI = 'GantiSandi2026';
 var NAMA_PENGATURAN = 'pengaturan-pantau.json';
 var ID_RE       = /^[A-Za-z0-9]{6,40}$/;
 
@@ -349,7 +349,7 @@ function doGet(e) {
   return ContentService.createTextOutput(teks).setMimeType(ContentService.MimeType.JSON);
 }
 
-/** Login Pantau: kata sandi awal dari PANTAU_SANDI, setelah diganti dari aplikasi disimpan sebagai hash. */
+/** Login Pantau: hanya cocok dengan hash yang tersimpan. Bila belum ada hash sama sekali, login ditolak (jalankan periksaSandiAdmin sekali). */
 function hashSandi(t) {
   var b = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'pantau|' + String(t), Utilities.Charset.UTF_8);
   return b.map(function (x) { return ('0' + (x & 255).toString(16)).slice(-2); }).join('');
@@ -357,7 +357,18 @@ function hashSandi(t) {
 function sandiBenar(u, p) {
   if (String(u || '') !== PANTAU_USER) return false;
   var h = PropertiesService.getScriptProperties().getProperty('PANTAU_SANDI_HASH');
-  return h ? hashSandi(p) === h : String(p || '') === PANTAU_SANDI;
+  return h ? hashSandi(p) === h : false;
+}
+/** Jalankan dari editor Apps Script. Bila sandi admin sudah diganti: hanya melapor. Bila belum: membuat sandi sementara acak,
+ *  menyimpannya sebagai hash, dan menampilkannya SEKALI di Log eksekusi (ganti segera lewat Pantau > Pengaturan). */
+function periksaSandiAdmin() {
+  var sp = PropertiesService.getScriptProperties();
+  if (sp.getProperty('PANTAU_SANDI_HASH')) { Logger.log('AMAN: sandi admin sudah diganti dan tersimpan sebagai hash. Tidak ada yang diubah.'); return 'aman'; }
+  var huruf = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', t = '';
+  for (var i = 0; i < 12; i++) t += huruf.charAt(Math.floor(Math.random() * huruf.length));
+  sp.setProperty('PANTAU_SANDI_HASH', hashSandi(t));
+  Logger.log('Sandi admin BELUM pernah diganti. Sandi sementara dibuat. Masuk ke Pantau dengan pengguna "admin" dan sandi: ' + t + '  (segera ganti di Pantau > Pengaturan; sandi ini tidak disimpan di mana pun).');
+  return 'sementara';
 }
 /** Admin tambahan (maksimal 5): nama pengguna dan hash kata sandi di Script Properties. */
 var MAKS_ADMIN = 5;
@@ -1475,7 +1486,7 @@ function hapusNama(f, nama) { var it = f.getFilesByName(nama); while (it.hasNext
 function buatCadangan(oleh) {
   var f = folderCadangan(), kode = kodeTgl(), nama = 'cadangan-data-' + kode + '.json';
   var ops = Object.keys(bacaAdmin()).sort().map(function (u) { return { u: u, kel: bacaKelAdmin()[u] || '', profil: bacaBerkas(berkasProfil(u)) }; });
-  var isi = JSON.stringify({ versi: 1, tgl: new Date().toISOString(), oleh: String(oleh || ''), posyandu: bacaPos(), pengaturan: bacaBerkas(NAMA_PENGATURAN), operator: ops, setoran: bacaSetor(), log: bacaLog() });
+  var isi = JSON.stringify({ versi: 2, tgl: new Date().toISOString(), oleh: String(oleh || ''), posyandu: bacaPos(), pengaturan: bacaBerkas(NAMA_PENGATURAN), operator: ops, setoran: bacaSetor(), log: bacaLog(), honor: bacaSemuaHonor() });
   hapusNama(f, nama);
   f.createFile(nama, isi, MimeType.PLAIN_TEXT);
   var sid = PropertiesService.getScriptProperties().getProperty(MODE_TES ? 'SHEET_ID_TES' : 'SHEET_ID'), ns = 'cadangan-rekap-' + kode;
@@ -1487,6 +1498,38 @@ function buatCadangan(oleh) {
     arr.slice(SIMPAN_CADANGAN).forEach(function (x) { x.setTrashed(true); });
   });
   return nama;
+}
+/** Semua berkas folder Honor (pengaturan, indeks, tiap periode, rekening, tujuan, riwayat) dibaca langsung dari Drive: { 'honor-2026-10.json': {...}, ... }. */
+function bacaSemuaHonor() {
+  var out = {}, it = folderHonor().getFiles();
+  while (it.hasNext()) {
+    var x = it.next(), n = x.getName();
+    if (!/\.json$/.test(n)) continue;
+    try { out[n] = JSON.parse(x.getBlob().getDataAsString()); } catch (e) { out[n] = { _rusak: true, teks: x.getBlob().getDataAsString() }; }
+  }
+  return out;
+}
+/** Jalankan dari editor Apps Script bila berkas honor hilang atau rusak: mengembalikan semua berkas honor dari cadangan terbaru yang memuatnya.
+ *  Keadaan sekarang dicadangkan dulu. Argumen (opsional): tanggal cadangan 'yyyy-MM-dd'. */
+function pulihkanHonor(tgl) {
+  var daftar = daftarCadangan(), pilih = null;
+  for (var i = 0; i < daftar.length && !pilih; i++) {
+    if (tgl && daftar[i].tgl !== tgl) continue;
+    try { var o = JSON.parse(DriveApp.getFileById(daftar[i].id).getBlob().getDataAsString()); if (o.honor && Object.keys(o.honor).length) pilih = { d: daftar[i], honor: o.honor }; } catch (e) {}
+  }
+  if (!pilih) { Logger.log('Tidak ada cadangan yang memuat data honor. Jalankan cadangSekarang dari Pantau dulu.'); return 'tidak ada'; }
+  // Cadangan satu hari memakai satu nama berkas; jangan menimpa cadangan baik hari ini dengan keadaan yang rusak.
+  if (pilih.d.tgl !== kodeTgl()) buatCadangan('sebelum pemulihan honor');
+  var n = 0;
+  Object.keys(pilih.honor).forEach(function (nb) {
+    var v = pilih.honor[nb]; if (v && v._rusak) return;
+    tulisDrive('H', nb, JSON.stringify(v)); n++;
+  });
+  naikVer('H');
+  buatCadangan('sesudah pemulihan honor');
+  catatLog('sistem', 'memulihkan ' + n + ' berkas honor dari cadangan ' + pilih.d.tgl);
+  Logger.log('Selesai: ' + n + ' berkas honor dipulihkan dari cadangan ' + pilih.d.tgl);
+  return n;
 }
 function daftarCadangan() {
   var f = folderCadangan(), it = f.getFiles(), out = [];

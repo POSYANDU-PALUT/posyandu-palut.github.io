@@ -284,6 +284,9 @@ body.tm .sheet h3:only-of-type+.sub:last-child::after{content:"";display:block;w
   body.tm #vB .vtap{align-self:start}
 }
 body.tm .filt .fld select{font-size:14px;padding-left:12px;padding-right:30px!important;background-position:right 10px center}
+.toast{pointer-events:none}
+/* pita simpan di latar: di HP ditaruh di atas supaya tidak menutup tombol lembar */
+@media (max-width:640px){body .dlgsp{bottom:auto;top:calc(10px + env(safe-area-inset-top))}}
 </style>
 </head>
 <body class="tm">
@@ -305,7 +308,7 @@ body.tm .filt .fld select{font-size:14px;padding-left:12px;padding-right:30px!im
     <div class="fld"><label for="lp">Kata sandi</label><input id="lp" type="password" autocomplete="current-password"></div>
     <div class="err" id="lerr" role="alert"></div>
     <button class="btn" id="lb" type="submit">Masuk</button>
-    <div data-ver class="vtap">Terima Posyandu · tampilan 20261110d</div>
+    <div data-ver class="vtap">Terima Posyandu · tampilan 20261111h</div>
   </form>
 </section>
 
@@ -330,7 +333,7 @@ body.tm .filt .fld select{font-size:14px;padding-left:12px;padding-right:30px!im
       <button class="btn scan" id="scan" type="button"><svg class="ic"><use href="#i-scan"/></svg>SCAN QR LAPORAN</button>
       <h2>Riwayat penerimaan</h2>
       <div class="list" id="riw"></div>
-      <div data-ver class="vtap" style="margin-bottom:90px">Terima Posyandu · tampilan 20261110d</div>
+      <div data-ver class="vtap" style="margin-bottom:90px">Terima Posyandu · tampilan 20261111h</div>
     </section>
 
     <section id="vR" class="hidden">
@@ -466,10 +469,27 @@ function tandai(per,arr){
   var r=REK[per];if(!r)return;
   arr.forEach(function(a){
     r.list.forEach(function(x){if(x.pid===a.pid)x.terima=a.terima});
-    if(!r.riwayat.some(function(y){return y.pos===a.pos&&y.kel===a.kel&&y.jenis===a.jenis&&y.per===per}))r.riwayat.unshift({pos:a.pos,kel:a.kel,jenis:a.jenis,per:per,tgl:a.terima.tgl,jam:a.terima.jam,oleh:a.terima.oleh});
+    var ada=r.riwayat.filter(function(y){return y.pos===a.pos&&y.kel===a.kel&&y.jenis===a.jenis&&y.per===per})[0];
+    if(ada){ada.tgl=a.terima.tgl;ada.jam=a.terima.jam;ada.oleh=a.terima.oleh}
+    else r.riwayat.unshift({pos:a.pos,kel:a.kel,jenis:a.jenis,per:per,tgl:a.terima.tgl,jam:a.terima.jam,oleh:a.terima.oleh});
   });
   try{tampilBeranda();tampilRekap()}catch(e){}
 }
+/* Tanda sementara dibatalkan (penyimpanan di latar gagal): kembali seperti sebelum dikonfirmasi. */
+function urungTandai(per,arr){
+  var r=REK[per];if(!r)return;
+  arr.forEach(function(a){
+    r.list.forEach(function(x){if(x.pid===a.pid)delete x.terima});
+    r.riwayat=r.riwayat.filter(function(y){return !(y.pos===a.pos&&y.kel===a.kel&&y.jenis===a.jenis&&y.per===per)});
+  });
+  try{tampilBeranda();tampilRekap()}catch(e){}
+}
+/* Penyimpanan di latar: tampilan langsung berubah, server menyimpan sesudahnya. Selama ada yang belum tersimpan, menutup halaman diberi peringatan. */
+var TUNDA=0,SHEET_REF=null;
+window.addEventListener('beforeunload',function(e){if(TUNDA>0){e.preventDefault();e.returnValue=''}});
+function sekarangLokal(){var d=new Date(),p=function(n){return('0'+n).slice(-2)};return{tgl:d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()),jam:p(d.getHours())+':'+p(d.getMinutes())}}
+function pitaSimpan(l){return window.Dlg&&Dlg.simpan?Dlg.simpan(l):null}
+function pitaGagal(pt,msg,coba){if(pt)pt.gagal(msg,coba);else toast(msg)}
 function ringkas(r){var t=r.list.length,s=r.list.filter(function(x){return x.terima}).length;return{t:t,s:s,b:t-s}}
 function tampilBeranda(){
   var r=REK[PER];if(!r)return;var g=ringkas(r);
@@ -529,11 +549,12 @@ function kv(rows){var k=el('div','kv');rows.forEach(function(r){var d=el('div');
 function tombol(txt,cls,fn){var b=el('button','btn'+(cls?' '+cls:''),txt);b.type='button';b.addEventListener('click',function(){fn(b)});return b}
 function muatTombol(b,t){b.disabled=true;b.textContent='';var s=el('span','spin');b.appendChild(s);b.appendChild(document.createTextNode(' '+t))}
 function infoTerima(t){return 'Sudah tercatat diterima pada '+tglId(t.tgl)+(t.jam?' pukul '+t.jam:'')+(t.oleh?' oleh '+t.oleh:'')+(t.via==='manual'?' (dicatat manual oleh admin kecamatan)':'')+'.'}
-function lembarLaporan(lap,hasil){
+function lembarLaporan(lap,hasil,sem,galat){
+  SHEET_REF=lap;
   var d=el('div'),ada=!!lap.terima;
   if(hasil==='baru'){d.appendChild(el('div','okmark','\u2713'));d.className='okc'}
-  d.appendChild(el('h3',null,hasil==='baru'?'Laporan berhasil diterima':'Detail laporan'));
-  d.appendChild(el('div','sub',hasil==='baru'?'Penerimaan sudah tersimpan di database.':'Periksa dokumen fisik, lalu konfirmasi.'));
+  d.appendChild(el('h3',null,hasil==='baru'?(sem?'Laporan diterima':'Laporan berhasil diterima'):'Detail laporan'));
+  d.appendChild(el('div','sub',hasil==='baru'?(sem?'Sedang disimpan ke database. Jangan tutup halaman sampai muncul "Tersimpan".':'Penerimaan sudah tersimpan di database.'):'Periksa dokumen fisik, lalu konfirmasi.'));
   d.appendChild(kv([['Posyandu',lap.pos],['Nama kader',lap.kader||'-'],['Kelurahan',lap.kel],['Jenis',lap.jenis.replace('Posyandu ','')],['Bulan laporan',lap.bln+' '+lap.thn],['Nomor',lap.nomor+(lap.versi>1?' (versi '+lap.versi+')':'')]]));
   if(lap.versiTerbaru>lap.versi)d.appendChild(el('div','note w','Ada versi laporan yang lebih baru (versi '+lap.versiTerbaru+'). Pastikan dokumen yang diserahkan adalah yang terbaru.'));
   if(!lap.pid)d.appendChild(el('div','note b','Posyandu ini tidak ada di Data Posyandu, jadi penerimaan belum bisa dicatat. Hubungi admin kecamatan.'));
@@ -541,20 +562,33 @@ function lembarLaporan(lap,hasil){
   if(ada){
     d.appendChild(el('div','note ok',hasil==='baru'?infoTerima(lap.terima):infoTerima(lap.terima)+' Tidak dicatat ganda.'));
     if(hasil==='baru')a.appendChild(tombol('Scan laporan berikutnya','',function(){tutupSheet();bukaKamera()}));
-    a.appendChild(tombol('Koreksi: batalkan penerimaan','bad',function(){koreksi(lap.per,lap.pid,lap.pos)}));
+    if(!sem)a.appendChild(tombol('Koreksi: batalkan penerimaan','bad',function(){koreksi(lap.per,lap.pid,lap.pos)}));
     a.appendChild(tombol('Tutup','line',tutupSheet));
   }else{
-    if(lap.pid)a.appendChild(tombol('KONFIRMASI DITERIMA','',function(b){
-      muatTombol(b,'Menyimpan…');
-      tulis('tterima','terima',{k:lap.kode},function(r){return !!r.lap}).then(function(r){
-        if(r.lap&&r.lap.terima)tandai(r.lap.per||PER,[{pid:r.lap.pid,pos:r.lap.pos,kel:r.lap.kel,jenis:r.lap.jenis,terima:r.lap.terima}]);muatRekap(PER);
-        if(r.sudah){lembarLaporan(r.lap,'sudah');toast('Laporan ini sudah pernah diterima')}
-        else lembarLaporan(r.lap,'baru');
-      }).catch(function(e){b.disabled=false;b.textContent='KONFIRMASI DITERIMA';d.insertBefore(el('div','note b',e.message||'Gagal menyimpan'),a)});
-    }));
+    if(lap.pid)a.appendChild(tombol('KONFIRMASI DITERIMA','',function(b){konfirmasiSatu(lap)}));
     a.appendChild(tombol('Batal','line',tutupSheet));
   }
+  if(galat)d.appendChild(el('div','note b',galat));
   d.appendChild(a);sheet(d);
+}
+function konfirmasiSatu(lap){
+  var w=sekarangLokal(),tmp={};for(var k in lap)tmp[k]=lap[k];tmp.terima={tgl:w.tgl,jam:w.jam,oleh:NAMA};
+  var per=lap.per||PER,sem=[{pid:lap.pid,pos:lap.pos,kel:lap.kel,jenis:lap.jenis,terima:tmp.terima}],pt=pitaSimpan('penerimaan '+lap.pos);
+  tandai(per,sem);lembarLaporan(tmp,'baru',true);TUNDA++;
+  tulis('tterima','terima',{k:lap.kode},function(r){return !!r.lap}).then(function(r){
+    TUNDA--;if(pt)pt.ok();
+    if(r.lap&&r.lap.terima)tandai(r.lap.per||per,[{pid:r.lap.pid,pos:r.lap.pos,kel:r.lap.kel,jenis:r.lap.jenis,terima:r.lap.terima}]);
+    muatRekap(PER);
+    if(SHEET_REF===tmp){
+      if(r.sudah){lembarLaporan(r.lap,'sudah');toast('Laporan ini sudah pernah diterima')}
+      else lembarLaporan(r.lap,'baru');
+    }else if(r.sudah)toast('Laporan '+lap.pos+' sudah pernah diterima sebelumnya');
+  }).catch(function(e){
+    TUNDA--;urungTandai(per,sem);
+    var msg='Gagal menyimpan penerimaan '+lap.pos+(e&&e.message?': '+e.message:'');
+    pitaGagal(pt,msg,function(){konfirmasiSatu(lap)});
+    if(SHEET_REF===tmp)lembarLaporan(lap,'cek',false,msg);
+  });
 }
 /* ---------- lembar pengantar dari kelurahan: satu kode untuk semua laporan di dalamnya ---------- */
 function ketLembar(it){
@@ -572,11 +606,12 @@ function bukaLembar(k){
     tampilLembar(r.lembar,k,'cek');
   }).catch(function(e){var n=el('div');n.appendChild(el('h3',null,'Belum berhasil'));n.appendChild(el('div','note b',e.message||'Gagal memeriksa lembar'));var a=el('div','acts');a.appendChild(tombol('Tutup','line',tutupSheet));n.appendChild(a);sheet(n)});
 }
-function tampilLembar(lm,k,hasil,info){
+function tampilLembar(lm,k,hasil,info,sem,galat){
+  SHEET_REF=lm;
   var d=el('div'),a=el('div','acts'),cek={};
   if(hasil==='baru'){d.appendChild(el('div','okmark','\u2713'));d.className='okc'}
   d.appendChild(el('h3',null,hasil==='baru'?'Lembar pengantar diterima':'Lembar pengantar'));
-  d.appendChild(el('div','sub',hasil==='baru'?'Penerimaan sudah tersimpan di database.':'Cocokkan dengan laporan fisik yang diantar, lalu konfirmasi.'));
+  d.appendChild(el('div','sub',hasil==='baru'?(sem?'Sedang disimpan ke database. Jangan tutup halaman sampai muncul "Tersimpan".':'Penerimaan sudah tersimpan di database.'):'Cocokkan dengan laporan fisik yang diantar, lalu konfirmasi.'));
   var sm=el('div','lmsum');sm.appendChild(el('b',null,lm.kel+' · '+lm.bln+' '+lm.thn));sm.appendChild(document.createTextNode(lm.items.length+' laporan diantar, dibuat '+tglId(lm.tgl)+' pukul '+lm.jam+' oleh '+(lm.oleh||'-')));d.appendChild(sm);
   if(lm.ganti)d.appendChild(el('div','note b','Lembar ini sudah diganti dengan lembar yang lebih baru. Minta pihak kelurahan menyerahkan lembar yang terbaru.'));
   var box=el('div','lmbox'),siap=0;
@@ -591,18 +626,14 @@ function tampilLembar(lm,k,hasil,info){
   if(info&&info.lewati&&info.lewati.length)d.appendChild(el('div','note w','Tidak dicatat: '+info.lewati.join('; ')+'.'));
   if(hasil==='baru'){
     var tg=lm.items.filter(function(x){return x.terima})[0];
-    d.appendChild(el('div','note ok',(info&&info.baru?info.baru+' laporan tercatat diterima':'Laporan pada lembar ini sudah tercatat')+(tg?' pada '+tglId(tg.terima.tgl)+(tg.terima.jam?' pukul '+tg.terima.jam:''):'')+'. Isi tanggal diterima dan tanda tangan di lembar pengantar.'));
+    d.appendChild(el('div','note ok',(info&&info.baru?info.baru+' laporan tercatat diterima':'Laporan pada lembar ini sudah tercatat')+(tg?' pada '+tglId(tg.terima.tgl)+(tg.terima.jam?' pukul '+tg.terima.jam:''):'')+(sem?' (sedang disimpan)':'')+'. Isi tanggal diterima dan tanda tangan di lembar pengantar.'));
     a.appendChild(tombol('Scan berikutnya','',function(){tutupSheet();bukaKamera()}));
     a.appendChild(tombol('Tutup','line',tutupSheet));
   }else if(siap){
     var tb=tombol('KONFIRMASI DITERIMA ('+siap+' laporan)','',function(b){
       var ids=Object.keys(cek).filter(function(x){return cek[x].checked&&!cek[x].disabled});
       if(!ids.length){toast('Centang minimal satu laporan');return}
-      muatTombol(b,'Menyimpan…');
-      api('tlterima',{k:k,ids:ids.join(',')}).then(function(r){
-        if(!r||r.ok!==true)throw new Error((r&&r.pesan)||'Gagal menyimpan');
-        (function(){var lm=r.lembar,pr=lm.thn+'-'+('0'+(BULAN.indexOf(lm.bln)+1)).slice(-2);tandai(REK[pr]?pr:PER,lm.items.filter(function(it){return it.terima}).map(function(it){return{pid:it.pid,pos:it.nama,kel:lm.kel,jenis:it.jenis,terima:it.terima}}))})();muatRekap(PER);tampilLembar(r.lembar,k,'baru',r);
-      }).catch(function(e){b.disabled=false;b.textContent='KONFIRMASI DITERIMA ('+siap+' laporan)';d.insertBefore(el('div','note b',e.message||'Gagal menyimpan'),a)});
+      konfirmasiLembar(lm,k,ids);
     });
     a.appendChild(tb);
     var upd=function(){var n=Object.keys(cek).filter(function(x){return cek[x].checked&&!cek[x].disabled}).length;if(!tb.disabled)tb.textContent='KONFIRMASI DITERIMA ('+n+' laporan)'};
@@ -615,7 +646,29 @@ function tampilLembar(lm,k,hasil,info){
     if(!lm.ganti)d.appendChild(el('div','note ok','Semua laporan pada lembar ini sudah tercatat diterima.'));
     a.appendChild(tombol('Tutup','line',tutupSheet));
   }
+  if(galat)d.appendChild(el('div','note b',galat));
   d.appendChild(a);sheet(d);
+}
+function konfirmasiLembar(lm,k,ids){
+  var w=sekarangLokal(),tmp={},pr=lm.thn+'-'+('0'+(BULAN.indexOf(lm.bln)+1)).slice(-2),per=REK[pr]?pr:PER;
+  for(var q in lm)tmp[q]=lm[q];
+  tmp.items=lm.items.map(function(it){var c={};for(var q in it)c[q]=it[q];if(ids.indexOf(it.pid)>=0)c.terima={tgl:w.tgl,jam:w.jam,oleh:NAMA};return c});
+  var sem=tmp.items.filter(function(it){return ids.indexOf(it.pid)>=0}).map(function(it){return{pid:it.pid,pos:it.nama,kel:lm.kel,jenis:it.jenis,terima:it.terima}});
+  var pt=pitaSimpan(ids.length+' penerimaan');
+  tandai(per,sem);tampilLembar(tmp,k,'baru',{baru:ids.length},true);TUNDA++;
+  api('tlterima',{k:k,ids:ids.join(',')}).then(function(r){
+    if(!r||r.ok!==true)throw new Error((r&&r.pesan)||'Gagal menyimpan');
+    TUNDA--;if(pt)pt.ok();
+    var l2=r.lembar,p2=l2.thn+'-'+('0'+(BULAN.indexOf(l2.bln)+1)).slice(-2);
+    tandai(REK[p2]?p2:PER,l2.items.filter(function(it){return it.terima}).map(function(it){return{pid:it.pid,pos:it.nama,kel:l2.kel,jenis:it.jenis,terima:it.terima}}));
+    muatRekap(PER);
+    if(SHEET_REF===tmp)tampilLembar(r.lembar,k,'baru',r);
+  }).catch(function(e){
+    TUNDA--;urungTandai(per,sem);
+    var msg='Gagal menyimpan penerimaan lembar'+(e&&e.message?': '+e.message:'');
+    pitaGagal(pt,msg,function(){konfirmasiLembar(lm,k,ids)});
+    if(SHEET_REF===tmp)tampilLembar(lm,k,'cek',null,false,msg);
+  });
 }
 function bukaBaris(x,per){
   var d=el('div');d.appendChild(el('h3',null,x.nama));d.appendChild(el('div','sub',x.kel+' · '+x.jenis.replace('Posyandu ','')+' · '+perNama(per)));
@@ -624,14 +677,19 @@ function bukaBaris(x,per){
   else d.appendChild(el('div','note w',(x.dibuat?'Laporan digital sudah dibuat, tetapi laporan fisik belum diterima.':'Laporan digital belum dibuat.')+' Penerimaan dicatat dengan memindai QR di halaman terakhir laporan.'));
   a.appendChild(tombol('Tutup','line',tutupSheet));d.appendChild(a);sheet(d);
 }
+function koreksiKirim(per,pid,nama,alasan){
+  var pt=pitaSimpan('pembatalan '+nama);TUNDA++;
+  tulis('tbatal','terimabatal',{per:per,pid:pid,alasan:alasan},function(r){return r.per===per}).then(function(){
+    TUNDA--;if(pt)pt.ok();toast('Penerimaan dibatalkan');REK={};muatRekap(PER);
+  }).catch(function(e){TUNDA--;pitaGagal(pt,'Gagal membatalkan '+nama+(e&&e.message?': '+e.message:''),function(){koreksiKirim(per,pid,nama,alasan)})});
+}
 function koreksi(per,pid,nama){
   var d=el('div');d.appendChild(el('h3',null,'Koreksi penerimaan'));d.appendChild(el('div','sub',nama+' · '+perNama(per)+'. Penerimaan akan dibatalkan dan tercatat di riwayat perubahan.'));
   var f=el('div','fld'),l=el('label',null,'Alasan koreksi'),i=el('input');i.type='text';i.maxLength=120;i.placeholder='Contoh: salah scan laporan';f.appendChild(l);f.appendChild(i);d.appendChild(f);
   var er=el('div','err');d.appendChild(er);var a=el('div','acts');
   a.appendChild(tombol('Batalkan penerimaan','bad',function(b){
     if(i.value.trim().length<3){er.textContent='Tulis alasan koreksi';return}
-    muatTombol(b,'Menyimpan…');
-    tulis('tbatal','terimabatal',{per:per,pid:pid,alasan:i.value.trim()},function(r){return r.per===per}).then(function(){tutupSheet();toast('Penerimaan dibatalkan');REK={};muatRekap(PER)}).catch(function(e){b.disabled=false;b.textContent='Batalkan penerimaan';er.textContent=e.message||'Gagal menyimpan'});
+    tutupSheet();koreksiKirim(per,pid,nama,i.value.trim());
   }));
   a.appendChild(tombol('Kembali','line',tutupSheet));d.appendChild(a);sheet(d);
 }
@@ -733,7 +791,7 @@ $('lt').addEventListener('input',function(){
   try{var s=localStorage.getItem(KUNCI_LS);if(s){CRED=JSON.parse(s);if(CRED&&CRED.u&&CRED.p){$('login').classList.add('hidden');$('app').classList.remove('hidden');mulai();return}CRED=null}}catch(e){CRED=null}
 })();
 </script>
-<script>if(window.PB)PB.mulai({app:'terima',v:'20261110d'});</script>
+<script>if(window.PB)PB.mulai({app:'terima',v:'20261111h'});</script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',function(){try{navigator.serviceWorker.register('sw-terima.js').then(function(){return navigator.serviceWorker.ready}).then(function(g){var l=[location.href,'terima.html','terima','pindah.js','kantor.jpg','jsQR.js','tes.js','logo.png','pembaruan.js','terima.webmanifest','icon-terima-192.png','icon-terima-512.png','apple-touch-icon-terima.png'];try{performance.getEntriesByType('resource').forEach(function(x){l.push(x.name)})}catch(e){}if(g.active)g.active.postMessage({simpan:l})}).catch(function(){})}catch(e){}})</script>
 </body>
 </html>

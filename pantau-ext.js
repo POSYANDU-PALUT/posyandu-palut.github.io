@@ -1806,11 +1806,19 @@ window.terimaProfil = function (r) {
   bangunBanner(); renderBeranda();
 };
 window.pasangExt = function () { pasangSetelan(); };
+/* Daftar Posyandu diminta bersamaan dengan data laporan (tidak menunggu satu per satu). Bila datanya tiba lebih dulu, tampilan baru digambar
+   setelah data laporan ada (POS_SIAP); bila tiba belakangan, langsung digambar. */
+var POS_JALAN = false, POS_SIAP = false;
+function gambarPos() { POS_SIAP = false; renderData(); renderBeranda(); renderRekap(); }
 window.ambilPos = function () {
   if (!CRED) return;
+  if (POSOK && POS_SIAP) { if (ADA) gambarPos(); return; }
+  if (POSOK || POS_JALAN) return;
+  POS_JALAN = true;
   jsonp({ aksi: 'posyandu', u: CRED.u, p: CRED.p }).then(function (r) {
-    if (r && r.ok) { POS = r.list || []; SK = r.sk || SK; SERVER_ALIAS = !!(r.fitur && r.fitur.indexOf('alias') >= 0); POSOK = true; POSDIMUAT = true; renderData(); renderBeranda(); renderRekap(); }
-  }).catch(function () { });
+    POS_JALAN = false;
+    if (r && r.ok) { POS = r.list || []; SK = r.sk || SK; SERVER_ALIAS = !!(r.fitur && r.fitur.indexOf('alias') >= 0); POSOK = true; POSDIMUAT = true; if (ADA) gambarPos(); else POS_SIAP = true; }
+  }).catch(function () { POS_JALAN = false; });
 };
 
 /* ---------- Menu Kelurahan bertingkat (komputer): Kelurahan, lalu Posyandu ---------- */

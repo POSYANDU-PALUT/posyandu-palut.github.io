@@ -74,13 +74,32 @@ function muat(perId) {
   return ambil('muat', { per: perId }).then(function (r) { if (!r.cfg) throw new Error('Server belum diperbarui untuk modul honor. Tempel Code.gs terbaru di Apps Script lalu Terapkan versi baru.'); H.d = r; H.per = r.per || null; H.muat = false; gambar(); })
     .catch(function (er) { H.muat = false; H.err = er.message; gambar(); });
 }
+/* Data honor diambil lebih dulu di latar (dipanggil Pantau sesudah masuk). Bila menu Honor dibuka saat masih berjalan, tampilan menunggu hasil yang sama (tidak minta dua kali). */
+function pra() {
+  if (!utama() || H.d || H.muat || H.err || H.praJalan) return;
+  H.praJalan = true; H.muat = true;
+  ambil('muat', {}).then(function (r) {
+    H.praJalan = false; H.muat = false;
+    if (r.cfg) { if (!H.d) { H.d = r; H.per = r.per || null; H.praT = Date.now(); } gambar(); }
+    else if (H.ct && document.body.contains(H.ct)) muat();
+  }).catch(function () { H.praJalan = false; H.muat = false; if (H.ct && document.body.contains(H.ct)) muat(); });
+}
+/* Data hasil pengambilan awal sudah lebih dari 30 detik: tampil dulu, diperbarui di latar (tombol redup sampai selesai). */
+function segarkan() {
+  H.segar = true; tandaSibuk();
+  ambil('muat', { per: H.per && H.per.id }).then(function (r) {
+    H.segar = false;
+    if (r.cfg && !adaAntre()) { H.d = r; H.per = r.per || H.per; H.praT = Date.now(); H.rw = null; }
+    tandaSibuk(); gambar();
+  }).catch(function () { H.segar = false; tandaSibuk(); });
+}
 var SIBUK = false;
 /* Tandai langkah: tampilan langsung berubah, simpan berjalan di latar (antrean berurutan). Gagal = dikembalikan ke data server terakhir. */
 var LATAR_L = { dbt: '"Daftar bayar dibuat"', cetak: '"Daftar bayar dicetak"', ttd: '"Sudah ditandatangani"', rekap: '"Rekap selesai"', kw: 'kwitansi', berkas: '"Berkas lengkap"',
   setor: '"Sudah disetor"', dana: '"Dana masuk"', pot: '"Potongan selesai"', serah: '"Diserahkan ke bendahara"' };
 var ANTRE = [], ANTRE_JALAN = false, PER_SERVER = null;
 function adaAntre() { return ANTRE_JALAN || ANTRE.length > 0; }
-function tandaSibuk() { if (H.ct) H.ct.classList.toggle('h-tunggu', adaAntre()); }
+function tandaSibuk() { if (H.ct) H.ct.classList.toggle('h-tunggu', adaAntre() || !!H.segar); }
 function terapLokal(per, f) {
   var s = per.st = per.st || {}, l = f.l;
   if (l === 'cetak') s.cetakN = (s.cetakN || 0) + 1;
@@ -174,7 +193,9 @@ function render(ct) {
   H.ct = ct;
   if (!utama()) { ct.innerHTML = '<div class="info w">' + ic('alert') + 'Modul honor hanya untuk admin kecamatan.</div>'; return; }
   if (!H.d && !H.muat && !H.err) { muat(); }
+  else if (H.d && H.praT && !H.segar && !H.muat && !adaAntre() && Date.now() - H.praT > 30000) segarkan();
   gambar();
+  tandaSibuk();
 }
 function gambar() {
   var ct = H.ct; if (!ct || !document.body.contains(ct)) return;
@@ -1136,5 +1157,5 @@ function pasang(ct) {
   });
 }
 
-window.HONOR = { render: render, terbilang: terbilang, _H: H, buatPdf: buatPdf };
+window.HONOR = { render: render, terbilang: terbilang, _H: H, buatPdf: buatPdf, pra: pra };
 })();
