@@ -118,6 +118,7 @@ function navHp() {
   return op() ? [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['a', 'user', 'Akun']]
     : [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['d', 'pos', 'Posyandu']].concat(utama() ? [['h', 'wallet', 'Honor']] : []).concat([['m', 'menu', 'Lainnya']]);
 }
+function kredit(c) { return '<p class="v2kr ' + (c || '') + '">Developed by <b>Max Juniar Ratowo</b> · © 2026</p>'; }
 function nama() { return (window.PROFIL && PROFIL.nama) || 'Admin Posyandu'; }
 function peranTeks() { return op() ? 'Operator Kel. ' + PX.KELSAYA : (utama() ? 'Admin kecamatan' : 'Petugas kecamatan'); }
 function inisial() { return (nama().trim().charAt(0) || 'A').toUpperCase(); }
@@ -143,7 +144,7 @@ function kerangka() {
   var j = judul(), it = navItems(), ih = navHp();
   var sb = '<aside class="sb"><div class="brand"><img src="logo.png" alt=""><div><b>Pantau Posyandu</b><small>Kecamatan Palu Utara</small></div></div><nav>' +
     it.map(function (x) { return '<a href="#" data-go="' + x[0] + '" class="' + (x[0] === S.pg || (S.pg === 'm' && x[0] === 'p') ? 'on' : '') + '" title="' + x[2] + '">' + ic(x[1]) + '<span>' + x[2] + '</span></a>'; }).join('') +
-    '</nav><div class="sbf"><button class="me" type="button" data-akun>' + avatar() + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + '</small></div></button></div></aside>';
+    '</nav><div class="sbf"><button class="me" type="button" data-akun>' + avatar() + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + '</small></div></button>' + kredit('ks') + '</div></aside>';
   var adaPer = (S.pg === 'b' || S.pg === 'r');
   var tb = '<header class="tb"><div class="tbt"><h1>' + e(j[0]) + '</h1>' + (j[1] ? '<p>' + e(j[1]) + '</p>' : '') + '</div><div class="sp"></div>' + (adaPer ? selPer() : '') +
     '<button class="upd" type="button" data-muat title="Muat ulang data">' + ic('sync') + '<span>' + (jamMuat() ? 'Diperbarui ' + e(jamMuat()) : (window.TERSIMPAN_JAM ? 'Data tersimpan ' + e(window.TERSIMPAN_JAM) + (window.TERSIMPAN_MEMBARUI ? ' · memperbarui…' : '') : 'Muat ulang')) + '</span></button>' +
@@ -293,7 +294,7 @@ function hlmBeranda(ct) {
   var h = '<div class="hpper">' + selPer(true) + '</div>' + tenggat(pr, periodeSelesai(pr)) + tahap(D) + (op() ? kartuAntarCd(D) : tabelKel(D));
   if (D.h.asing.length) h += '<div class="info w">' + ic('alert') + D.h.asing.length + ' laporan memakai nama Posyandu yang belum cocok dengan Data Posyandu, sehingga tidak dihitung. ' + (utama() ? 'Periksa ejaan di menu Posyandu.' : '') + '</div>';
   if (op() && PX.PENGUMUMAN) h = '<div class="info">' + e(PX.PENGUMUMAN) + '</div>' + h;
-  h += tabelUtama(D);
+  h += tabelUtama(D) + kredit('kb');
   ct.innerHTML = h; isiTabel(D);
   if (S.laci) laci();
 }
@@ -623,7 +624,7 @@ function psAkun(c) {
 function hlmLainnya(ct) {
   var dark = document.documentElement.getAttribute('data-theme') === 'dark' || (document.documentElement.getAttribute('data-theme') !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
   var grp = utama() ? [['Pengaturan', PSUB.slice(0, 4)]] : [];
-  var h = '<a href="#" class="cd prof" data-ps="a">' + avatar('lg') + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + (window.PROFIL && PROFIL.nip ? ' · NIP ' + e(PROFIL.nip) : '') + '</small></div>' + ic('right', 'chev') + '</a>';
+  var h = '<a href="#" class="cd prof" data-ps="a">' + avatar('lg') + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + (window.PROFIL && PROFIL.nip ? ' · NIP ' + e(PROFIL.nip) : '') + '</small></div>' + ic('right', 'chev') + '</a>' + kredit('kl');
   grp.forEach(function (g) { h += '<h3 class="hh sm">' + g[0] + '</h3><div class="cd ml">' + g[1].map(function (x) { return '<a href="#" data-ps="' + x[0] + '">' + ic(x[1]) + '<span>' + x[2] + '</span>' + ic('right', 'chev') + '</a>'; }).join('') + '</div>'; });
   h += '<h3 class="hh sm">Tampilan</h3><div class="cd ml"><a href="#" data-tema>' + ic('moon') + '<span>Mode gelap</span><span class="tg' + (dark ? ' on' : '') + '"><i></i></span></a><a href="#" data-ps="w">' + ic('eye') + '<span>Warna aplikasi</span>' + ic('right', 'chev') + '</a></div>';
   h += '<div class="cd ml"><a href="./" target="_blank" rel="noopener">' + ic('send') + '<span>Buka aplikasi laporan kader</span>' + ic('right', 'chev') + '</a><a href="#" data-aksi="keluar" class="dz">' + ic('out') + '<span>Keluar</span>' + ic('right', 'chev') + '</a></div>';
@@ -654,7 +655,7 @@ function rapikanLogin() {
   side.innerHTML = '<div class="lq"><b>Dua tahap, satu layar.</b><span>Laporan digital dari kader dan berkas fisik yang diterima kecamatan dipantau bersama setiap bulan.</span></div>';
   lg.appendChild(side);
   var lf = lg.querySelector('.lf'); if (lf && !lf.querySelector('.v2lh')) lf.insertAdjacentHTML('afterbegin', '<div class="v2lh"><div class="lbrand"><img src="logo.png" alt=""><div><b>Pantau Laporan Posyandu</b><small>Kecamatan Palu Utara · Kota Palu</small></div></div><h2>Masuk</h2><p class="mu">Gunakan akun yang diberikan admin kecamatan.</p></div>');
-  if (lf && !lf.querySelector('.v2lf')) lf.insertAdjacentHTML('beforeend', '<p class="v2lf">© 2026 Kecamatan Palu Utara · Dikembangkan oleh Max Juniar Ratowo</p>');
+  if (lf && !lf.querySelector('.v2lf')) lf.insertAdjacentHTML('beforeend', '<p class="v2lf">Developed by <b>Max Juniar Ratowo</b> · © 2026</p>');
 }
 
 /* ---------- gambar ulang ---------- */
