@@ -805,9 +805,14 @@ function tandaiDibuat() {
   (st().dbt ? Promise.resolve() : kirim({ op: 'langkah', l: 'dbt' })).then(function () { return kirim({ op: 'langkah', l: 'cetak' }); }).catch(function () { });
 }
 
+/* Ukuran kertas yang dipilih (A4 atau F4). Semua isi PDF dihitung dari ukuran ini: lebar ikut sx, tinggi ikut sy. */
+var KRT = 'A4';
+function kp() { return window.Kertas ? Kertas.ukuran(KRT, false) : [595.28, 841.89]; }
+function kl() { return window.Kertas ? Kertas.ukuran(KRT, true) : [841.89, 595.28]; }
 function pdfDaftarBayar(doc, L, F) {
-  var c = H.d.cfg.ttd, A4 = [595.28, 841.89], K = Kanvas(L, doc, F, A4), M = 30;
+  var c = H.d.cfg.ttd, A4 = kp(), sx = A4[0] / 595.28, sy = A4[1] / 841.89, K = Kanvas(L, doc, F, A4), M = 30 * sx;
   var kol = [['NO', 20], ['NOMOR\nREKENING', 66], ['NIK', 74], ['NAMA', 92], ['NAMA\nPOSYANDU', 62], ['ALAMAT', 66], ['', 12], ['', 24], ['', 49], ['TANDA TANGAN', 70.28]];
+  kol.forEach(function (k) { k[1] *= sx; });
   var X = [M]; kol.forEach(function (k) { X.push(X[X.length - 1] + k[1]); });
   JENIS.forEach(function (j) {
     var rows = bayar().filter(function (r) { return r.jenis === j; }); if (!rows.length) return;
@@ -823,7 +828,7 @@ function pdfDaftarBayar(doc, L, F) {
       K.y = y0;
     };
     kepala(true);
-    var rh = 21, grupAwal = 0, no = 0;
+    var rh = 21 * sy, grupAwal = 0, no = 0;
     var tutupGrup = function (dari, sampai, r) { if (!r || dari - sampai < 1) return; var yA = dari, yB = sampai; K.kotak(X[4], yB, kol[4][1], yA - yB); K.kotak(X[5], yB, kol[5][1], yA - yB);
       var ym = (yA + yB) / 2, l1 = K.potong(r.pos.toUpperCase(), F.b, 7.5, kol[4][1] - 4), l2 = K.potong((j === 'Poskesdes' ? 'KELURAHAN ' : 'KEL. ') + r.kel.toUpperCase(), F.r, 7.5, kol[5][1] - 4);
       l1.forEach(function (t, i) { K.teks(t, X[4] + kol[4][1] / 2, ym + (l1.length - 1) * 4.5 - i * 9 - 3, { al: 'c', b: true, s: 7.5 }); });
@@ -831,7 +836,7 @@ function pdfDaftarBayar(doc, L, F) {
     var gA = K.y, gR = null;
     rows.forEach(function (r) {
       if (K.y - rh < 150 && K.y - rh < 60 + 0) { }
-      if (K.y - rh < 46) { tutupGrup(gA, K.y, gR); kepala(false); gA = K.y; }
+      if (K.y - rh < 46 * sy) { tutupGrup(gA, K.y, gR); kepala(false); gA = K.y; }
       if (gR && (gR.pos !== r.pos || gR.kel !== r.kel)) { tutupGrup(gA, K.y, gR); gA = K.y; }
       gR = r; no++;
       var y = K.y - rh, x = rekOf(r) || {};
@@ -847,57 +852,58 @@ function pdfDaftarBayar(doc, L, F) {
     var yt = K.y - 16; K.kotak(X[0], yt, X[8] - X[0], 16); K.kotak(X[8], yt, kol[8][1], 16); K.kotak(X[9], yt, kol[9][1], 16);
     K.teks('TOTAL', (X[0] + X[8]) / 2, yt + 5, { al: 'c', b: true, s: 8 }); K.teks(ang(total().j[j].bruto), X[9] - 3, yt + 5, { al: 'r', b: true, s: 8 });
     K.y = yt;
-    if (K.y < 230) { K.baru(); }
+    if (K.y < 230 * sy) { K.baru(); }
     var yb = K.y - 30;
-    ttdBlok(K, 160, yb, 'Pejabat Pelaksana Teknis Kegiatan\nPPTK', c.pptk.nama, c.pptk.nip);
-    ttdBlok(K, 435, yb, 'Bendahara Pengeluaran\n ', c.bendahara.nama, c.bendahara.nip);
-    ttdBlok(K, A4[0] / 2, yb - 100, 'Mengetahui\nCAMAT PALU UTARA', c.camat.nama, c.camat.nip);
+    ttdBlok(K, 160 * sx, yb, 'Pejabat Pelaksana Teknis Kegiatan\nPPTK', c.pptk.nama, c.pptk.nip);
+    ttdBlok(K, 435 * sx, yb, 'Bendahara Pengeluaran\n ', c.bendahara.nama, c.bendahara.nip);
+    ttdBlok(K, A4[0] / 2, yb - 100 * sy, 'Mengetahui\nCAMAT PALU UTARA', c.camat.nama, c.camat.nip);
   });
 }
 function pdfRekap(doc, L, F) {
-  var c = H.d.cfg.ttd, A4 = [595.28, 841.89], K = Kanvas(L, doc, F, A4), t = total(); K.baru();
+  var c = H.d.cfg.ttd, A4 = kp(), sx = A4[0] / 595.28, sy = A4[1] / 841.89, K = Kanvas(L, doc, F, A4), t = total(); K.baru();
   ['REKAPITULASI PEMBAYARAN INSENTIF KADER POSYANDU & KADER POSKESDES', 'DI 5 KELURAHAN KECAMATAN PALU UTARA KOTA PALU', 'BULAN ' + bulanJudul() + ' ' + tahunPer()].forEach(function (s, i) { K.teks(s, A4[0] / 2, K.y - 10 - i * 14, { al: 'c', b: true, s: 10.5 }); });
-  var M = 40, kol = [22, 62, 110, 52, 52, 60, 88, 69.28], X = [M]; kol.forEach(function (w) { X.push(X[X.length - 1] + w); });
+  var M = 40 * sx, kol = [22, 62, 110, 52, 52, 60, 88, 69.28].map(function (w) { return w * sx; }), X = [M]; kol.forEach(function (w) { X.push(X[X.length - 1] + w); });
   var y = K.y - 70, h1 = 14, h2 = 30;
   [[0, 'NO'], [1, 'KECAMATAN'], [2, 'POSYANDU &\nPOSKESDES'], [6, 'JUMLAH UANG\nDITERIMA'], [7, 'KET']].forEach(function (a) { K.kotak(X[a[0]], y - h1 - h2, kol[a[0]], h1 + h2, { isi: [.9, .9, .9] }); var ls = a[1].split('\n'); ls.forEach(function (s, q) { K.teks(s, X[a[0]] + kol[a[0]] / 2, y - (h1 + h2) / 2 + (ls.length - 1) * 4.5 - q * 9 - 3, { al: 'c', b: true, s: 7.5 }); }); });
   K.kotak(X[3], y - h1, X[6] - X[3], h1, { isi: [.9, .9, .9] }); K.teks('JUMLAH', (X[3] + X[6]) / 2, y - h1 + 4, { al: 'c', b: true, s: 7.5 });
   [[3, 'JUMLAH\nKADER'], [4, 'JUMLAH\nBULAN'], [5, 'INSENTIF\nPER BULAN']].forEach(function (a) { K.kotak(X[a[0]], y - h1 - h2, kol[a[0]], h2, { isi: [.9, .9, .9] }); var ls = a[1].split('\n'); ls.forEach(function (s, q) { K.teks(s, X[a[0]] + kol[a[0]] / 2, y - h1 - h2 / 2 + 4.5 - q * 9 - 3, { al: 'c', b: true, s: 7.5 }); }); });
   y -= h1 + h2;
-  var G = grupRekap(), rh = 14, yA = y;
+  var G = grupRekap(), rh = 14 * sy, tb = 4 * sy, yA = y;
   G.forEach(function (g, i) {
     var yy = y - rh; [0, 2, 3, 4, 5, 6, 7].forEach(function (q) { K.kotak(X[q], yy, kol[q], rh); });
-    K.teks(String(i + 1), X[0] + 11, yy + 4, { al: 'c', s: 8 }); K.teks(JN_PANJANG[g.j].toUpperCase(), X[2] + 3, yy + 4, { s: 8 }); K.teks(String(g.n), X[3] + kol[3] / 2, yy + 4, { al: 'c', s: 8 });
-    K.teks(String(g.bulan), X[4] + kol[4] / 2, yy + 4, { al: 'c', s: 8 }); K.teks(ang(g.nom), X[6] - 3, yy + 4, { al: 'r', s: 8 }); K.teks(ang(g.jml), X[7] - 3, yy + 4, { al: 'r', s: 8 });
+    K.teks(String(i + 1), X[0] + 11, yy + tb, { al: 'c', s: 8 }); K.teks(JN_PANJANG[g.j].toUpperCase(), X[2] + 3, yy + tb, { s: 8 }); K.teks(String(g.n), X[3] + kol[3] / 2, yy + tb, { al: 'c', s: 8 });
+    K.teks(String(g.bulan), X[4] + kol[4] / 2, yy + tb, { al: 'c', s: 8 }); K.teks(ang(g.nom), X[6] - 3, yy + tb, { al: 'r', s: 8 }); K.teks(ang(g.jml), X[7] - 3, yy + tb, { al: 'r', s: 8 });
     y = yy;
   });
   K.kotak(X[1], y, kol[1], yA - y); K.teks('PALU UTARA', X[1] + kol[1] / 2, (yA + y) / 2 - 3, { al: 'c', s: 8 });
   var yj = y - rh; [0, 1, 2, 3, 4, 5, 6, 7].forEach(function (q) { K.kotak(X[q], yj, kol[q], rh); });
-  K.teks('JUMLAH', X[2] + kol[2] / 2, yj + 4, { al: 'c', b: true, s: 8 }); K.teks(String(t.n), X[3] + kol[3] / 2, yj + 4, { al: 'c', b: true, s: 8 }); K.teks(ang(t.bruto), X[7] - 3, yj + 4, { al: 'r', b: true, s: 8 });
-  var yb = yj - 50, tgl = st().rekap ? tglId(new Date(st().rekap)) : tglId();
-  ttdBlok(K, 160, yb - 12, 'Lunas Bayar\nBendahara Pengeluaran', c.bendahara.nama, c.bendahara.nip);
-  K.teks('Palu, ' + tgl, 430, yb, { al: 'c', s: 9.5 });
-  ttdBlok(K, 430, yb - 12, 'Setuju Bayar\nPengguna Anggaran', c.camat.nama, c.camat.nip);
+  K.teks('JUMLAH', X[2] + kol[2] / 2, yj + tb, { al: 'c', b: true, s: 8 }); K.teks(String(t.n), X[3] + kol[3] / 2, yj + tb, { al: 'c', b: true, s: 8 }); K.teks(ang(t.bruto), X[7] - 3, yj + tb, { al: 'r', b: true, s: 8 });
+  var yb = yj - 50 * sy, tgl = st().rekap ? tglId(new Date(st().rekap)) : tglId();
+  ttdBlok(K, 160 * sx, yb - 12, 'Lunas Bayar\nBendahara Pengeluaran', c.bendahara.nama, c.bendahara.nip);
+  K.teks('Palu, ' + tgl, 430 * sx, yb, { al: 'c', s: 9.5 });
+  ttdBlok(K, 430 * sx, yb - 12, 'Setuju Bayar\nPengguna Anggaran', c.camat.nama, c.camat.nip);
 }
 function pdfKwitansi(doc, L, F) {
-  var c = H.d.cfg, k = kwData(), t = total(), A4 = [595.28, 841.89], K = Kanvas(L, doc, { r: F.tr, b: F.tb }, A4), M = 60, x1 = M + 118, x2 = x1 + 10, wv = A4[0] - M - x2; K.baru();
+  var c = H.d.cfg, k = kwData(), t = total(), A4 = kp(), sx = A4[0] / 595.28, sy = A4[1] / 841.89, K = Kanvas(L, doc, { r: F.tr, b: F.tb }, A4), M = 60 * sx, x1 = M + 118 * sx, x2 = x1 + 10, wv = A4[0] - M - x2; K.baru();
   var y = K.y - 20;
-  var kv = function (lbl, val, o) { o = o || {}; K.teks(lbl, M, y, { s: 11 }); K.teks(':', x1, y, { s: 11 }); var ls = K.potong(val, o.b ? F.tb : F.tr, 11, o.w || wv); ls.forEach(function (s, i) { K.teks(s, x2, y - i * 15, { s: 11, b: o.b }); }); y -= ls.length * 15 + (o.sp || 4); };
+  var kv = function (lbl, val, o) { o = o || {}; K.teks(lbl, M, y, { s: 11 }); K.teks(':', x1, y, { s: 11 }); var ls = K.potong(val, o.b ? F.tb : F.tr, 11, o.w || wv); ls.forEach(function (s, i) { K.teks(s, x2, y - i * 15, { s: 11, b: o.b }); }); y -= ls.length * 15 + (o.sp || 4 * sy); };
   K.teks('Tahun', M, y, { s: 11 }); K.teks(':', x1, y, { s: 11 }); K.teks(k.tahun, x2, y, { s: 11 }); K.teks('Sumber Dana: ' + k.sumber, A4[0] - M, y, { al: 'r', s: 11 }); y -= 19;
   kv('Kode Rekening', c.kw.kodeRek); kv('Program', c.kw.program); kv('Kegiatan', c.kw.kegiatan); kv('Sub Kegiatan', c.kw.subKegiatan); kv('Belanja', c.kw.belanja);
-  y -= 26; K.teks('KWITANSI PENERIMAAN', A4[0] / 2, y, { al: 'c', b: true, s: 12.5, u: true }); y -= 14;
-  if (k.nomor) { K.teks('Nomor: ' + k.nomor, A4[0] / 2, y, { al: 'c', s: 10.5 }); } y -= 26;
-  kv('Sudah Terima Dari', k.dari, { sp: 10 }); kv('Uang Sebesar', terbilang(t.bruto), { sp: 10 }); kv('Untuk Pembayaran', k.untuk, { sp: 10 }); kv('Terbilang', 'Rp. ' + ang(t.bruto).replace(/,/g, '.') + ',-', { b: true });
-  var yb = y - 50;
-  ttdBlok(K, 135, yb, 'Pejabat Pelaksana Teknis Kegiatan\nPPTK', c.ttd.pptk.nama, c.ttd.pptk.nip, { s: 10 });
-  ttdBlok(K, 300, yb, 'Lunas Bayar\nBendahara Pengeluaran', c.ttd.bendahara.nama, c.ttd.bendahara.nip, { s: 10 });
-  K.teks('Palu, ' + k.tgl, 465, yb + 12, { al: 'c', s: 10 }); K.teks('Yang Menerima', 465, yb, { al: 'c', s: 10 });
-  K.kotak(445, yb - 48, 40, 30, { isi: null }); K.teks('materai', 465, yb - 36, { al: 'c', s: 7 });
-  K.teks(k.penerima || '....................', 465, yb - 70, { al: 'c', s: 10, b: true });
-  ttdBlok(K, A4[0] / 2, yb - 120, 'Mengetahui\nCAMAT PALU UTARA', c.ttd.camat.nama, c.ttd.camat.nip, { s: 10 });
+  y -= 26 * sy; K.teks('KWITANSI PENERIMAAN', A4[0] / 2, y, { al: 'c', b: true, s: 12.5, u: true }); y -= 14;
+  if (k.nomor) { K.teks('Nomor: ' + k.nomor, A4[0] / 2, y, { al: 'c', s: 10.5 }); } y -= 26 * sy;
+  kv('Sudah Terima Dari', k.dari, { sp: 10 * sy }); kv('Uang Sebesar', terbilang(t.bruto), { sp: 10 * sy }); kv('Untuk Pembayaran', k.untuk, { sp: 10 * sy }); kv('Terbilang', 'Rp. ' + ang(t.bruto).replace(/,/g, '.') + ',-', { b: true });
+  var yb = y - 50 * sy;
+  ttdBlok(K, 135 * sx, yb, 'Pejabat Pelaksana Teknis Kegiatan\nPPTK', c.ttd.pptk.nama, c.ttd.pptk.nip, { s: 10 });
+  ttdBlok(K, 300 * sx, yb, 'Lunas Bayar\nBendahara Pengeluaran', c.ttd.bendahara.nama, c.ttd.bendahara.nip, { s: 10 });
+  K.teks('Palu, ' + k.tgl, 465 * sx, yb + 12, { al: 'c', s: 10 }); K.teks('Yang Menerima', 465 * sx, yb, { al: 'c', s: 10 });
+  K.kotak(445 * sx, yb - 48, 40, 30, { isi: null }); K.teks('materai', 465 * sx, yb - 36, { al: 'c', s: 7 });
+  K.teks(k.penerima || '....................', 465 * sx, yb - 70, { al: 'c', s: 10, b: true });
+  ttdBlok(K, A4[0] / 2, yb - 120 * sy, 'Mengetahui\nCAMAT PALU UTARA', c.ttd.camat.nama, c.ttd.camat.nip, { s: 10 });
 }
 function pdfTransfer(doc, L, F) {
-  var A4 = [841.89, 595.28], K = Kanvas(L, doc, F, A4), M = 28, t = total();
+  var A4 = kl(), sx = A4[0] / 841.89, sy = A4[1] / 595.28, K = Kanvas(L, doc, F, A4), M = 28 * sx, t = total();
   var kol = [['NO', 22], ['NOMOR REKENING', 78], ['NAMA', 110], ['NAMA POSYANDU', 80], ['KELURAHAN', 76], ['BLN', 24], ['HONOR', 48], ['POTONGAN', 50], ['KETERANGAN POTONGAN\n(jenis, alasan, diteruskan ke)', 214], ['JUMLAH DITRANSFER\nKE KADER', 83.89]];
+  kol.forEach(function (k) { k[1] *= sx; });
   var X = [M]; kol.forEach(function (k) { X.push(X[X.length - 1] + k[1]); });
   var hal = 0;
   var kepala = function (pertama) {
@@ -909,7 +915,7 @@ function pdfTransfer(doc, L, F) {
   };
   kepala(true);
   var baris = function (sel, o) {
-    o = o || {}; var ket = o.ket ? K.potong(o.ket, F.r, 6.8, kol[8][1] - 6) : [''], rh = Math.max(14, ket.length * 8 + 6);
+    o = o || {}; var ket = o.ket ? K.potong(o.ket, F.r, 6.8, kol[8][1] - 6) : [''], rh = Math.max(14 * sy, ket.length * 8 + 6);
     if (K.y - rh < 30) kepala(false);
     var y = K.y - rh;
     if (o.grp) { K.kotak(X[0], y, X[10] - X[0], rh, { isi: [.94, .94, .94] }); K.teks(o.grp, X[0] + 4, y + 4, { b: true, s: 7.5 }); K.y = y; return; }
@@ -929,8 +935,8 @@ function pdfTransfer(doc, L, F) {
     });
     var g = t.j[j]; baris(['', '', 'Jumlah ' + JN_PANJANG[j] + ' (' + g.n + ' kader)', '', '', '', ang(g.bruto), ang(g.pot), '', ang(g.bruto - g.pot)], { b: true });
   });
-  if (K.y < 190) kepala(false);
-  var y = K.y - 24, w = [190, 80, 80, 96], XX = [M]; w.forEach(function (v) { XX.push(XX[XX.length - 1] + v); });
+  if (K.y < 190 * sy) kepala(false);
+  var y = K.y - 24, w = [190, 80, 80, 96].map(function (v) { return v * sx; }), XX = [M]; w.forEach(function (v) { XX.push(XX[XX.length - 1] + v); });
   var rr = [['RINGKASAN', '', '', ''], ['Jenis', 'Honor', 'Potongan', 'Ditransfer ke kader']];
   JENIS.forEach(function (j) { var g = t.j[j]; if (g.n) rr.push([JN_PANJANG[j] + ' (' + g.n + ')', ang(g.bruto), ang(g.pot), ang(g.bruto - g.pot)]); });
   rr.push(['JUMLAH (' + t.n + ' kader)', ang(t.bruto), ang(t.pot), ang(t.bruto - t.pot)], ['Potongan yang diteruskan sesuai keterangan', '', '', ang(t.pot)], ['TOTAL DANA (= dana masuk rekening kantor)', '', '', ang(t.bruto)]);
@@ -945,10 +951,10 @@ function pdfTransfer(doc, L, F) {
   K.teks('Palu, ' + tglId(), M, y - 30, { s: 8 });
 }
 function pdfPenanda(doc, L, F, judul, isi) {
-  var A4 = [595.28, 841.89], K = Kanvas(L, doc, F, A4); K.baru();
-  K.kotak(60, 300, A4[0] - 120, 260, { isi: [.97, .97, .97] });
-  K.teks(judul, A4[0] / 2, 520, { al: 'c', b: true, s: 15 });
-  isi.forEach(function (s, i) { K.teks(s, A4[0] / 2, 480 - i * 18, { al: 'c', s: 11 }); });
+  var A4 = kp(), sx = A4[0] / 595.28, sy = A4[1] / 841.89, K = Kanvas(L, doc, F, A4); K.baru();
+  K.kotak(60 * sx, 300 * sy, A4[0] - 120 * sx, 260 * sy, { isi: [.97, .97, .97] });
+  K.teks(judul, A4[0] / 2, 520 * sy, { al: 'c', b: true, s: 15 });
+  isi.forEach(function (s, i) { K.teks(s, A4[0] / 2, 480 * sy - i * 18, { al: 'c', s: 11 }); });
 }
 function buatPdf(jenis) {
   var t0 = performance.now(), sb = window.sibukTombol ? window.sibukTombol('Menyiapkan PDF…') : function () { }, dl = window.Dlg ? Dlg.sibuk('Menyusun PDF…') : function () { };
@@ -984,6 +990,11 @@ function buatPdf0(jenis) {
   });
 }
 function unduhPdf(jenis, tombol) {
+  if (!window.Kertas) return unduhPdf0(jenis, tombol);
+  var ket = { db: 'Daftar bayar.', rk: 'Rekapitulasi.', kw: 'Kwitansi.', tf: 'Daftar transfer (mendatar).', berkas: 'Halaman SK dan daftar bayar bertanda tangan tetap ukuran aslinya.' }[jenis] || '';
+  return Kertas.pilih(ket).then(function (k) { if (!k) return; KRT = k; return unduhPdf0(jenis, tombol); });
+}
+function unduhPdf0(jenis, tombol) {
   if (tombol) { tombol.disabled = true; var lama = tombol.innerHTML; tombol.textContent = 'Menyiapkan…'; }
   return buatPdf(jenis).then(function (o) {
     var blob = new Blob([o.b], { type: 'application/pdf' }), a = document.createElement('a');

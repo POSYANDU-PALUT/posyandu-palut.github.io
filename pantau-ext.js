@@ -608,31 +608,37 @@ function gambarPoster(h, pr) {
 }
 function unduhBerkas(blob, nama) { var u = URL.createObjectURL(blob), a = document.createElement('a'); a.href = u; a.download = nama; document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); URL.revokeObjectURL(u); }, 5000); }
 /* PDF satu halaman berisi gambar JPEG (dibuat sendiri, tidak memerlukan pustaka atau internet). */
-function pdfDariKanvas(cv) {
+function pdfDariKanvas(cv, kk) {
   var b64 = cv.toDataURL('image/jpeg', 0.92).split(',')[1], bin = atob(b64), n = bin.length, jpg = new Uint8Array(n), i;
   for (i = 0; i < n; i++) jpg[i] = bin.charCodeAt(i);
   var w = Math.round(cv.width * 75) / 100, hh = Math.round(cv.height * 75) / 100, parts = [], off = [], len = 0;
+  var PW = w, PH = hh, ix = 0, iy = 0;
+  if (kk && window.Kertas) { /* letakkan gambar di tengah kertas, diperbesar atau diperkecil sesuai perbandingan */
+    var uk = Kertas.ukuran(kk, false), mg = 24, f = Math.min((uk[0] - 2 * mg) / w, (uk[1] - 2 * mg) / hh);
+    PW = uk[0]; PH = uk[1]; w = Math.round(w * f * 100) / 100; hh = Math.round(hh * f * 100) / 100; ix = Math.round((PW - w) / 2 * 100) / 100; iy = Math.round((PH - hh) / 2 * 100) / 100;
+  }
   function add(x) { var bt = x; if (typeof x === 'string') { bt = new Uint8Array(x.length); for (var k = 0; k < x.length; k++) bt[k] = x.charCodeAt(k) & 255; } parts.push(bt); len += bt.length; }
   add('%PDF-1.4\n');
   off[1] = len; add('1 0 obj\n<</Type/Catalog/Pages 2 0 R>>\nendobj\n');
   off[2] = len; add('2 0 obj\n<</Type/Pages/Kids[3 0 R]/Count 1>>\nendobj\n');
-  off[3] = len; add('3 0 obj\n<</Type/Page/Parent 2 0 R/MediaBox[0 0 ' + w + ' ' + hh + ']/Resources<</XObject<</Im0 4 0 R>>>>/Contents 5 0 R>>\nendobj\n');
+  off[3] = len; add('3 0 obj\n<</Type/Page/Parent 2 0 R/MediaBox[0 0 ' + PW + ' ' + PH + ']/Resources<</XObject<</Im0 4 0 R>>>>/Contents 5 0 R>>\nendobj\n');
   off[4] = len; add('4 0 obj\n<</Type/XObject/Subtype/Image/Width ' + cv.width + '/Height ' + cv.height + '/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ' + n + '>>\nstream\n'); add(jpg); add('\nendstream\nendobj\n');
-  var cs = 'q ' + w + ' 0 0 ' + hh + ' 0 0 cm /Im0 Do Q';
+  var cs = 'q ' + w + ' 0 0 ' + hh + ' ' + ix + ' ' + iy + ' cm /Im0 Do Q';
   off[5] = len; add('5 0 obj\n<</Length ' + cs.length + '>>\nstream\n' + cs + '\nendstream\nendobj\n');
   var xr = len, x = 'xref\n0 6\n0000000000 65535 f \n';
   for (i = 1; i <= 5; i++) x += ('0000000000' + off[i]).slice(-10) + ' 00000 n \n';
   add(x + 'trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n' + xr + '\n%%EOF');
   return new Blob(parts, { type: 'application/pdf' });
 }
-function unduhPoster(h, pr, jenis, b) {
+function unduhPoster(h, pr, jenis, b, kk) {
+  if (jenis === 'pdf' && !kk && window.Kertas) { return Kertas.pilih('Gambar belum menyerahkan laporan.').then(function (k) { if (k) unduhPoster(h, pr, jenis, b, k); }); }
   var teks = b ? b.textContent : '', nama = 'Belum-menyerahkan-laporan-' + pr.bl + '-' + pr.th;
   if (b) { b.disabled = true; b.textContent = 'Menyiapkan…'; }
   gambarPoster(h, pr).then(function (cv) {
     if (jenis === 'png') {
       return new Promise(function (ok) { cv.toBlob(function (bl) { unduhBerkas(bl, nama + '.png'); toast('Gambar diunduh.'); ok(); }, 'image/png'); });
     }
-    unduhBerkas(pdfDariKanvas(cv), nama + '.pdf'); toast('PDF diunduh.');
+    unduhBerkas(pdfDariKanvas(cv, kk), nama + '.pdf'); toast('PDF diunduh.');
   }).catch(function (er) { toast('Gagal membuat gambar: ' + (er.message || er)); })
     .then(function () { if (b) { b.disabled = false; b.textContent = teks; } });
 }
@@ -1064,8 +1070,10 @@ function unduhAngka() {
   csvUnduh(nm + '.csv', bag);
 }
 function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-function cetakRekap() {
+function cetakRekap(kk) {
   if (!ADA) { alert('Data belum dimuat.'); return; }
+  if (!kk && window.Kertas) { return Kertas.pilih('Rekapitulasi laporan.').then(function (k) { if (k) cetakRekap(k); }); }
+  kk = kk || 'A4';
   var R = rkData(), h = R.h, now = new Date(), op = KELSAYA && KELSAYA !== '-';
   var pf = (typeof PROFIL !== 'undefined' && PROFIL) ? PROFIL : {};
   var ST = { tepat: 'Sudah masuk', telat: 'Masuk terlambat', lewat: 'Belum, lewat batas', belum: 'Belum masuk' };
@@ -1083,7 +1091,7 @@ function cetakRekap() {
   var tgl = now.getDate() + ' ' + BULAN[now.getMonth()] + ' ' + now.getFullYear();
   var logo = new URL('logo.png', location.href).href;
   var html = '<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Rekap Laporan Posyandu ' + esc(R.bl) + ' ' + esc(R.th) + '</title><style>' +
-    '@page{size:A4;margin:16mm 15mm}*{box-sizing:border-box}body{font:11pt/1.4 "Times New Roman",Tinos,serif;color:#000;margin:0;padding:14px}' +
+    '@page{size:' + (kk === 'F4' ? '215mm 330mm' : 'A4') + ';margin:16mm 15mm}*{box-sizing:border-box}body{font:11pt/1.4 "Times New Roman",Tinos,serif;color:#000;margin:0;padding:14px}' +
     '.kop{display:flex;align-items:center;gap:14px;border-bottom:3px double #000;padding-bottom:8px;margin-bottom:12px}.kop img{width:64px;height:auto}.kop div{flex:1;text-align:center;line-height:1.25}' +
     '.kop b{display:block;font-size:13pt;letter-spacing:.02em}.kop small{font-size:10pt}h1{font-size:13pt;text-align:center;margin:6px 0 2px;text-transform:uppercase}.sb{text-align:center;margin:0 0 12px}' +
     'h2{font-size:11.5pt;margin:14px 0 5px}table{border-collapse:collapse;width:100%;font-size:10pt}th,td{border:1px solid #000;padding:4px 6px;vertical-align:top}th{background:#eee}.c{text-align:center}.jm td{font-weight:700;background:#f4f4f4}' +
@@ -1670,8 +1678,15 @@ function ketItem(it) {
   return 'Belum mengirim laporan ke kelurahan';
 }
 /* Satu halaman lembar pengantar (tanda terima). Hanya tanda tangan penerima dan tanggal diterima yang dikosongkan. */
-function gambarLembar(doc, F, lm, label) {
-  var pg = doc.addPage([595.28, 841.89]), W = 595.28, M = 56, rgb = PDFLib.rgb, abu = rgb(.42, .45, .47), gelap = rgb(.1, .14, .12);
+function gambarLembar(doc, F, lm, label, kk) {
+  var uk = window.Kertas ? Kertas.ukuran(kk || 'A4', false) : [595.28, 841.89], raw = doc.addPage(uk), off = Math.round((uk[1] - 841.89) * .6);
+  /* isi digeser ke atas-tengah sesuai tinggi kertas; kaki halaman (kode QR dan garis bawah) tetap di dasar */
+  var pg = {
+    drawText: function (t, o) { o.y += off; return raw.drawText(t, o); },
+    drawLine: function (o) { o.start.y += off; o.end.y += off; return raw.drawLine(o); },
+    drawRectangle: function (o) { o.y += off; return raw.drawRectangle(o); }
+  };
+  var W = uk[0], M = 56 * (W / 595.28), rgb = PDFLib.rgb, abu = rgb(.42, .45, .47), gelap = rgb(.1, .14, .12);
   var reg = F.reg, bold = F.bold, ln = function (x1, y1, x2, y2, t, c) { pg.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: t || .6, color: c || rgb(.78, .8, .79) }); };
   var tx = function (t, x, y, s, f, c) { pg.drawText(teksWin(t), { x: x, y: y, size: s || 11, font: f || reg, color: c || gelap }); };
   var tengah = function (t, y, s, f, c) { var fo = f || reg; tx(t, (W - fo.widthOfTextAtSize(teksWin(t), s)) / 2, y, s, fo, c); };
@@ -1706,11 +1721,12 @@ function gambarLembar(doc, F, lm, label) {
   pusat('( ' + lu.nama + ' )', xk + 75, yn, 10.5); pusat('NIP. ' + lu.nip, xk + 75, yn - 14, 10);
   pusat('( ................................ )', xr + 75, yn, 10.5);
   // kode QR kecil di kanan bawah
+  off = 0;
   var url = new URL('terima.html', location.href).href.replace(/[?#].*$/, '') + '?k=' + lm.kode, q = qrBuat(url), S = 2.1, Z = 2, N = (q.n + 2 * Z) * S, qx = W - M - N, qy = 66;
   for (var r = 0; r < q.n; r++) for (var c = 0; c < q.n; c++) if (q.m[r][c]) pg.drawRectangle({ x: qx + (c + Z) * S, y: qy + (q.n - 1 - r + Z) * S, width: S + .15, height: S + .15, color: rgb(0, 0, 0) });
   kananT('Pindai di aplikasi Terima', W - M, qy - 8, 6.5, reg, abu);
   ln(M, 50, W - M, 50); tengah('Tanda Terima Laporan Posyandu  \u00b7  Kode ' + lm.kode + '  \u00b7  dibuat ' + tglIdLembar(lm.tgl) + ' ' + lm.jam, 38, 7.5, reg, abu);
-  return pg;
+  return raw;
 }
 function ambilPdfBytes(nomor) {
   return jsonp({ aksi: 'pdf', u: CRED.u, p: CRED.p, n: nomor }, 90000).then(function (r) {
@@ -1719,10 +1735,10 @@ function ambilPdfBytes(nomor) {
   });
 }
 /* Susun satu PDF: lembar pengantar (2 salinan) lalu semua laporan yang ikut diantar. */
-async function susunPdfGabungan(lm, info) {
+async function susunPdfGabungan(lm, info, kk) {
   var P = await muatPdfLib(), doc = await P.PDFDocument.create();
   var F = { reg: await doc.embedFont(P.StandardFonts.Helvetica), bold: await doc.embedFont(P.StandardFonts.HelveticaBold) };
-  gambarLembar(doc, F, lm, 'UNTUK KECAMATAN'); gambarLembar(doc, F, lm, 'ARSIP KELURAHAN');
+  gambarLembar(doc, F, lm, 'UNTUK KECAMATAN', kk); gambarLembar(doc, F, lm, 'ARSIP KELURAHAN', kk);
   var ikut = lm.items.filter(function (x) { return x.st === 'ikut'; });
   for (var i = 0; i < ikut.length; i++) {
     info('Mengambil laporan ' + (i + 1) + ' dari ' + ikut.length + '…');
@@ -1734,7 +1750,9 @@ async function susunPdfGabungan(lm, info) {
   return new Blob([bytes], { type: 'application/pdf' });
 }
 async function unduhGabungan(lm, info) {
-  var blob = await susunPdfGabungan(lm, info);
+  var kk = window.Kertas ? await Kertas.pilih('Lembar pengantar. Laporan Posyandu yang ikut tetap ukuran aslinya.') : null;
+  if (window.Kertas && !kk) throw new Error('Pengunduhan dibatalkan.');
+  var blob = await susunPdfGabungan(lm, info, kk);
   unduhBerkas(blob, 'Antar Laporan ' + lm.kel + ' ' + lm.bln + ' ' + lm.thn + '.pdf');
 }
 function kartuAntar(box, h, pr, gabung) {
