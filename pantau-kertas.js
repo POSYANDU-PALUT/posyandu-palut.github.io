@@ -25,6 +25,7 @@
       '.ktk b{display:block;font-size:15px;margin-top:8px}.ktk small{color:var(--kmu);font-size:12px}' +
       '.ktv{margin:0 auto;border:1px solid #9aa59f;background:#fff;position:relative;border-radius:2px}.ktv i{position:absolute;left:10%;right:10%;height:3px;border-radius:2px;background:#cfd6d2;display:block}' +
       '.ktin{display:flex;gap:9px;align-items:center;margin:14px 0 4px;font-size:13px;color:var(--kmu);cursor:pointer}.ktin input{width:17px;height:17px;accent-color:var(--kp)}' +
+      '.ktop2{align-items:flex-start;margin:10px 0 0;color:var(--kfg)}.ktop2 input{margin-top:2px}.ktop2 small{color:var(--kmu);font-size:12px}\n' +
       '.ktrw{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}.ktbt{border:1px solid var(--kln);background:transparent;color:inherit;border-radius:10px;padding:10px 18px;font:inherit;font-size:14px;cursor:pointer}' +
       '.ktbt.ok{background:var(--kp);border-color:var(--kp);color:#fff;font-weight:700}.ktbt:focus-visible{outline:3px solid var(--kp);outline-offset:2px}' +
       '@media (max-width:760px){.ktov{align-items:flex-end;padding:0}.ktb{max-width:none;border-radius:18px 18px 0 0;padding:14px 18px calc(18px + env(safe-area-inset-bottom,0px))}' +
@@ -38,7 +39,7 @@
     return v;
   }
 
-  function pilih(teks) {
+  function pilih(teks, opsi) {
     css();
     return new Promise(function (selesai) {
       if (BUKA) { selesai(null); return; }
@@ -57,6 +58,13 @@
         tom[k] = t; op.appendChild(t);
       });
       b.appendChild(op);
+      var ops = {};
+      (opsi || []).forEach(function (o) {
+        var l2 = el('label', 'ktin ktop2'), c2 = el('input'); c2.type = 'checkbox'; c2.checked = !!o.nilai; ops[o.id] = c2;
+        var t2 = el('span'); t2.appendChild(document.createTextNode(o.label));
+        if (o.ket) { var sm = el('small', null, o.ket); sm.style.display = 'block'; t2.appendChild(sm); }
+        l2.appendChild(c2); l2.appendChild(t2); b.appendChild(l2);
+      });
       var lb = el('label', 'ktin'), cb = el('input'); cb.type = 'checkbox'; cb.checked = true;
       lb.appendChild(cb); lb.appendChild(el('span', null, 'Ingat pilihan ini di perangkat ini')); b.appendChild(lb);
       var rw = el('div', 'ktrw'), bb = el('button', 'ktbt', 'Batal'), bo = el('button', 'ktbt ok'); bb.type = bo.type = 'button';
@@ -73,6 +81,7 @@
         try { if (asal && asal.focus && document.contains(asal)) asal.focus(); } catch (x) { }
         BUKA = false;
         if (v && cb.checked) simpan(v);
+        if (v && opsi) { var hs = {}; Object.keys(ops).forEach(function (i) { hs[i] = ops[i].checked; }); selesai({ k: v, o: hs }); return; }
         selesai(v);
       }
       function tek(e) {

@@ -2097,6 +2097,24 @@ function honorGet(p) {
     else if (out.daftar.length) { try { out.per = hBacaPer(out.daftar[0].id); } catch (x) { out.per = null; } }
     return out;
   }
+  if (op === 'rekapan') {
+    /* Rekap tahunan: semua periode honor yang bulannya bersinggungan dengan rentang dari..sampai (YYYY-MM). Hanya baca. */
+    var dr = String(p.dari || ''), sp = String(p.sampai || ''), RX = /^20\d\d-(0[1-9]|1[0-2])$/;
+    if (!RX.test(dr) || !RX.test(sp) || dr > sp) return { ok: false, pesan: 'Rentang bulan tidak valid' };
+    var rdb = hRekDb(), pers = [];
+    hIndeks().forEach(function (x) {
+      var bl = x.bulan || []; if (!bl.length || bl[bl.length - 1] < dr || bl[0] > sp) return;
+      var per; try { per = hBacaPer(x.id); } catch (er) { return; }
+      var s1 = per.st || {};
+      pers.push({
+        id: per.id, label: per.label, bulan: per.bulan, nominal: per.nominal, kunci: !!s1.selesai, danaTgl: s1.danaTgl || '', danaJml: s1.danaJml || 0, serahTgl: s1.serahTgl || '',
+        penerima: per.penerima.map(function (r) { var rk = r.rek || rdb[r.k] || {}; return { k: r.k, nama: r.nama, pos: r.pos, kel: r.kel, jenis: r.jenis, nominal: r.nominal, bulan: r.bulan, bayar: r.bayar !== false, alasan: r.alasan || '', no: rk.no || '', nik: rk.nik || '' }; }),
+        potongan: (per.potongan || []).map(function (q) { return { k: q.k, nom: q.nom, jenis: q.jenis || '', ket: q.ket || '', tujuan: q.tujuan || '', ke: q.ke && q.ke.nama ? q.ke.nama : '' }; })
+      });
+    });
+    pers.sort(function (m, n) { return m.id < n.id ? -1 : 1; });
+    return { ok: true, pers: pers };
+  }
   if (op === 'riwayat') {
     var l = (hBaca('honor-riwayat.json', []) || []).concat(hBaca('honor-riwayat-arsip.json', []) || []);
     if (p.per) l = l.filter(function (x) { return x.per === p.per || !x.per; });
