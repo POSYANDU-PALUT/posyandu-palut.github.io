@@ -2,7 +2,10 @@
 #v2 .hn{display:flex;flex-direction:column;gap:16px;min-width:0}
 #v2 .hn .hbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 #v2 .hn .hbar .sel select{font:inherit;font-weight:600}
-#v2 .hn .htabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:none;margin:0 -2px}
+#v2 .hn .htabs{display:flex;align-items:center;gap:2px;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:none;margin:0 -2px;position:sticky;top:var(--hst,0px);z-index:4;background:var(--bg)}
+#v2 .hn .htabs.st{background:var(--sf);box-shadow:0 4px 12px rgba(18,26,47,.10)}
+#v2 .hn .htabs .hpl{display:none;flex:none;margin:0 6px 0 4px;padding:4px 8px;border-radius:6px;background:var(--th);color:var(--navy);font-size:11.5px;font-weight:700;white-space:nowrap}
+#v2 .hn .htabs.st .hpl{display:block}
 #v2 .hn .htabs::-webkit-scrollbar{display:none}
 #v2 .hn .htabs button{flex:none;display:flex;align-items:center;gap:6px;height:42px;padding:0 12px;border:0;border-bottom:2px solid transparent;background:none;color:var(--mu);font:inherit;font-size:13.5px;cursor:pointer;white-space:nowrap}
 #v2 .hn .htabs button.on{color:var(--navy);border-color:var(--navy);font-weight:600}

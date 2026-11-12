@@ -214,7 +214,7 @@ function gambar() {
     else h += ({ r: vRingkasan, db: vDaftar, rk: vRekap, kw: vKwitansi, bk: vBerkas, pt: vPotongan, tf: vTransfer, rek: vRekening, rw: vRiwayat }[H.tab] || vRingkasan)();
   }
   ct.innerHTML = h + '</div>';
-  pasang(ct);
+  pasang(ct); tempelMenu();
   if (H.tab === 'rw' && H.rw === null && H.per) muatRiwayat();
 }
 function bar() {
@@ -225,7 +225,7 @@ function bar() {
     '<button class="bt pri sm" type="button" data-hx="baru">' + ic('plus') + ' Periode baru</button></div>';
 }
 function tabs() {
-  return '<nav class="htabs" aria-label="Bagian honor">' + TABS.map(function (t) {
+  return '<nav class="htabs" aria-label="Bagian honor">' + (H.per ? '<span class="hpl">' + e(H.per.label) + '</span>' : '') + TABS.map(function (t) {
     var lk = !terbuka(t[0]);
     return '<button type="button" data-ht="' + t[0] + '" class="' + (H.tab === t[0] ? 'on' : '') + '">' + t[1] + (lk ? ic('lock') : '') + '</button>';
   }).join('') + '</nav>';
@@ -1101,6 +1101,32 @@ async function mGabung() {
   gambar();
 }
 
+/* ---------- menu bagian honor menempel di atas saat halaman digulir ---------- */
+function tinggiAtas() {
+  var a = document.querySelector('#v2 .tb'), b = document.querySelector('#v2 .htb'), el = a && a.offsetHeight ? a : (b && b.offsetHeight ? b : null);
+  return el ? el.offsetHeight : 0;
+}
+function navTempel() { var n = document.querySelector('#v2 .hn .htabs'); return n && n.getBoundingClientRect().top <= tinggiAtas() + 1 && window.scrollY > 0 ? n : null; }
+var TEMPEL_PASANG = false;
+function tempelMenu() {
+  var r = document.documentElement; r.style.setProperty('--hst', tinggiAtas() + 'px');
+  if (!TEMPEL_PASANG) {
+    TEMPEL_PASANG = true;
+    var f = function () {
+      var n = document.querySelector('#v2 .hn .htabs'); if (!n) return;
+      document.documentElement.style.setProperty('--hst', tinggiAtas() + 'px');
+      n.classList.toggle('st', !!navTempel());
+    };
+    window.addEventListener('scroll', f, { passive: true }); window.addEventListener('resize', f);
+  }
+  var n = document.querySelector('#v2 .hn .htabs'); if (n) n.classList.toggle('st', !!navTempel());
+}
+function keAwalBagian(dulu) {
+  /* bila menu sedang menempel, setelah pindah bagian halaman kembali ke awal bagian itu (tepat di bawah menu) */
+  if (!dulu) return;
+  var n = document.querySelector('#v2 .hn .htabs'); if (!n) return;
+  window.scrollTo(0, Math.max(0, n.getBoundingClientRect().top + window.scrollY - tinggiAtas())); tempelMenu();
+}
 /* ---------- klik ---------- */
 function pasang(ct) {
   if (ct._hn) return; ct._hn = true;
@@ -1108,7 +1134,7 @@ function pasang(ct) {
     var t = ev.target.closest('[data-hx],[data-ht],[data-hj],[data-hper],[data-hubah],[data-hbayar],[data-hrek],[data-hlihat],[data-hpot],[data-hrf],[data-hbuka],[data-hhapus],[data-hperm]'); if (!t || !ct.contains(t)) return;
     var d = t.dataset; ev.preventDefault(); ev.stopPropagation();
     try {
-      if (d.ht) { H.tab = d.ht; H.view = ''; if (d.ht === 'rw') H.rw = null; return gambar(); }
+      if (d.ht) { var tmp = !!navTempel(); H.tab = d.ht; H.view = ''; if (d.ht === 'rw') H.rw = null; gambar(); keAwalBagian(tmp); return; }
       if (d.hj) { H.jn = d.hj; return gambar(); }
       if (d.hrf) { H.rf = d.hrf; return gambar(); }
       if (d.hper) { H.view = ''; H.tab = 'r'; return muat(d.hper); }
