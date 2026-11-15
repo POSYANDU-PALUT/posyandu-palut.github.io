@@ -397,10 +397,11 @@ function vBerkas() {
     item(2, 'Rekapitulasi honor', 'Total ' + rp(t.bruto) + ' · sama dengan kwitansi ✓', 'rekap', '<button class="bt out sm" type="button" data-hx="pdfrk">PDF</button>') +
     item(3, 'Daftar bayar yang sudah ditandatangani', 'Kertas asli bertanda tangan ' + t.n + ' kader (tidak perlu scan). Tanda tangan dikonfirmasi ' + (s.ttd ? tglId(new Date(s.ttd)) : '') + '.', 'daftar', '') +
     item(4, 'SK sebagai dasar acuan', skTeks + '. Isi SK tidak diubah.', 'sk', adaJ.filter(function (j) { return !sk[j]; }).map(function (j) { return '<label class="bt out sm">Unggah SK ' + j + '<input type="file" accept="application/pdf" data-hsk="' + j + '" hidden></label>'; }).join(''));
-  h += '<div class="acts" style="margin-top:14px"><span class="mu sm" style="flex:1">Berkas gabungan berisi Kwitansi → Rekap → halaman penanda “sisipkan Daftar Bayar bertanda tangan di sini” → SK.</span><button class="bt out sm" type="button" data-hx="pdfberkas">' + ic('dl') + ' Unduh berkas gabungan (PDF)</button><button class="bt ' + (s.berkas ? 'pri' : 'out') + ' sm" type="button" data-hx="gabung">Gabung PDF untuk SIPD</button>' +
+  h += '<div class="acts" style="margin-top:14px"><span class="mu sm" style="flex:1">Berkas gabungan berisi Kwitansi → Rekap → halaman penanda “sisipkan Daftar Bayar bertanda tangan di sini” → SK.</span><button class="bt out sm" type="button" data-hx="pdfberkas">' + ic('dl') + ' Unduh berkas gabungan (PDF)</button><button class="bt ' + (s.berkas ? 'pri' : 'out') + ' sm" type="button" data-hx="gabung">Gabung PDF untuk SIPD</button><button class="bt out sm" type="button" data-hx="arsip">🗂 Arsip SIPD · <span data-arsipn>…</span></button>' +
     (!s.berkas && !kunci() ? '<button class="bt pri sm" type="button" data-hx="berkasok">' + ic('check') + ' Tandai berkas lengkap</button>' : '') + '</div></section>';
   h += '<div class="g2"><section class="cd"><div class="hd"><h2>Setor ke DPPKAD</h2></div>' + (s.setor ? '<p><span class="pl g">Disetor ' + e(s.setorTgl || tglId(new Date(s.setor))) + '</span></p>' : '<p class="mu sm">Tandai setelah berkas Anda bawa dan setor ke DPPKAD.</p>' + (s.berkas && !kunci() ? '<button class="bt pri sm" type="button" data-hx="setor">Tandai sudah disetor…</button>' : '')) + '</section>' +
     '<section class="cd"><div class="hd"><h2>Dana masuk rekening kantor</h2></div>' + (s.dana ? '<p><span class="pl g">' + rp(s.danaJml) + ' · ' + e(s.danaTgl || tglId(new Date(s.dana))) + '</span></p>' + (s.danaJml !== t.bruto ? '<div class="info w">' + ic('alert') + 'Berbeda dari pengajuan ' + rp(t.bruto) + '.</div>' : '') : '<p class="mu sm">Setelah pengajuan disetujui dan dana masuk, catat jumlah dan tanggalnya.</p>' + (s.setor && !kunci() ? '<button class="bt pri sm" type="button" data-hx="dana">Catat dana masuk…</button>' : '')) + '</section></div>';
+  isiJumlahArsip();
   return h;
 }
 
@@ -1101,6 +1102,28 @@ function unduhPdf0(jenis, tombol) {
   }).catch(function (er) { if (tombol) { tombol.disabled = false; tombol.innerHTML = lama; } alert('PDF gagal dibuat: ' + er.message); });
 }
 
+/* ---------- Arsip SIPD: modul penyimpanan arsip dimuat saat dibutuhkan ---------- */
+var ARSIP_P = null;
+function muatArsip() {
+  if (window.ARSIP) return Promise.resolve(window.ARSIP);
+  if (ARSIP_P) return ARSIP_P;
+  var sc = document.querySelector('script[src^="pantau-honor.js"]'), v = sc ? ((sc.getAttribute('src').match(/[?&]v=([^&]+)/) || [])[1] || '') : '';
+  ARSIP_P = new Promise(function (res, rej) {
+    var s = document.createElement('script'); s.src = 'pantau-arsip.js' + (v ? '?v=' + v : '');
+    s.onload = function () { window.ARSIP ? res(window.ARSIP) : (ARSIP_P = null, rej(new Error('Modul arsip tidak termuat'))); };
+    s.onerror = function () { ARSIP_P = null; rej(new Error('Modul arsip belum bisa dimuat. Periksa internet lalu coba lagi.')); };
+    document.head.appendChild(s);
+  });
+  return ARSIP_P;
+}
+window.addEventListener('arsip-berubah', function () { isiJumlahArsip(); });
+function isiJumlahArsip() {
+  setTimeout(function () {
+    var n = document.querySelectorAll('[data-arsipn]'); if (!n.length) return;
+    muatArsip().then(function (A) { return A.jumlah(); }).then(function (c) { document.querySelectorAll('[data-arsipn]').forEach(function (x) { x.textContent = c; }); }).catch(function () { document.querySelectorAll('[data-arsipn]').forEach(function (x) { x.textContent = '0'; }); });
+  }, 30);
+}
+
 /* ---------- Gabung PDF untuk SIPD: scan berkas pengajuan bertanda tangan + scan laporan Posyandu, digabung di perangkat ---------- */
 function mbSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
 function tik() { return new Promise(function (r) { setTimeout(r, 0); }); }
@@ -1114,11 +1137,30 @@ async function mGabung() {
     '<label class="bt out sm gbadd">+ Tambah berkas<input type="file" multiple hidden accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" data-gf="A"></label><span class="mu sm"> PDF, atau foto JPG/PNG bila scan terbagi beberapa berkas</span></div>' +
     '<div class="gbs"><div class="gbh"><span class="gbn">2</span><b>Laporan Posyandu</b></div><p class="mu sm">Satu berkas gabungan Balita, Lansia, dan Poskesdes. Dipasang sesudah berkas pengajuan.</p><div data-gl="B"></div>' +
     '<label class="bt out sm gbadd">+ Tambah berkas<input type="file" multiple hidden accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" data-gf="B"></label></div>' +
-    '<div class="gbt" data-gt></div>', 'Gabung dan unduh untuk SIPD', async function () {
+    '<div class="gbs"><div class="gbh"><span class="gbn">3</span><b>Simpan hasilnya ke</b></div>' +
+    '<label class="svo"><input type="checkbox" data-sv="arsip" checked><span><b>Arsip Pantau</b> 🔒<small>Tersimpan di Chrome komputer ini, bisa dipanggil lagi. Menghapusnya butuh kata sandi admin.</small></span></label>' +
+    '<label class="svo" data-svf hidden><input type="checkbox" data-sv="folder"><span><b>Salin ke folder</b><small data-svfn>Belum ada folder dipilih</small></span><button class="bt out sm" type="button" data-sv="pilih">Pilih folder</button></label>' +
+    '<label class="svo"><input type="checkbox" data-sv="unduh"><span><b>Unduh juga</b><small>Simpan lewat unduhan Chrome seperti biasa.</small></span></label></div>' +
+    '<div class="gbt" data-gt></div>', 'Gabung dan simpan', async function () {
     if (!G.A.length) throw new Error('Pilih dulu berkas pengajuan bertanda tangan (bagian 1).');
     if (!G.B.length) throw new Error('Pilih dulu laporan Posyandu (bagian 2).');
     var urut = G.A.concat(G.B), bad = urut.filter(function (x) { return x.err; });
     if (bad.length) throw new Error('Ada berkas yang tidak bisa dibaca: ' + bad[0].nama + '. Hapus dari daftar atau ganti.');
+    var pil = { arsip: nilai(w, '[data-sv=arsip]'), folder: nilai(w, '[data-sv=folder]'), unduh: nilai(w, '[data-sv=unduh]') };
+    if (!pil.arsip && !pil.folder && !pil.unduh) throw new Error('Pilih dulu tempat menyimpan hasilnya (bagian 3).');
+    var AR = null, fh = null;
+    if (pil.arsip || pil.folder) {
+      try { AR = await muatArsip(); } catch (er) { throw new Error(er.message); }
+      if (pil.folder) {
+        fh = await AR.folderTersimpan();
+        if (!fh) throw new Error('Belum ada folder dipilih. Klik “Pilih folder”, atau hilangkan centang “Salin ke folder”.');
+        if (!(await AR.izinFolder(fh, true))) throw new Error('Izin ke folder belum diberikan. Klik “Pilih folder” lalu pilih foldernya lagi.');
+      }
+      if (pil.arsip) {
+        var rg = await AR.ruang(), perk0 = urut.reduce(function (a, x) { return a + (x.ukuran || 0); }, 0);
+        if (rg.kuota && rg.kuota - rg.pakai < perk0 * 1.2) throw new Error('Ruang penyimpanan Chrome tidak cukup untuk arsip ini (sisa sekitar ' + AR.mb(Math.max(0, rg.kuota - rg.pakai)) + '). Hapus arsip lama di “Arsip SIPD” atau kosongkan ruang di komputer.');
+      }
+    }
     var N = urut.reduce(function (a, x) { return a + x.hal; }, 0), dl = Dlg.sibuk('Menggabungkan PDF…', { lama: true }), t0 = Date.now(), selesaiHal = 0, jam = null;
     try {
       dl.persen(0, 'Menyiapkan berkas');
@@ -1146,17 +1188,39 @@ async function mGabung() {
       await tik();
       var bytes = await out.save({ useObjectStreams: false }); clearInterval(jam); jam = null;
       dl.persen(100, 'Selesai'); await tik();
-      var blob = new Blob([bytes], { type: 'application/pdf' }), a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = 'Berkas Pengajuan dan Laporan ' + H.per.label + '.pdf'; document.body.appendChild(a); a.click();
-      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 8000);
-      window.GABUNG_TERAKHIR = { hal: N, bytes: bytes.length, detik: (Date.now() - t0) / 1000 };
+      var blob = new Blob([bytes], { type: 'application/pdf' }), nmF = 'Berkas Pengajuan dan Laporan ' + H.per.label + '.pdf', ukr = bytes.length, ket = [], gagal = [], tersimpan = false;
+      bytes = null;
+      var salin = false;
+      if (pil.folder) { try { await AR.tulisFolder(fh, nmF, blob); salin = true; tersimpan = true; ket.push('disalin ke folder ' + fh.name); } catch (er) { gagal.push('Salinan ke folder gagal: ' + AR.pesanGalat(er)); } }
+      if (pil.arsip) { try { await AR.simpan(H.per.id, H.per.label, nmF, blob, salin); tersimpan = true; ket.push('disimpan di Arsip Pantau'); } catch (er) { gagal.push('Arsip Pantau gagal: ' + AR.pesanGalat(er)); } }
+      if (pil.unduh || !tersimpan) {
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nmF; document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 8000); ket.push('diunduh');
+      }
+      window.GABUNG_TERAKHIR = { hal: N, bytes: ukr, detik: (Date.now() - t0) / 1000 };
       G.A = []; G.B = [];
-      setTimeout(function () { alert('Selesai. ' + N + ' halaman, ' + mbSize(bytes.length) + '. Berkas sudah diunduh.'); }, 600);
+      setTimeout(function () { alert('Selesai. ' + N + ' halaman, ' + mbSize(ukr) + '. Berkas ' + ket.join(', ') + '.' + (gagal.length ? '\n\n' + gagal.join('\n') + (pil.unduh || !tersimpan ? '' : '') : '')); }, 600);
     } catch (er) {
       throw new Error('Penggabungan gagal: ' + (er && er.message || er) + '. Berkas asli Anda tidak berubah. Coba tutup tab lain lalu ulangi.');
     } finally { if (jam) clearInterval(jam); dl(); }
   });
   var tot = w.querySelector('[data-gt]'), okb = w.querySelector('[data-mx=ok]');
+  muatArsip().then(async function (A) {
+    var row = w.querySelector('[data-svf]'), cb = w.querySelector('[data-sv=folder]'), tk = w.querySelector('[data-svfn]'), pb = w.querySelector('button[data-sv=pilih]');
+    if (!A.dukungFolder) return;
+    row.hidden = false;
+    async function segar() { var h = await A.folderTersimpan(); tk.textContent = h ? 'Folder: ' + h.name : 'Belum ada folder dipilih'; pb.textContent = h ? 'Ganti folder' : 'Pilih folder'; return h; }
+    var h0 = await segar(); cb.checked = !!h0;
+    pb.addEventListener('click', async function (ev) {
+      ev.preventDefault(); ev.stopPropagation();
+      try { var nh = await A.pilihFolder(); if (nh) { await A.izinFolder(nh, true); cb.checked = true; } await segar(); } catch (er) { alert('Folder tidak bisa dipilih: ' + er.message); }
+    });
+    cb.addEventListener('change', async function () {
+      if (!cb.checked) return; var h = await A.folderTersimpan();
+      if (!h) { try { var nh = await A.pilihFolder(); if (nh) await A.izinFolder(nh, true); } catch (er) { alert('Folder tidak bisa dipilih: ' + er.message); } h = await segar(); cb.checked = !!h; }
+      else if (!(await A.izinFolder(h, true))) { alert('Izin ke folder belum diberikan.'); cb.checked = false; }
+    });
+  }).catch(function () {});
   function gambar() {
     ['A', 'B'].forEach(function (g) {
       w.querySelector('[data-gl=' + g + ']').innerHTML = G[g].map(function (x, i) {
@@ -1387,6 +1451,7 @@ function pasang(ct) {
         case 'pdftf': return unduhPdf('tf', t);
         case 'pdfberkas': return unduhPdf('berkas', t);
         case 'gabung': return mGabung();
+        case 'arsip': return muatArsip().then(function (A) { return A.dialog(); }).catch(function (er) { alert(er.message); });
         case 'xlsdb': return xlsDaftar();
         case 'xlsrk': return xlsRekap();
         case 'rtxls': return rtXls();

@@ -149,3 +149,22 @@
 #v2 .hn .g2e{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 #v2 .hn .rtcat{margin:0;padding:0 4px 4px 22px;font-size:13px;line-height:1.55;color:var(--fg)}
 @media (max-width:760px){#v2 .hn .g2e{grid-template-columns:1fr}#v2 .hn .rtbar .rtf .sp{display:none}#v2 .hn .rtsw{width:100%;box-sizing:border-box}}
+
+/* Arsip SIPD */
+.v2m .svo{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:7px 0;cursor:pointer}
+.v2m .svo[hidden]{display:none}
+.v2m .svo input[type=checkbox]{flex:none;width:18px;height:18px;margin-top:2px}
+.v2m .svo>span{flex:1;min-width:0;display:block}
+.v2m .svo small{display:block;color:var(--mu);font-size:12.5px;margin-top:2px;overflow-wrap:anywhere}
+.v2m .svo .bt{flex:none;align-self:center}
+.v2m.arsip .arbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0}
+.v2m.arsip .arf{flex:1;min-width:180px}
+.v2m.arsip .arl{display:flex;flex-direction:column;gap:8px}
+.v2m.arsip .ari{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.v2m.arsip .arn{flex:1;min-width:0}
+.v2m.arsip .arn small{display:block;color:var(--mu);font-size:12.5px;margin:2px 0 5px}
+.v2m.arsip .art{display:flex;flex-wrap:wrap;gap:6px}
+.v2m.arsip .ara{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.v2m.arsip .aro{padding:18px 4px;color:var(--mu);text-align:center}
+.v2m.arsip .arst{margin:12px 0 4px}
+@media (max-width:640px){.v2m.arsip .ari{flex-direction:column;align-items:stretch}.v2m.arsip .ara{justify-content:flex-start}}
