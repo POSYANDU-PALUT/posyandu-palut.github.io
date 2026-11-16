@@ -168,3 +168,12 @@
 .v2m.arsip .aro{padding:18px 4px;color:var(--mu);text-align:center}
 .v2m.arsip .arst{margin:12px 0 4px}
 @media (max-width:640px){.v2m.arsip .ari{flex-direction:column;align-items:stretch}.v2m.arsip .ara{justify-content:flex-start}}
+
+/* Nomor SK pada berkas gabungan */
+.v2m .nskb{margin:10px 0}
+.v2m .nskg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;margin:8px 0}
+.v2m .nsk{display:block;font-size:12.5px;color:var(--mu)}
+.v2m .nsk .in{margin-top:3px;width:100%}
+.v2m .nskpv{width:100%;height:560px;border:1px solid var(--line);border-radius:10px;margin-top:8px;background:#fff}
+.v2m .nskpv[hidden]{display:none}
+@media (max-width:640px){.v2m .nskg{grid-template-columns:minmax(0,1fr)}.v2m .nskpv{height:420px}}
