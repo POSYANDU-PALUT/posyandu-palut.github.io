@@ -887,12 +887,12 @@ function pdfRekap(doc, L, F) {
 function pdfKwitansi(doc, L, F) {
   var c = H.d.cfg, k = kwData(), t = total(), A4 = kp(), sx = A4[0] / 595.28, sy = A4[1] / 841.89, K = Kanvas(L, doc, { r: F.tr, b: F.tb }, A4), M = 60 * sx, x1 = M + 118 * sx, x2 = x1 + 10, wv = A4[0] - M - x2; K.baru();
   var y = K.y - 20;
-  var kv = function (lbl, val, o) { o = o || {}; K.teks(lbl, M, y, { s: 11 }); K.teks(':', x1, y, { s: 11 }); var ls = K.potong(val, o.b ? F.tb : F.tr, 11, o.w || wv); ls.forEach(function (s, i) { K.teks(s, x2, y - i * 15, { s: 11, b: o.b }); }); y -= ls.length * 15 + (o.sp || 4 * sy); };
+  var kv = function (lbl, val, o) { o = o || {}; K.teks(lbl, M, y, { s: 11 }); K.teks(':', x1, y, { s: 11 }); var ls = K.potong(val, o.b ? F.tb : F.tr, 11, o.w || wv); ls.forEach(function (s, i) { if (o.sorot) { var sw = F.tb.widthOfTextAtSize(win(s), 11); K.kotak(x2 - 1, y - i * 15 - 3, sw + 2, 14.5, { isi: o.sorot, garis: false }); } K.teks(s, x2, y - i * 15, { s: 11, b: o.b }); }); y -= ls.length * 15 + (o.sp || 4 * sy); };
   K.teks('Tahun', M, y, { s: 11 }); K.teks(':', x1, y, { s: 11 }); K.teks(k.tahun, x2, y, { s: 11 }); K.teks('Sumber Dana: ' + k.sumber, A4[0] - M, y, { al: 'r', s: 11 }); y -= 19;
   kv('Kode Rekening', c.kw.kodeRek); kv('Program', c.kw.program); kv('Kegiatan', c.kw.kegiatan); kv('Sub Kegiatan', c.kw.subKegiatan); kv('Belanja', c.kw.belanja);
   y -= 26 * sy; K.teks('KWITANSI PENERIMAAN', A4[0] / 2, y, { al: 'c', b: true, s: 12.5, u: true }); y -= 14;
   if (k.nomor) { K.teks('Nomor: ' + k.nomor, A4[0] / 2, y, { al: 'c', s: 10.5 }); } y -= 26 * sy;
-  kv('Sudah Terima Dari', k.dari, { sp: 10 * sy }); kv('Uang Sebesar', terbilang(t.bruto), { sp: 10 * sy }); kv('Untuk Pembayaran', k.untuk, { sp: 10 * sy }); kv('Terbilang', 'Rp. ' + ang(t.bruto).replace(/,/g, '.') + ',-', { b: true });
+  kv('Sudah Terima Dari', k.dari, { sp: 10 * sy }); kv('Uang Sebesar', terbilang(t.bruto), { sp: 10 * sy }); kv('Untuk Pembayaran', k.untuk, { sp: 10 * sy }); kv('Terbilang', 'Rp. ' + ang(t.bruto).replace(/,/g, '.') + ',-', { sorot: [.66, .82, .52], b: true });
   var yb = y - 50 * sy;
   ttdBlok(K, 135 * sx, yb, 'Pejabat Pelaksana Teknis Kegiatan\nPPTK', c.ttd.pptk.nama, c.ttd.pptk.nip, { s: 10 });
   ttdBlok(K, 300 * sx, yb, 'Lunas Bayar\nBendahara Pengeluaran', c.ttd.bendahara.nama, c.ttd.bendahara.nip, { s: 10 });
