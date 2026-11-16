@@ -364,7 +364,7 @@ function laci() {
   var ft = '';
   if (!op() && utama() && !x.tg) ft += '<button class="bt pri" type="button" data-aksi="tandai1">' + ic('check') + ' Tandai berkas fisik diterima</button>';
   if (d && d.pdf) ft += '<button class="bt ' + (ft ? 'out' : 'pri') + '" type="button" data-aksi="pdf1">' + ic('file') + ' Unduh PDF laporan</button>';
-  if (!d && p.hp) ft += '<a class="bt out" target="_blank" rel="noopener" href="https://wa.me/' + PX.nomorWA(p.hp) + '?text=' + encodeURIComponent(PX.pesanWA(p, pr, x.r.st === 'lewat')) + '">' + ic('wa') + ' Ingatkan lewat WhatsApp</a>';
+  if (!d && p.hp) ft += '<a class="bt ' + (ft ? 'out' : 'pri') + '" target="_blank" rel="noopener" href="https://wa.me/' + PX.nomorWA(p.hp) + '?text=' + encodeURIComponent(PX.pesanWA(p, pr, x.r.st === 'lewat')) + '">' + ic('wa') + ' Ingatkan lewat WhatsApp</a>';
   if (!op() && utama() && x.tg) ft += '<button class="bt out" type="button" data-aksi="batal1">Batalkan tanda fisik</button>';
   if (kunci) ft += '<button class="bt ghost" type="button" data-aksi="antar">Buka kembali laporan</button>';
   var h = '<div class="scrim" id="v2scrim" data-tutup></div><aside class="drawer" id="v2laci" role="dialog" aria-modal="true" aria-label="Rincian ' + e(p.nama) + '"><i class="grab"></i>' +
