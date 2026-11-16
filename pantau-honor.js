@@ -384,8 +384,41 @@ function kwDariForm() {
   return { tgl: v('kwTgl'), nomor: v('kwNo'), dari: v('kwDari'), untuk: v('kwUntuk'), penerima: v('kwTerima'), sumber: v('kwSumber'), tahun: v('kwTahun') };
 }
 
+/* ---------- Cache SK: diambil sekali, disimpan di memori dan di Chrome; SK diganti = otomatis diambil ulang ---------- */
+var SKM = {}, SKP = {};
+function skKunci(j) { var m = (H.d && H.d.sk || {})[j]; return m ? [m.id, m.tgl, m.ukuran].join('|') : ''; }
+function skDb() {
+  return new Promise(function (res) {
+    try { var rq = indexedDB.open('pantau-sk', 1); rq.onupgradeneeded = function () { rq.result.createObjectStore('sk'); }; rq.onsuccess = function () { res(rq.result); }; rq.onerror = function () { res(null); }; } catch (x) { res(null); }
+  });
+}
+function skIdb(j, tulis) {
+  return skDb().then(function (db) {
+    if (!db) return null;
+    return new Promise(function (res) {
+      try { var tx = db.transaction('sk', tulis ? 'readwrite' : 'readonly'), os = tx.objectStore('sk'), r = tulis ? os.put(tulis, j) : os.get(j); tx.oncomplete = function () { res(tulis ? true : (r.result || null)); }; tx.onerror = tx.onabort = function () { res(null); }; } catch (x) { res(null); }
+    });
+  });
+}
+function skAmbil(j) {
+  var k = skKunci(j); if (!k) return Promise.reject(new Error('SK ' + j + ' belum diunggah'));
+  if (SKM[j] && SKM[j].k === k) return Promise.resolve(SKM[j].b);
+  if (SKP[j] && SKP[j].k === k) return SKP[j].p;
+  var p = skIdb(j).then(function (c) {
+    if (c && c.k === k && c.b) { SKM[j] = c; return c.b; }
+    return ambil('sk', { jenis: j }).then(function (r) {
+      var bin = atob(r.b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      SKM[j] = { k: k, b: u }; skIdb(j, { k: k, b: u }); return u;
+    });
+  });
+  SKP[j] = { k: k, p: p }; p.catch(function () { if (SKP[j] && SKP[j].p === p) delete SKP[j]; });
+  return p;
+}
+function skHangatkan() { var sk = (H.d && H.d.sk) || {}; JENIS.forEach(function (j) { if (sk[j]) skAmbil(j).catch(function () {}); }); }
+
 /* ---------- Berkas ---------- */
 function vBerkas() {
+  setTimeout(skHangatkan, 600);
   var s = st(), t = total(), sk = H.d.sk || {}, c = H.per.cek || {}, h = '';
   var adaJ = JENIS.filter(function (j) { return t.j[j].n; });
   var skTeks = adaJ.map(function (j) { return (sk[j] ? '✓ ' : '✗ ') + 'SK ' + JN_PANJANG[j]; }).join(' · ');
@@ -1071,16 +1104,18 @@ function buatPdf0(jenis) {
         var t = total();
         pdfPenanda(doc, L, F, 'DAFTAR BAYAR YANG SUDAH DITANDATANGANI', ['Sisipkan di sini daftar bayar asli bertanda tangan:'].concat(JENIS.filter(function (j) { return t.j[j].n; }).map(function (j) { return JN_PANJANG[j] + ' - ' + t.j[j].n + ' kader - Rp' + ang(t.j[j].bruto).replace(/,/g, '.'); })).concat(['Honor ' + H.per.label]));
         var sk = H.d.sk || {}, adaJ = JENIS.filter(function (j) { return t.j[j].n; });
+        var ada = adaJ.filter(function (j) { return sk[j]; });
+        if (ada.length) toast('Mengambil SK…');
+        var ambilSemua = {}; ada.forEach(function (j) { ambilSemua[j] = skAmbil(j).then(function (u) { return { u: u }; }, function (er) { return { er: er }; }); });
         return adaJ.reduce(function (pr, j) {
           return pr.then(function () {
             if (!sk[j]) { pdfPenanda(doc, L, F, 'SK ' + JN_PANJANG[j].toUpperCase(), ['SK belum diunggah di aplikasi.', 'Sisipkan SK cetak di sini.']); return; }
-            toast('Mengambil SK ' + j + '…');
-            return ambil('sk', { jenis: j }).then(function (r) {
-              var bin = atob(r.b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
-              return L.PDFDocument.load(u, { ignoreEncryption: true }).then(function (s) { return doc.copyPages(s, s.getPageIndices()).then(function (pp) { pp.forEach(function (p) { doc.addPage(p); }); }); });
+            return ambilSemua[j].then(function (h) {
+              if (h.er) throw h.er;
+              return L.PDFDocument.load(h.u, { ignoreEncryption: true, updateMetadata: false }).then(function (s) { return doc.copyPages(s, s.getPageIndices()).then(function (pp) { pp.forEach(function (p) { doc.addPage(p); }); }); });
             }).catch(function (er) { pdfPenanda(doc, L, F, 'SK ' + JN_PANJANG[j].toUpperCase(), ['SK tidak bisa diambil: ' + er.message, 'Sisipkan SK cetak di sini.']); });
           });
-        }, Promise.resolve()).then(function () { return doc.save(); }).then(function (b) { return { b: b, nama: 'Berkas Pengajuan Honor' }; });
+        }, Promise.resolve()).then(function () { return doc.save({ useObjectStreams: false }); }).then(function (b) { return { b: b, nama: 'Berkas Pengajuan Honor' }; });
       });
     });
   });
