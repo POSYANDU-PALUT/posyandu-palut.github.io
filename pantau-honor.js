@@ -396,7 +396,7 @@ function vBerkas() {
     item(1, 'Kwitansi', 'Dibuat ' + (s.kw ? tglId(new Date(s.kw)) : '') + ' · ' + rp(t.bruto), 'kwitansi', '<button class="bt out sm" type="button" data-hx="pdfkw">PDF</button>') +
     item(2, 'Rekapitulasi honor', 'Total ' + rp(t.bruto) + ' · sama dengan kwitansi ✓', 'rekap', '<button class="bt out sm" type="button" data-hx="pdfrk">PDF</button>') +
     item(3, 'Daftar bayar yang sudah ditandatangani', 'Kertas asli bertanda tangan ' + t.n + ' kader (tidak perlu scan). Tanda tangan dikonfirmasi ' + (s.ttd ? tglId(new Date(s.ttd)) : '') + '.', 'daftar', '') +
-    item(4, 'SK sebagai dasar acuan', skTeks + '. Isi SK tidak diubah; hanya nomor SK ditambahkan di berkas gabungan.', 'sk', '<button class="bt out sm" type="button" data-hx="nosk">Nomor SK</button>' + adaJ.filter(function (j) { return !sk[j]; }).map(function (j) { return '<label class="bt out sm">Unggah SK ' + j + '<input type="file" accept="application/pdf" data-hsk="' + j + '" hidden></label>'; }).join(''));
+    item(4, 'SK sebagai dasar acuan', skTeks + '. Isi SK tidak diubah.', 'sk', adaJ.filter(function (j) { return !sk[j]; }).map(function (j) { return '<label class="bt out sm">Unggah SK ' + j + '<input type="file" accept="application/pdf" data-hsk="' + j + '" hidden></label>'; }).join(''));
   h += '<div class="acts" style="margin-top:14px"><span class="mu sm" style="flex:1">Berkas gabungan berisi Kwitansi → Rekap → halaman penanda “sisipkan Daftar Bayar bertanda tangan di sini” → SK.</span><button class="bt out sm" type="button" data-hx="pdfberkas">' + ic('dl') + ' Unduh berkas gabungan (PDF)</button><button class="bt ' + (s.berkas ? 'pri' : 'out') + ' sm" type="button" data-hx="gabung">Gabung PDF untuk SIPD</button><button class="bt out sm" type="button" data-hx="arsip">🗂 Arsip SIPD · <span data-arsipn>…</span></button>' +
     (!s.berkas && !kunci() ? '<button class="bt pri sm" type="button" data-hx="berkasok">' + ic('check') + ' Tandai berkas lengkap</button>' : '') + '</div></section>';
   h += '<div class="g2"><section class="cd"><div class="hd"><h2>Setor ke DPPKAD</h2></div>' + (s.setor ? '<p><span class="pl g">Disetor ' + e(s.setorTgl || tglId(new Date(s.setor))) + '</span></p>' : '<p class="mu sm">Tandai setelah berkas Anda bawa dan setor ke DPPKAD.</p>' + (s.berkas && !kunci() ? '<button class="bt pri sm" type="button" data-hx="setor">Tandai sudah disetor…</button>' : '')) + '</section>' +
@@ -1077,7 +1077,7 @@ function buatPdf0(jenis) {
             toast('Mengambil SK ' + j + '…');
             return ambil('sk', { jenis: j }).then(function (r) {
               var bin = atob(r.b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
-              return L.PDFDocument.load(u, { ignoreEncryption: true }).then(function (s) { return doc.copyPages(s, s.getPageIndices()).then(function (pp) { var n0 = doc.getPageCount(); pp.forEach(function (p) { doc.addPage(p); }); return doc.embedFont(L.StandardFonts.TimesRoman).then(function (ft) { noskCap(doc, L, ft, j, n0, pp.length); }); }); });
+              return L.PDFDocument.load(u, { ignoreEncryption: true }).then(function (s) { return doc.copyPages(s, s.getPageIndices()).then(function (pp) { pp.forEach(function (p) { doc.addPage(p); }); }); });
             }).catch(function (er) { pdfPenanda(doc, L, F, 'SK ' + JN_PANJANG[j].toUpperCase(), ['SK tidak bisa diambil: ' + er.message, 'Sisipkan SK cetak di sini.']); });
           });
         }, Promise.resolve()).then(function () { return doc.save(); }).then(function (b) { return { b: b, nama: 'Berkas Pengajuan Honor' }; });
@@ -1100,82 +1100,6 @@ function unduhPdf0(jenis, tombol) {
     if (tombol) { tombol.disabled = false; tombol.innerHTML = lama; }
     window.HONOR_PDF_TERAKHIR = o;
   }).catch(function (er) { if (tombol) { tombol.disabled = false; tombol.innerHTML = lama; } alert('PDF gagal dibuat: ' + er.message); });
-}
-
-/* ---------- Nomor SK pada halaman pertama dan lampiran SK (hanya di berkas gabungan) ----------
-   Letak diukur dari berkas SK yang ada (x, y = persen dari kiri/atas halaman; y = garis dasar tulisan).
-   e1/el = [lebar, tinggi di atas garis, tinggi di bawah garis] kotak putih penutup tulisan tangan lama. */
-var NOSK_DEF = {
-  Balita:    { no: '400.9.7/172/Kec.Palu Utara/2026', lamp: 5, x1: 36.24, y1: 36.85, xl: 49.49, yl: 22.73, e1: [31.1, 1.25, 0.5],  el: null },
-  Lansia:    { no: '400.9.7/171/Kec.Palu Utara/2026', lamp: 4, x1: 36.24, y1: 36.79, xl: 47.06, yl: 22.24, e1: [30.3, 1.05, 0.55], el: null },
-  Poskesdes: { no: '400.9.7/170/Kec.Palu Utara/2026', lamp: 4, x1: 44.74, y1: 36.2,  xl: 58.18, yl: 21.93, e1: [32.0, 1.26, 0.57], el: [28.6, 1.23, 0.42] }
-};
-var NOSK_UK = 11.2;
-function nf(v, d) { var n = parseFloat(String(v == null ? '' : v).replace(',', '.')); return isFinite(n) ? n : d; }
-function noskBaca() {
-  var d = {}; try { d = JSON.parse(localStorage.getItem('pantau-nosk2') || '{}') || {}; } catch (x) {}
-  var o = {};
-  JENIS.forEach(function (j) {
-    var a = d[j] || {}, f = NOSK_DEF[j];
-    o[j] = { no: a.no != null ? String(a.no) : f.no, lamp: a.lamp != null ? Math.max(0, Math.round(nf(a.lamp, f.lamp))) : f.lamp, x1: nf(a.x1, f.x1), y1: nf(a.y1, f.y1), xl: nf(a.xl, f.xl), yl: nf(a.yl, f.yl), uk: nf(a.uk, NOSK_UK), hapus: a.hapus !== false, e1: f.e1, el: f.el };
-  });
-  return o;
-}
-function noskSimpan(o) { try { localStorage.setItem('pantau-nosk2', JSON.stringify(o)); } catch (x) {} }
-function noskTulis(doc, L, font, c, idx, xp, yp, er) {
-  var pg = doc.getPage(idx), sz = pg.getSize();
-  if (c.hapus && er) pg.drawRectangle({ x: sz.width * (xp - 0.3) / 100, y: sz.height * (1 - (yp + er[2]) / 100), width: sz.width * er[0] / 100, height: sz.height * (er[1] + er[2]) / 100, color: L.rgb(1, 1, 1), borderWidth: 0 });
-  pg.drawText(win(c.no), { x: sz.width * xp / 100, y: sz.height * (1 - yp / 100), size: c.uk * sz.width / 595.28, font: font, color: L.rgb(0.05, 0.05, 0.08) });
-}
-function noskCap(doc, L, font, j, n0, jumlah) {
-  var c = noskBaca()[j]; if (!c || !c.no || !jumlah) return;
-  noskTulis(doc, L, font, c, n0, c.x1, c.y1, c.e1);
-  if (c.lamp >= 2 && c.lamp <= jumlah) noskTulis(doc, L, font, c, n0 + c.lamp - 1, c.xl, c.yl, c.el);
-}
-var SK_CACHE = {};
-function skBytes(j) {
-  if (SK_CACHE[j]) return Promise.resolve(SK_CACHE[j]);
-  return ambil('sk', { jenis: j }).then(function (r) { var bin = atob(r.b64), u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); SK_CACHE[j] = u; return u; });
-}
-function mNoSK() {
-  var c = noskBaca(), sk = H.d.sk || {}, h = '<p class="mu sm">Nomor ditulis otomatis di halaman pertama SK dan di halaman lampiran pada berkas gabungan, menggantikan tulisan tangan lama. SK yang Anda unggah tidak diubah. Letaknya sudah diatur, Anda hanya perlu mengubah nomor bila berganti.</p>';
-  JENIS.forEach(function (j) {
-    var v = c[j], f = function (k, lbl, val, st) { return '<label class="nsk"><span>' + lbl + '</span><input class="in" type="number" step="' + (k === 'lamp' ? '1' : '0.5') + '" min="0" data-ns="' + j + ':' + k + '" value="' + e(val) + '"' + (st || '') + '></label>'; };
-    h += '<section class="cd nskb"><div class="hd"><h2>SK ' + JN_PANJANG[j] + '</h2>' + (sk[j] ? '<span class="pl g">SK sudah diunggah</span>' : '<span class="pl a">SK belum diunggah</span>') + '</div>' +
-      '<div class="fl"><label>Nomor SK</label><input class="in" type="text" data-ns="' + j + ':no" value="' + e(v.no) + '"></div>' +
-      '<label class="svo"><input type="checkbox" data-ns="' + j + ':hapus"' + (v.hapus ? ' checked' : '') + '><span><b>Tutup tulisan tangan lama</b><small>Nomor tulisan tangan di halaman pertama (dan lampiran bila ada) ditutup, lalu diganti nomor ketikan.</small></span></label>' +
-      '<details class="nskd"><summary>Pengaturan letak (hanya bila bergeser)</summary><div class="nskg">' + f('lamp', 'Halaman lampiran ke- (0 = tidak ada)', v.lamp) + f('uk', 'Ukuran huruf', v.uk) + f('x1', 'Hal. 1: dari kiri (%)', v.x1) + f('y1', 'Hal. 1: dari atas (%)', v.y1) + f('xl', 'Lampiran: dari kiri (%)', v.xl) + f('yl', 'Lampiran: dari atas (%)', v.yl) + '</div></details>' +
-      '<div class="acts"><button class="bt out sm" type="button" data-nsprev="' + j + '"' + (sk[j] ? '' : ' disabled') + '>Lihat contoh</button><span class="mu sm" data-nspes="' + j + '"></span></div><iframe class="nskpv" data-nspv="' + j + '" title="Contoh halaman SK" hidden></iframe></section>';
-  });
-  var w = modal('Nomor SK pada berkas gabungan', h, 'Simpan', function (w) {
-    var o = {}; JENIS.forEach(function (j) { o[j] = ambilNs(w, j); }); noskSimpan(o); toast('Nomor SK tersimpan di komputer ini.');
-  });
-  function ambilNs(w, j) { var f = NOSK_DEF[j], g = function (k) { var x = w.querySelector('[data-ns="' + j + ':' + k + '"]'); return x ? (x.type === 'checkbox' ? x.checked : x.value.trim()) : ''; }; return { no: g('no'), lamp: Math.max(0, Math.round(nf(g('lamp'), f.lamp))), x1: nf(g('x1'), f.x1), y1: nf(g('y1'), f.y1), xl: nf(g('xl'), f.xl), yl: nf(g('yl'), f.yl), uk: nf(g('uk'), NOSK_UK), hapus: g('hapus') !== false ? !!g('hapus') : true, e1: f.e1, el: f.el }; }
-  var pvUrl = null, tunda = null;
-  w.addEventListener('change', function (ev) {
-    var t = ev.target.dataset && ev.target.dataset.ns; if (!t) return; var j = t.split(':')[0], fr = w.querySelector('[data-nspv="' + j + '"]'), b = w.querySelector('[data-nsprev="' + j + '"]');
-    if (fr && !fr.hidden && b && !b.disabled) { clearTimeout(tunda); tunda = setTimeout(function () { b.click(); }, 500); }
-  });
-  w.addEventListener('click', function (ev) {
-    var b = ev.target.closest('[data-nsprev]'); if (!b) return; var j = b.dataset.nsprev, pes = w.querySelector('[data-nspes="' + j + '"]'), fr = w.querySelector('[data-nspv="' + j + '"]');
-    b.disabled = true; pes.textContent = 'Menyiapkan contoh…';
-    Promise.all([pdfLib(), skBytes(j)]).then(function (a) {
-      var L = a[0], src = a[1], cc = ambilNs(w, j);
-      return L.PDFDocument.load(src, { ignoreEncryption: true }).then(function (sd) {
-        var ids = [0]; if (cc.lamp >= 2 && cc.lamp <= sd.getPageCount()) ids.push(cc.lamp - 1);
-        return L.PDFDocument.create().then(function (doc) {
-          return doc.copyPages(sd, ids).then(function (pp) { pp.forEach(function (p) { doc.addPage(p); }); return doc.embedFont(L.StandardFonts.TimesRoman); }).then(function (ft) {
-            if (cc.no) { noskTulis(doc, L, ft, cc, 0, cc.x1, cc.y1, cc.e1); if (ids.length > 1) noskTulis(doc, L, ft, cc, 1, cc.xl, cc.yl, cc.el); }
-            return doc.save();
-          });
-        }).then(function (by) {
-          if (pvUrl) URL.revokeObjectURL(pvUrl); pvUrl = URL.createObjectURL(new Blob([by], { type: 'application/pdf' })); fr.src = pvUrl + '#view=FitH'; fr.hidden = false;
-          pes.textContent = ids.length > 1 ? 'Contoh: halaman 1 dan halaman ' + cc.lamp + '.' : (cc.lamp ? 'Halaman lampiran ke-' + cc.lamp + ' tidak ada di SK ini.' : 'Contoh: halaman 1.');
-        });
-      });
-    }).catch(function (er) { pes.textContent = 'Contoh gagal: ' + er.message; }).then(function () { b.disabled = false; });
-  });
-  return w;
 }
 
 /* ---------- Arsip SIPD: modul penyimpanan arsip dimuat saat dibutuhkan ---------- */
@@ -1527,7 +1451,6 @@ function pasang(ct) {
         case 'pdftf': return unduhPdf('tf', t);
         case 'pdfberkas': return unduhPdf('berkas', t);
         case 'gabung': return mGabung();
-        case 'nosk': return mNoSK();
         case 'arsip': return muatArsip().then(function (A) { return A.dialog(); }).catch(function (er) { alert(er.message); });
         case 'xlsdb': return xlsDaftar();
         case 'xlsrk': return xlsRekap();
