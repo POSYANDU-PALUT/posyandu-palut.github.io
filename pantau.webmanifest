@@ -1,6 +1,6 @@
 {
-  "name": "Pantau Posyandu",
-  "short_name": "Pantau Posyandu",
+  "name": "Pantau",
+  "short_name": "Pantau",
   "description": "Pantau laporan Posyandu seluruh kelurahan di Kecamatan Palu Utara.",
   "lang": "id",
   "start_url": "pantau.html",

@@ -710,6 +710,7 @@ function render() {
   rapikanLogin();
   if (!aktif()) { document.body.classList.remove('v2on'); root.innerHTML = ''; return; }
   document.body.classList.add('v2on');
+  try { var jd = op() ? 'KELURAHAN ' + String(PX.KELSAYA).toUpperCase() : 'KECAMATAN PALU UTARA'; if (document.title !== jd) document.title = jd; } catch (x) {}
   if (op() && (S.pg === 'd' || S.pg === 'p' || S.pg === 'm')) S.pg = 'b';
   if (S.pg === 'h' && !utama()) S.pg = 'b';
   if (!op() && S.pg === 'a') { S.pg = 'p'; S.ps = 'a'; }
