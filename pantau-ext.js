@@ -743,8 +743,9 @@ function namaKontak(p) { return p.hpJenis === 'perwakilan' && p.hpNama ? p.hpNam
 function pesanWA(p, pr, lewat) {
   var j = new Date().getHours(), sapa = j < 11 ? 'pagi' : j < 15 ? 'siang' : j < 18 ? 'sore' : 'malam', nm = namaKontak(p), url;
   try { url = new URL('./', location.href).href; } catch (e) { url = ''; }
-  return 'Selamat ' + sapa + ' Bapak/Ibu' + (nm ? ' ' + nm : '') + ', kami dari Kecamatan Palu Utara. Laporan ' + p.jenis + ' ' + p.nama + ' bulan ' + pr.bl + ' ' + pr.th +
-    ' belum kami terima.' + (batasTgl(pr.th, pr.bl) ? ' Batas pembuatan laporan tanggal ' + teksBatas(pr.th, pr.bl) + (lewat ? ' sudah terlewat' : '') + '.' : '') + ' Mohon segera dibuat lewat aplikasi laporan' + (url ? ': ' + url : '') + '\nTerima kasih.';
+  var pn = (typeof PROFIL !== 'undefined' && PROFIL && PROFIL.nama && PROFIL.nama !== 'Admin Posyandu') ? PROFIL.nama : '', ttd = isOp() ? '\n' + (pn ? pn + ', ' : '') + 'Operator Kelurahan ' + KELSAYA : '';
+  return 'Selamat ' + sapa + ' Bapak/Ibu' + (nm ? ' ' + nm : '') + ', kami dari ' + (isOp() ? 'Kelurahan ' + KELSAYA : 'Kecamatan Palu Utara') + '. Laporan ' + p.jenis + ' ' + p.nama + ' bulan ' + pr.bl + ' ' + pr.th +
+    ' belum kami terima.' + (batasTgl(pr.th, pr.bl) ? ' Batas pembuatan laporan tanggal ' + teksBatas(pr.th, pr.bl) + (lewat ? ' sudah terlewat' : '') + '.' : '') + ' Mohon segera dibuat lewat aplikasi laporan' + (url ? ': ' + url : '') + '\nTerima kasih.' + ttd;
 }
 function hitungMundur(pr) {
   var now = new Date(), b = batasTgl(pr.th, pr.bl);
