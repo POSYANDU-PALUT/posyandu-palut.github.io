@@ -296,7 +296,7 @@ function doGet(e) {
     if (w2) {
       var c = bacaPengaturan(w2.u), bs = bacaPengaturan(PANTAU_USER);
       hasil = { ok: true, cepat: 1, nama: c.nama, nip: c.nip, jabatan: c.jabatan, unit: c.unit, foto: c.foto,
-                banners: bs.banners, batas: bs.batas, batasKel: bs.batasKel, bb: bs.bb || {}, sk: bs.sk, pengumuman: bs.pengumuman, wa: bs.wa, fisik: bs.fisik, peran: w2.peran, kel: w2.kel || '' };
+                banners: bs.banners, batas: bs.batas, batasKel: bs.batasKel, bb: bs.bb || {}, sk: bs.sk, pejabat: bs.pejabat || {}, pengumuman: bs.pengumuman, wa: bs.wa, fisik: bs.fisik, peran: w2.peran, kel: w2.kel || '' };
       if (w2.peran === 'utama') { hasil.admins = daftarAdmin(); hasil.ruang = bacaRuang(); hasil.penerima = infoPenerima(); hasil.pemeliharaan = pemeliharaanSampai(); if (MODE_TES) hasil.tes = infoTes(); }
       hasil.modeTes = MODE_TES;
     } else {
@@ -578,6 +578,7 @@ function bacaPengaturanAsli(u) {
     c.batasKel = parseInt(o.batasKel, 10) || 0;
     c.bb = bersihBB(o.bb, c.batas, c.batasKel);
     c.sk = (o.sk && typeof o.sk === 'object') ? o.sk : {};
+    c.pejabat = (o.pejabat && typeof o.pejabat === 'object') ? o.pejabat : {};
     c.pengumuman = String(o.pengumuman || '');
     c.pengumumanTgl = String(o.pengumumanTgl || '');
     c.wa = String(o.wa || '');
@@ -835,6 +836,7 @@ function doPost(e) {
       if (d.aksi === 'setor') { tag = 'a'; return catatSetor(d); }
       if (d.aksi === 'lembar') { tag = 'a'; return buatLembar(d); }
       if (d.aksi === 'bukalaporan') { tag = 'a'; return bukaLaporan(d); }
+      if (d.aksi === 'pejabat') { tag = 'a'; return simpanPejabat(d); }
       if (d.aksi === 'terima') { tag = 'a'; return terimaKonfirmasi(d); }
       if (d.aksi === 'terimabatal') { tag = 'a'; return terimaBatal(d); }
       if (d.aksi === 'sk') { tag = 'a'; return simpanSk(d, cache); }
@@ -1232,10 +1234,28 @@ function buatLembar(d) {
     var oleh = namaOperator(w);
     L[kode] = { kode: kode, kel: kel, per: per, bln: BULAN[parseInt(per.slice(5), 10) - 1], thn: per.slice(0, 4),
                 tgl: Utilities.formatDate(now, zona, 'yyyy-MM-dd'), jam: Utilities.formatDate(now, zona, 'HH:mm'), oleh: oleh, ts: now.getTime(),
+                pj: (bacaPengaturan(PANTAU_USER).pejabat || {})[kel] || null,
                 items: items, ganti: '', diterima: null };
     tulisLembarSemua(L); tulisKunciLap(K);
     catatLog(w.u, 'membuat lembar pengantar ' + kel + ' ' + per + ' (' + ikut.length + ' laporan) [' + kode + ']');
     return simpanHasil({ ok: true, lembar: L[kode] }, 'a');
+  });
+}
+/** POST (kelurahan atau admin kecamatan): ubah data pejabat yang tampil di kolom tanda tangan lembar pengantar. Lembar lama tidak berubah. */
+function simpanPejabat(d) {
+  var m = masukKelurahan(d), w = m.w, kel = m.kel;
+  return denganKunci(function () {
+    var c = bacaPengaturan(PANTAU_USER);
+    if (!c.pejabat || typeof c.pejabat !== 'object') c.pejabat = {};
+    if (d.hapus === true || d.hapus === 'true' || d.hapus === 1 || d.hapus === '1') { delete c.pejabat[kel]; }
+    else {
+      var jab = bersih(d.jabatan, 60), nama = bersih(d.nama, 60), nip = String(d.nip || '').replace(/[^0-9 ]/g, '').trim().slice(0, 30);
+      if (!jab || !nama) throw new Error('Isi jabatan dan nama');
+      c.pejabat[kel] = { jabatan: jab, nama: nama, nip: nip };
+    }
+    simpanPengaturan(c, PANTAU_USER);
+    catatLog(w.u, (d.hapus ? 'mengembalikan data pejabat lembar pengantar ke bawaan: ' : 'mengubah data pejabat lembar pengantar: ') + kel);
+    return simpanHasil({ ok: true, pejabat: c.pejabat }, 'a');
   });
 }
 /** POST: buka kembali satu laporan yang sudah dikunci, agar kader bisa mengirim ulang. */
