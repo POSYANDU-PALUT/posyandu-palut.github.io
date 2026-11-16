@@ -75,7 +75,23 @@ var root = null, jadwalT = 0;
 var PER_HAL = 12;
 
 function px() { return window.PX; }
-function per() { return S.per || PX.periodeAktif(new Date()); }
+/* Periode bawaan saat dibuka: periode yang sedang dikumpulkan; bila semua berkas fisiknya sudah diterima kecamatan, langsung bulan berikutnya (selama belum melewati bulan ini). */
+function per() {
+  if (S.per) return S.per;
+  var now = new Date(), pa = PX.periodeAktif(now);
+  /* Keputusan diambil sekali, saat data berkas fisik periode ini sudah termuat; setelah itu periode tidak loncat sendiri. */
+  try {
+    var M = PX.SETOR && PX.SETOR[PX.perKey(pa)];
+    if (M && window.ADA !== false) {
+      var m = BULAN.indexOf(pa.bl), ny = +pa.th + (m === 11 ? 1 : 0), nm = (m + 1) % 12, nxt = { bl: BULAN[nm], th: String(ny) };
+      var tidakMasaDepan = ny < now.getFullYear() || (ny === now.getFullYear() && nm <= now.getMonth());
+      S.per = (tidakMasaDepan && periodeSelesai(pa)) ? nxt : pa;
+      if (S.per === nxt) { S.pil = {}; S.hal = 1; }
+      return S.per;
+    }
+  } catch (x) {}
+  return pa;
+}
 function op() { return PX.isOp(); }
 function utama() { return PX.utama(); }
 function hp() { return window.matchMedia && matchMedia('(max-width:760px)').matches; }
@@ -772,7 +788,7 @@ function pasangKlik() {
   });
   root.addEventListener('change', function (ev) {
     var t = ev.target, d = t.dataset;
-    if (d.per !== undefined) { var v = t.value.split('|'); S.per = { bl: v[0], th: v[1] }; S.pil = {}; S.hal = 1; var pa = PX.periodeAktif(new Date()); if (S.per.bl === pa.bl && S.per.th === pa.th) S.per = null; return render(); }
+    if (d.per !== undefined) { var v = t.value.split('|'); S.per = { bl: v[0], th: v[1] }; S.pil = {}; S.hal = 1; return render(); }
     if (d.f) { var k = d.f; if (k === 'kel' || k === 'jn') { S[k] = t.value; S.hal = 1; return render(); } if (k === 'dk' || k === 'dj' || k === 'ds') { S[k] = t.value; return render(); } }
     if (d.pil) { S.pil[d.pil] = t.checked; return isiTabel(data(per())); }
     if (d.pilsemua !== undefined) { var D = data(per()), l = saring(D).slice((S.hal - 1) * PER_HAL, S.hal * PER_HAL); l.forEach(function (x) { S.pil[x.p.id] = t.checked; }); return isiTabel(D); }
