@@ -743,7 +743,7 @@ function namaKontak(p) { return p.hpJenis === 'perwakilan' && p.hpNama ? p.hpNam
 function pesanWA(p, pr, lewat) {
   var j = new Date().getHours(), sapa = j < 11 ? 'pagi' : j < 15 ? 'siang' : j < 18 ? 'sore' : 'malam', nm = namaKontak(p), url;
   try { url = new URL('./', location.href).href; } catch (e) { url = ''; }
-  var pn = (typeof PROFIL !== 'undefined' && PROFIL && PROFIL.nama && PROFIL.nama !== 'Admin Posyandu') ? PROFIL.nama : '';
+  var pn = (typeof PROFIL !== 'undefined' && PROFIL && PROFIL.nama && PROFIL.nama !== 'Admin Posyandu') ? String(PROFIL.nama).trim().replace(/(^|\s)(\S)/g, function (m0, a, b) { return a + b.toUpperCase(); }) : '';
   return 'Selamat ' + sapa + ' Bapak/Ibu' + (nm ? ' ' + nm : '') + ', ' + (isOp() ? (pn ? 'saya ' + pn + ' dari Kelurahan ' + KELSAYA : 'kami dari Kelurahan ' + KELSAYA) : 'kami dari Kecamatan Palu Utara') + '. Laporan ' + p.jenis + ' ' + p.nama + ' bulan ' + pr.bl + ' ' + pr.th +
     ' belum kami terima.' + (batasTgl(pr.th, pr.bl) ? ' Batas pembuatan laporan tanggal ' + teksBatas(pr.th, pr.bl) + (lewat ? ' sudah terlewat' : '') + '.' : '') + ' Mohon segera dibuat lewat aplikasi laporan' + (url ? ': ' + url : '') + '\nTerima kasih.';
 }
