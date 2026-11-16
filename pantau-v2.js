@@ -280,7 +280,7 @@ function kartuAntarCd(D) {
   var siap = D.rows.filter(function (x) { return x.st === 'mfisik'; }).length;
   var tf = PX.teksBatasKel(per().th, per().bl);
   return '<section class="cd antar"><div class="ai">' + ic('box') + '</div><div><h2>Antar berkas fisik ke kecamatan</h2><p class="mu sm">' + siap + ' laporan ' + e(PX.KELSAYA) + ' sudah terkirim digital dan siap diantar. Batas antar: <b>' + tf + '</b>.</p></div><div class="sp"></div>' +
-    '<button class="bt out" type="button" data-aksi="antar">Pilih yang diantar</button><button class="bt pri" type="button" data-aksi="antar">' + ic('file') + ' Buat lembar pengantar (PDF)</button></section>' +
+    '<button class="bt pri" type="button" data-aksi="antar">' + ic('file') + ' Buat lembar pengantar (PDF)</button></section>' +
     '<div class="cd antar hp"><b>' + ic('box') + ' Siap diantar ke kecamatan</b><span class="mu sm">' + siap + ' laporan · batas ' + tf + '</span><button class="bt pri wide" type="button" data-aksi="antar">Buat lembar pengantar (PDF)</button></div>';
 }
 /* Selama data laporan pertama kali dimuat (belum ada data sama sekali), tampilkan kerangka abu-abu, bukan angka 0 yang menyesatkan. */
