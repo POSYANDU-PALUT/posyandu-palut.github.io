@@ -288,6 +288,21 @@ body.tm .filt .fld select{font-size:14px;padding-left:12px;padding-right:30px!im
 body .kredit,body #login .kredit{margin:10px 0 4px;text-align:center;font-size:10.5px;letter-spacing:0;text-transform:none;line-height:1.4;color:#8a8390;white-space:nowrap}body .kredit b,body #login .kredit b{font-weight:600;color:#5f5866;letter-spacing:0}
 /* pita simpan di latar: di HP ditaruh di atas supaya tidak menutup tombol lembar */
 @media (max-width:640px){body .dlgsp{bottom:auto;top:calc(10px + env(safe-area-inset-top))}}
+
+/* ===== 20261117a: perbaikan antislop (kontras, 44 px, huruf biasa, kurangi gerak) ===== */
+body.tm .lbox>p{color:#5b4a9c;text-transform:none;letter-spacing:0;font-size:13px}
+body .kredit,body #login .kredit{font-size:12px;color:#5f5a74}
+body .kredit b,body #login .kredit b{color:#4a4560}
+body.tm .seg button{height:44px}
+body.tm .seg button:not(.on){color:#5a5672}
+body.tm .chip.ok{color:#13703f}
+body.tm .who{min-height:44px;box-sizing:border-box;max-width:none;min-width:0;flex:0 1 auto;margin-left:auto}
+body.tm .top .t{flex:none}body.tm .top .t b,body.tm .top .t small{white-space:nowrap}
+body.tm .who .kel{flex:none;font-size:11.5px;font-weight:600;opacity:.88;border-left:1px solid rgba(255,255,255,.3);padding-left:7px}
+body.tm .hero .per{text-transform:none;letter-spacing:0;font-size:13px}
+body.tm .scan{letter-spacing:0}
+@media (prefers-reduced-motion:reduce){.bar i,body.tm .hero .bar i{transition:none}}
+@media (max-width:420px){body.tm .who svg.ic{display:none!important}body.tm .who{padding:0 12px}}
 </style>
 </head>
 <body class="tm">
@@ -309,7 +324,7 @@ body .kredit,body #login .kredit{margin:10px 0 4px;text-align:center;font-size:1
     <div class="fld"><label for="lp">Kata sandi</label><input id="lp" type="password" autocomplete="current-password"></div>
     <div class="err" id="lerr" role="alert"></div>
     <button class="btn" id="lb" type="submit">Masuk</button>
-    <div data-ver class="vtap">Terima Posyandu · tampilan 20261111j</div>
+    <div data-ver class="vtap">Terima Posyandu · tampilan 20261117a</div>
     <p class="kredit">Developed by <b>Max Juniar Ratowo</b> · © 2026</p>
   </form>
 </section>
@@ -318,7 +333,7 @@ body .kredit,body #login .kredit{margin:10px 0 4px;text-align:center;font-size:1
   <header class="top"><div class="wrap">
     <img src="logo.png" alt="">
     <div class="t"><b>TERIMA POSYANDU</b><small>Kecamatan Palu Utara</small></div>
-    <button class="who" id="who" type="button" title="Keluar"><svg class="ic" style="width:18px;height:18px"><use href="#i-user"/></svg><span id="whoN">Operator</span></button>
+    <button class="who" id="who" type="button" title="Keluar" aria-label="Keluar dari akun"><svg class="ic" style="width:18px;height:18px"><use href="#i-user"/></svg><span id="whoN">Operator</span><small class="kel">Keluar</small></button>
   </div></header>
 
   <main class="wrap">
@@ -332,11 +347,11 @@ body .kredit,body #login .kredit{margin:10px 0 4px;text-align:center;font-size:1
           <div><b id="sB">0</b><small>Belum diterima</small></div>
         </div>
       </div>
-      <button class="btn scan" id="scan" type="button"><svg class="ic"><use href="#i-scan"/></svg>SCAN QR LAPORAN</button>
+      <button class="btn scan" id="scan" type="button"><svg class="ic"><use href="#i-scan"/></svg>Scan QR laporan</button>
       <h2>Riwayat penerimaan</h2>
       <div class="list" id="riw"></div>
       <p class="kredit">Developed by <b>Max Juniar Ratowo</b> · © 2026</p>
-      <div data-ver class="vtap" style="margin-bottom:90px">Terima Posyandu · tampilan 20261111j</div>
+      <div data-ver class="vtap" style="margin-bottom:90px">Terima Posyandu · tampilan 20261117a</div>
     </section>
 
     <section id="vR" class="hidden">
@@ -794,7 +809,7 @@ $('lt').addEventListener('input',function(){
   try{var s=localStorage.getItem(KUNCI_LS);if(s){CRED=JSON.parse(s);if(CRED&&CRED.u&&CRED.p){$('login').classList.add('hidden');$('app').classList.remove('hidden');mulai();return}CRED=null}}catch(e){CRED=null}
 })();
 </script>
-<script>if(window.PB)PB.mulai({app:'terima',v:'20261111j'});</script>
+<script>if(window.PB)PB.mulai({app:'terima',v:'20261117a'});</script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',function(){try{navigator.serviceWorker.register('sw-terima.js').then(function(){return navigator.serviceWorker.ready}).then(function(g){var l=[location.href,'terima.html','terima','pindah.js','kantor.jpg','jsQR.js','tes.js','logo.png','pembaruan.js','terima.webmanifest','icon-terima-192.png','icon-terima-512.png','apple-touch-icon-terima.png'];try{performance.getEntriesByType('resource').forEach(function(x){l.push(x.name)})}catch(e){}if(g.active)g.active.postMessage({simpan:l})}).catch(function(){})}catch(e){}})</script>
 </body>
 </html>
