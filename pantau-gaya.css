@@ -92,3 +92,127 @@ html[data-gaya=ceria] #v2 .tabs a.on{background:#ffd24a;color:#1b2b5e;font-weigh
 html[data-gaya=ceria] #v2 .gyb.on{border-color:#ffd24a;box-shadow:0 0 0 3px rgba(255,210,74,.4)}
 
 @media (max-width:760px){html[data-gaya=ceria] #v2 .mt td.nmc small{white-space:normal;overflow-wrap:anywhere}html[data-gaya=ceria] #v2 .mt td.nmc{padding-right:6px}}
+
+
+/* ===== Gaya iPhone (dua kaca) dan iPhone (kaca penuh) =====
+   Dasar sama: abu lembut, kartu bulat 20px tanpa garis, judul besar, label status pastel, huruf sistem.
+   Dua kaca: hanya bilah bawah (HP) atau bilah judul (laptop) dan pil bulan yang berkaca.
+   Kaca penuh: semua permukaan berkaca di atas foto Kantor Camat yang diburamkan. */
+
+/* --- warna dasar: terang --- */
+html:is([data-gaya=ios],[data-gaya=kaca]):root body.v2on{
+  --bg:#f2f2f7; --sf:#ffffff; --sfs:#ffffff; --line:#e2e2e8; --line2:#ececf1; --fg:#111114; --mu:#55555e; --mu2:#62626b; --th:#f7f7fa;
+  --pri:#0a63e0; --pri2:#0a55c2; --pri3:#0a63e0; --tint:#e4eeff;
+  --navy:#0a58d6; --navy2:#0a55c2; --navys:#e1ecff; --navyt:#0a4fc0; --gold:#ff9f0a;
+  --g:#0b6b34; --gs:#d6f2df; --a:#7a4d00; --as:#fff0c2; --r:#a3231a; --rs:#fde2df; --b:#1b4fb8; --bs:#dde9ff; --n:#55555e; --ns:#ececf1;
+  --c1:#0a63e0; --c2:#1a9a4f; --sel:#f2f6ff;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,Roboto,sans-serif;
+}
+html:is([data-gaya=ios],[data-gaya=kaca])[data-theme=dark]:root body.v2on{
+  --bg:#000; --sf:#1c1c1e; --sfs:#1c1c1e; --line:#38383a; --line2:#2c2c2e; --fg:#f5f5f7; --mu:#b4b4bb; --mu2:#a6a6ae; --th:#232326;
+  --navy:#6cb0ff; --navy2:#9ccbff; --navys:#14283f; --navyt:#9ccbff; --gold:#ffb340;
+  --g:#6fe0a0; --gs:#0f3a22; --a:#ffd36a; --as:#3b2c06; --r:#ff9d94; --rs:#3d1714; --b:#9cc2ff; --bs:#12294d; --n:#b4b4bb; --ns:#2c2c2e;
+  --c1:#6cb0ff; --c2:#5fd394; --sel:#17202c;
+}
+@media (prefers-color-scheme:dark){
+  html:is([data-gaya=ios],[data-gaya=kaca]):root:not([data-theme=light]) body.v2on{
+    --bg:#000; --sf:#1c1c1e; --sfs:#1c1c1e; --line:#38383a; --line2:#2c2c2e; --fg:#f5f5f7; --mu:#b4b4bb; --mu2:#a6a6ae; --th:#232326;
+    --navy:#6cb0ff; --navy2:#9ccbff; --navys:#14283f; --navyt:#9ccbff; --gold:#ffb340;
+    --g:#6fe0a0; --gs:#0f3a22; --a:#ffd36a; --as:#3b2c06; --r:#ff9d94; --rs:#3d1714; --b:#9cc2ff; --bs:#12294d; --n:#b4b4bb; --ns:#2c2c2e;
+    --c1:#6cb0ff; --c2:#5fd394; --sel:#17202c;
+  }
+}
+
+/* --- bentuk bersama --- */
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .sb::before{display:none}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .sb{border-right:1px solid var(--line)}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .cd,html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .tblc,html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .num{border:0;border-radius:20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .tb{border-bottom:0}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .tb h1{font-size:32px;font-weight:700;letter-spacing:-.02em}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .bt{border-radius:12px}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .bt.pri{background:#0a63e0;color:#fff;border-color:#0a63e0}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .bt.out{border-color:var(--line);color:var(--navy)}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .sel,html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .srch{border-radius:12px;border-color:var(--line)}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .sb nav a{border-radius:12px}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .pl{border-radius:999px;font-weight:600}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .pg a.on,html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .tabs a.on{background:#0a63e0;color:#fff}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .num b{font-size:26px}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .num.on{outline:3px solid #0a63e0}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 a:focus-visible,html:is([data-gaya=ios],[data-gaya=kaca]) #v2 button:focus-visible{outline:3px solid #0a63e0;outline-offset:2px}
+html:is([data-gaya=ios],[data-gaya=kaca])[data-theme=dark] #v2 a:focus-visible,html:is([data-gaya=ios],[data-gaya=kaca])[data-theme=dark] #v2 button:focus-visible{outline-color:#6cb0ff}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .gyb.on{border-color:#0a63e0;box-shadow:0 0 0 3px rgba(10,99,224,.25)}
+/* panel kemajuan: lengkung lembut, angka besar */
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .kem{border-radius:20px}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .kbar{height:12px;border-radius:12px}
+html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .kbar i{border-radius:0}
+
+/* --- HP: judul besar --- */
+@media (max-width:760px){
+  html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .htb{background:var(--bg);border-bottom:0}
+  html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .htb .ht b{font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.15;overflow-wrap:anywhere}
+  html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .tblc>.hd h2{font-size:17px}
+}
+
+/* --- DUA KACA: bilah bawah (HP) dan bilah judul (laptop) + pil bulan di HP --- */
+html[data-gaya=ios] #v2 .tb{background:rgba(242,242,247,.72);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border-bottom:1px solid rgba(0,0,0,.06)}
+html[data-gaya=ios][data-theme=dark] #v2 .tb{background:rgba(0,0,0,.6);border-bottom-color:rgba(255,255,255,.1)}
+@media (prefers-color-scheme:dark){html[data-gaya=ios]:not([data-theme=light]) #v2 .tb{background:rgba(0,0,0,.6);border-bottom-color:rgba(255,255,255,.1)}}
+@media (max-width:760px){
+  html[data-gaya=ios] #v2 .hnav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));padding:6px 6px;border-radius:26px;border:1px solid rgba(255,255,255,.6);background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);box-shadow:0 8px 30px rgba(0,0,0,.16)}
+  html[data-gaya=ios] #v2 .hnav a.on{color:var(--navyt)}
+  html[data-gaya=ios] #v2 .hpper .sel{border-radius:999px;border:1px solid rgba(255,255,255,.6);background:rgba(255,255,255,.72);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);box-shadow:0 2px 12px rgba(0,0,0,.1)}
+  html[data-gaya=ios][data-theme=dark] #v2 .hnav,html[data-gaya=ios][data-theme=dark] #v2 .hpper .sel{background:rgba(44,44,46,.72);border-color:rgba(255,255,255,.14)}
+}
+@media (max-width:760px) and (prefers-color-scheme:dark){
+  html[data-gaya=ios]:not([data-theme=light]) #v2 .hnav,html[data-gaya=ios]:not([data-theme=light]) #v2 .hpper .sel{background:rgba(44,44,46,.72);border-color:rgba(255,255,255,.14)}
+}
+
+/* --- KACA PENUH: foto Kantor Camat diburamkan, semua permukaan berkaca --- */
+html[data-gaya=kaca]:root body.v2on{
+  --glbg:rgba(255,255,255,.66); --glbd:rgba(255,255,255,.7); --glbl:blur(24px) saturate(160%);
+  --sf:rgba(255,255,255,.66); --th:rgba(255,255,255,.5); --line:rgba(255,255,255,.7); --line2:rgba(0,0,0,.08); --sel:rgba(255,255,255,.8);
+  --mu:#454550; --mu2:#4f4f5a; --foto:linear-gradient(rgba(255,255,255,.16),rgba(255,255,255,.16));
+}
+html[data-gaya=kaca][data-theme=dark]:root body.v2on{
+  --glbg:rgba(28,28,30,.62); --glbd:rgba(255,255,255,.16);
+  --sf:rgba(28,28,30,.62); --th:rgba(255,255,255,.07); --line:rgba(255,255,255,.16); --line2:rgba(255,255,255,.1); --sel:rgba(255,255,255,.12);
+  --mu:#c4c4cc; --mu2:#b4b4bb; --foto:linear-gradient(rgba(0,0,0,.5),rgba(0,0,0,.5));
+}
+@media (prefers-color-scheme:dark){
+  html[data-gaya=kaca]:root:not([data-theme=light]) body.v2on{
+    --glbg:rgba(28,28,30,.62); --glbd:rgba(255,255,255,.16);
+    --sf:rgba(28,28,30,.62); --th:rgba(255,255,255,.07); --line:rgba(255,255,255,.16); --line2:rgba(255,255,255,.1); --sel:rgba(255,255,255,.12);
+    --mu:#c4c4cc; --mu2:#b4b4bb; --foto:linear-gradient(rgba(0,0,0,.5),rgba(0,0,0,.5));
+  }
+}
+html[data-gaya=kaca] body.v2on::before{content:"";position:fixed;inset:-40px;z-index:-1;background:var(--foto),url(kantor.jpg) center/cover no-repeat;filter:blur(16px) saturate(1.15)}
+html[data-gaya=kaca] #v2,html[data-gaya=kaca] #v2 .mn{background:transparent!important}
+html[data-gaya=kaca] #v2 .cd,html[data-gaya=kaca] #v2 .tblc,html[data-gaya=kaca] #v2 .num,html[data-gaya=kaca] #v2 .sb,html[data-gaya=kaca] #v2 .tb,
+html[data-gaya=kaca] #v2 .htb,html[data-gaya=kaca] #v2 .hnav,html[data-gaya=kaca] #v2 .sel,html[data-gaya=kaca] #v2 .srch,html[data-gaya=kaca] #v2 .info,html[data-gaya=kaca] #v2 .antar,html[data-gaya=kaca] #v2 .kgc{
+  background:var(--glbg);-webkit-backdrop-filter:var(--glbl);backdrop-filter:var(--glbl);border:1px solid var(--glbd);box-shadow:0 4px 24px rgba(0,0,0,.08)}
+html[data-gaya=kaca] #v2 .sb{border-radius:0 20px 20px 0}
+html[data-gaya=kaca] #v2 .tbl td,html[data-gaya=kaca] #v2 .tbl th{background:transparent}
+html[data-gaya=kaca] #v2 .tblc .tbl th{background:var(--th)}
+html[data-gaya=kaca] #v2 .htb{background:transparent;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+html[data-gaya=kaca] #v2 .tb{border-radius:0 0 20px 20px;border-top:0}
+/* lapisan yang harus tetap terbaca: panel rincian, menu, dialog */
+html[data-gaya=kaca] #v2 .drawer,html[data-gaya=kaca] #v2 .ddm{background:var(--sfs);-webkit-backdrop-filter:none;backdrop-filter:none}
+html[data-gaya=kaca] .v2m{--sf:var(--sfs)}
+@media (max-width:760px){
+  html[data-gaya=kaca] #v2 .hnav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom,0px));padding:6px;border-radius:26px;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+  html[data-gaya=kaca] #v2 .hpper .sel{border-radius:999px}
+  html[data-gaya=kaca] #v2 .tblc{background:transparent;border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+  html[data-gaya=kaca] #v2 .tblc .tw{background:var(--glbg);-webkit-backdrop-filter:var(--glbl);backdrop-filter:var(--glbl);border:1px solid var(--glbd);border-radius:20px}
+}
+/* cadangan: tanpa dukungan kaca, atau pengguna meminta transparansi dikurangi → permukaan padat, tanpa foto */
+@media (prefers-reduced-transparency:reduce){
+  html[data-gaya=ios] #v2 .tb,html[data-gaya=ios] #v2 .hnav,html[data-gaya=ios] #v2 .hpper .sel{background:var(--sfs)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+  html[data-gaya=kaca]:root body.v2on{--glbg:var(--sfs);--glbl:none;--sf:var(--sfs);--glbd:var(--line);--th:var(--th);--foto:linear-gradient(transparent,transparent)}
+  html[data-gaya=kaca] body.v2on::before{display:none}
+}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  html[data-gaya=ios] #v2 .tb,html[data-gaya=ios] #v2 .hnav,html[data-gaya=ios] #v2 .hpper .sel{background:var(--sfs)!important}
+  html[data-gaya=kaca]:root body.v2on{--glbg:var(--sfs);--sf:var(--sfs)}
+  html[data-gaya=kaca] body.v2on::before{display:none}
+}
+@media (max-width:760px){html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .mt td.nmc small{white-space:normal;overflow-wrap:anywhere}html:is([data-gaya=ios],[data-gaya=kaca]) #v2 .mt td.nmc{padding-right:6px}}
