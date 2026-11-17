@@ -112,6 +112,7 @@ function data(pr) {
 }
 var URUT = { mfisik: 0, fsaja: 1, mdig: 2, belum: 3, lengkap: 4 };
 function urut(a, b) { return URUT[a.st] - URUT[b.st] || KEL.indexOf(a.p.kel) - KEL.indexOf(b.p.kel) || a.p.jenis.localeCompare(b.p.jenis) || a.p.nama.localeCompare(b.p.nama); }
+function gl() { try { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; } catch (x) { return 'smooth'; } }
 function jn(p) { return p.jenis === 'Posyandu Lansia' ? 'Lansia' : 'Balita'; }
 function tglD(d) {
   var m = /^(\d\d)\/(\d\d)\/(\d{4})(?: (\d\d):(\d\d))?/.exec((d && d.tk) || ''); if (!m) return 'Terkirim';
@@ -126,6 +127,13 @@ function pill(st) {
 function pillHp(st) { return pill(st).replace('Menunggu berkas fisik', 'Tunggu fisik').replace('Fisik diterima · digital menyusul', 'Fisik saja').replace('Fisik diterima · menunggu digital', 'Tunggu digital'); }
 
 /* ---------- kerangka ---------- */
+/* Alamat halaman (#/beranda, #/rekap, ...) supaya tombol Kembali di browser bekerja dan tautan bisa disalin. */
+var RUTE = { b: 'beranda', r: 'rekap', d: 'posyandu', h: 'honor', p: 'pengaturan', a: 'akun', m: 'lainnya' };
+function rute(pg) { return '#/' + (RUTE[pg] || 'beranda'); }
+function dariRute(h) { var m = /^#\/([a-z]+)/.exec(h || ''); if (!m) return null; for (var k in RUTE) if (RUTE[k] === m[1]) return k; return null; }
+function catatRute(ganti) {
+  try { if (!history.pushState) return; var st = { v2: S.pg }, u = rute(S.pg); if (location.hash === u && history.state && history.state.v2 === S.pg) return; history[ganti ? 'replaceState' : 'pushState'](st, '', u); } catch (x) { }
+}
 function navItems() {
   return op() ? [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['a', 'user', 'Akun saya']]
     : [['b', 'home', 'Beranda'], ['r', 'chart', 'Rekap'], ['d', 'pos', 'Posyandu']].concat(utama() ? [['h', 'wallet', 'Honor']] : []).concat([['p', 'gear', 'Pengaturan']]);
@@ -159,7 +167,7 @@ function jamMuat() { var t = document.querySelector('.lastt'); var s = t ? t.tex
 function kerangka() {
   var j = judul(), it = navItems(), ih = navHp();
   var sb = '<aside class="sb"><div class="brand"><img src="logo.png" alt=""><div><b>Pantau Posyandu</b><small>Kecamatan Palu Utara</small></div></div><nav>' +
-    it.map(function (x) { return '<a href="#" data-go="' + x[0] + '" class="' + (x[0] === S.pg || (S.pg === 'm' && x[0] === 'p') ? 'on' : '') + '" title="' + x[2] + '">' + ic(x[1]) + '<span>' + x[2] + '</span></a>'; }).join('') +
+    it.map(function (x) { return '<a href="' + rute(x[0]) + '" data-go="' + x[0] + '" class="' + (x[0] === S.pg || (S.pg === 'm' && x[0] === 'p') ? 'on' : '') + '" title="' + x[2] + '">' + ic(x[1]) + '<span>' + x[2] + '</span></a>'; }).join('') +
     '</nav><div class="sbf"><button class="me" type="button" data-akun>' + avatar() + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + '</small></div></button>' + kredit('ks') + '</div></aside>';
   var adaPer = (S.pg === 'b' || S.pg === 'r');
   var tb = '<header class="tb"><div class="tbt"><h1>' + e(j[0]) + '</h1>' + (j[1] ? '<p>' + e(j[1]) + '</p>' : '') + '</div><div class="sp"></div>' + (adaPer ? selPer() : '') +
@@ -170,7 +178,7 @@ function kerangka() {
   var htb = '<header class="htb"><img src="logo.png" alt=""><div class="ht"><b>' + e(hj[0]) + '</b>' + (hj[1] ? '<small>' + e(hj[1]) + '</small>' : '') + '</div><div class="sp"></div>' +
     '<button class="ib" type="button" data-bel aria-label="Laporan terbaru">' + ic('bell') + (titikBel() ? '<i class="dt"></i>' : '') + '</button><button class="avb" type="button" data-akun aria-label="Akun">' + avatar('sm') + '</button></header>';
   var hn = '<nav class="hnav" style="grid-template-columns:repeat(' + ih.length + ',1fr)">' + ih.map(function (x) {
-    var on = x[0] === S.pg || (x[0] === 'm' && S.pg === 'p'); return '<a href="#" data-go="' + x[0] + '" class="' + (on ? 'on' : '') + '">' + ic(x[1]) + '<span>' + x[2] + '</span></a>'; }).join('') + '</nav>';
+    var on = x[0] === S.pg || (x[0] === 'm' && S.pg === 'p'); return '<a href="' + rute(x[0]) + '" data-go="' + x[0] + '" class="' + (on ? 'on' : '') + '">' + ic(x[1]) + '<span>' + x[2] + '</span></a>'; }).join('') + '</nav>';
   return sb + '<main class="mn">' + tb + htb + '<div class="ct" id="v2ct"></div></main>' + hn;
 }
 function titikBel() { var s = 0; try { s = parseInt(localStorage.getItem('pantau-seen') || '0', 10) || 0; } catch (x) { } return DATA.length > s; }
@@ -179,62 +187,15 @@ function titikBel() { var s = 0; try { s = parseInt(localStorage.getItem('pantau
 function periodeSelesai(pr) {
   try { var D = data(pr), rs = D.rows || []; return !!(D.ada && rs.length && rs.every(function (x) { return x.tg; })); } catch (x) { return false; }
 }
-function tenggat(pr, selesai) {
-  var bt = PX.batasTgl(pr.th, pr.bl), bf = PX.batasFisikTgl(pr.th, pr.bl), m = BULAN.indexOf(pr.bl), ny = +pr.th + (m === 11 ? 1 : 0), nm = (m + 1) % 12;
-  if (selesai) {
-    var ket = (bt && bf) ? 'Batas kader ' + PX.teksBatas(pr.th, pr.bl) + ' · berkas fisik ' + PX.teksBatasKel(pr.th, pr.bl) : 'Semua berkas fisik sudah diterima kecamatan.';
-    return '<section class="dl dls"><div class="dli"><b>Periode laporan ' + pr.bl + ' ' + pr.th + ' selesai</b><span>Semua berkas fisik diterima kecamatan. ' + (bt && bf ? ket : '') + '</span></div><div class="cnt f"><b>&#10003;</b><span>periode<br>selesai</span></div></section>';
-  }
-  if (!bt || !bf) return '<section class="dl"><div class="dli"><b>Periode laporan ' + pr.bl + ' ' + pr.th + '</b><span>Batas waktu belum diatur, jadi belum ada hitung mundur dan penanda terlambat.' + (utama() ? ' <a href="#" data-aksi="bbatur" data-bb="' + PX.bbKey(pr.th, pr.bl) + '">Atur sekarang</a>' : '') + '</span></div></section>';
-  var b1 = new Date(bt.getFullYear(), bt.getMonth(), bt.getDate()), awal = new Date(b1.getFullYear(), b1.getMonth(), 1), awalLap = new Date(+pr.th, m, 1), b2 = new Date(bf.getFullYear(), bf.getMonth(), bf.getDate()), h0 = new Date(); h0.setHours(0, 0, 0, 0);
-  if (awal < awalLap) awal = awalLap;   // mulai = tanggal 1 bulan batas kader, tidak sebelum bulan laporan
-  var tot = Math.max(1, (b2 - awal) / 864e5), now = Math.min(100, Math.max(0, (h0 - awal) / 864e5 * 100 / tot)), pk = Math.min(100, Math.max(0, (b1 - awal) / 864e5 * 100 / tot));
-  var hk = Math.round((b1 - h0) / 864e5), hf = Math.round((b2 - h0) / 864e5), cnt;
-  if (hk > 0) cnt = ['' + hk, 'hari lagi<br>batas kader'];
-  else if (hk === 0) cnt = ['0', 'hari ini<br>batas kader'];
-  else if (hf >= 0) cnt = ['' + hf, hf ? 'hari lagi<br>batas fisik' : 'hari ini<br>batas fisik'];
-  else cnt = ['✓', 'periode<br>sudah ditutup'];
-  var tk = PX.teksBatas(pr.th, pr.bl), tf = PX.teksBatasKel(pr.th, pr.bl);
-  var d = '<section class="dl"><div class="dli"><b>Periode laporan ' + pr.bl + ' ' + pr.th + '</b><span>Kader mengirim paling lambat <em>' + tk + '</em> · kelurahan mengantar berkas fisik paling lambat <em>' + tf + '</em></span></div>' +
-    '<div class="tl2"><div class="tlb"><i style="width:' + now + '%"></i><u style="left:' + pk + '%"></u><u style="left:100%"></u><s style="left:' + now + '%"></s></div>' +
-    '<div class="tll"><div class="' + (hk > 0 ? '' : '') + '"><small>Mulai</small><b>1 ' + B3(awal.getMonth()) + '</b></div>' +
-    '<div class="k' + (hk >= 0 ? ' on' : '') + '"><small>Batas kader</small><b>' + b1.getDate() + ' ' + B3(b1.getMonth()) + (b1 < awal ? ' ' + b1.getFullYear() : '') + '</b></div>' +
-    '<div class="f' + (hk < 0 && hf >= 0 ? ' on' : '') + '"><small>Batas fisik</small><b>' + b2.getDate() + ' ' + B3(b2.getMonth()) + '</b></div></div></div>' +
-    '<div class="cnt' + (hk < 0 ? ' f' : '') + '"><b>' + cnt[0] + '</b><span>' + cnt[1] + '</span></div></section>';
-  var hdl = '<div class="hdl"><div><b>' + (hk > 0 ? hk + ' hari lagi' : hk === 0 ? 'Hari ini' : hf >= 0 ? (hf ? hf + ' hari lagi' : 'Hari ini') : 'Periode ditutup') + '</b><span>batas kader ' + b1.getDate() + ' ' + B3(b1.getMonth()) + ' · fisik ' + b2.getDate() + ' ' + B3(b2.getMonth()) + '</span></div>' +
-    '<div class="tlb"><i style="width:' + now + '%"></i></div></div>';
-  return d + hdl;
-}
-function tahap(D, kel) {
-  var rs = D.rows.filter(function (x) { return !kel || x.p.kel === kel; }), n = rs.length;
-  var dg = rs.filter(function (x) { return x.d; }).length, fs = rs.filter(function (x) { return x.tg; }).length;
-  var bj = function (j, f) { return rs.filter(function (x) { return jn(x.p) === j && f(x); }).length; }, nb = bj('Balita', function () { return 1; }), nl = n - nb;
-  var mf = rs.filter(function (x) { return x.st === 'mfisik'; }).length, bl = rs.filter(function (x) { return x.st === 'belum' || x.st === 'mdig'; }).length, tl = rs.filter(function (x) { return x.telat; }).length;
-  var A = D.ada, q = function (v) { return A ? v : '…'; }, pc = function (v) { return n ? Math.round(v * 100 / n) : 0; };
-  var c1 = '<div class="cd st1"><div class="ch"><span class="step">1</span><div><b>Laporan digital terkirim</b><small>Dikirim kader lewat aplikasi</small></div></div>' +
-    '<div class="big"><b>' + dg + '</b><span>/ ' + n + ' Posyandu</span><em>' + pc(dg) + '%</em></div>' + bar(dg, n, 'g1') +
-    '<div class="split"><span>Balita <b>' + bj('Balita', function (x) { return x.d; }) + '/' + nb + '</b></span><span>Lansia <b>' + bj('Lansia', function (x) { return x.d; }) + '/' + nl + '</b></span></div></div>';
-  var c2 = '<div class="cd st2"><div class="ch"><span class="step">2</span><div><b>Berkas fisik diterima kecamatan</b><small>Dihitung sebagai laporan resmi masuk</small></div></div>' +
-    '<div class="big"><b>' + q(fs) + '</b><span>/ ' + n + ' Posyandu</span><em>' + (A ? pc(fs) + '%' : '') + '</em></div>' + bar(A ? fs : 0, n, 'g2') +
-    '<div class="split"><span>Balita <b>' + q(bj('Balita', function (x) { return x.tg; })) + '/' + nb + '</b></span><span>Lansia <b>' + q(bj('Lansia', function (x) { return x.tg; })) + '/' + nl + '</b></span></div></div>';
-  var todo = '<div class="cd todo"><div class="ch"><span class="step w">' + ic('alert') + '</span><div><b>Perlu tindakan</b><small>Klik untuk menyaring daftar</small></div></div>' +
-    '<a href="#" class="ti a" data-tab="mfisik"><i></i><span>' + (op() ? 'Sudah dikirim kader, belum diterima kecamatan' : 'Digital sudah ada, berkas fisik belum diterima') + '</span><b>' + q(mf) + '</b>' + ic('right') + '</a>' +
-    '<a href="#" class="ti n" data-tab="belum"><i></i><span>Belum mengirim laporan apa pun</span><b>' + q(bl) + '</b>' + ic('right') + '</a>' +
-    '<a href="#" class="ti r" data-tab="telat"><i></i><span>Terlambat (lewat batas kader)</span><b>' + q(tl) + '</b>' + ic('right') + '</a></div>';
-  var hst = '<div class="hst"><div class="cd"><small><span class="step">1</span>Digital terkirim</small><div class="big"><b>' + dg + '</b><span>/' + n + '</span></div>' + bar(dg, n, 'g1') + '</div>' +
-    '<div class="cd"><small><span class="step">2</span>Fisik diterima</small><div class="big"><b>' + q(fs) + '</b><span>/' + n + '</span></div>' + bar(A ? fs : 0, n, 'g2') + '</div></div>' +
-    '<div class="cd htodo"><a href="#" class="ti a" data-tab="mfisik"><i></i><span>Menunggu berkas fisik</span><b>' + q(mf) + '</b>' + ic('right') + '</a><a href="#" class="ti n" data-tab="belum"><i></i><span>Belum mengirim apa pun</span><b>' + q(bl) + '</b>' + ic('right') + '</a></div>';
-  return '<section class="stages">' + c1 + c2 + todo + '</section>' + hst;
-}
 function tabelKel(D) {
   var rows = KEL.map(function (k) {
     var rs = D.rows.filter(function (x) { return x.p.kel === k; }), n = rs.length; if (!n) return '';
     var dg = rs.filter(function (x) { return x.d; }).length, fs = rs.filter(function (x) { return x.tg; }).length, bl = rs.filter(function (x) { return !x.resmi; }).length;
-    return '<tr class="klik" tabindex="0" data-kel="' + e(k) + '"><td><b>' + e(k) + '</b></td><td class="c">' + n + '</td><td><div class="pb">' + bar(dg, n, 'g1') + '<span>' + dg + '/' + n + '</span></div></td>' +
-      '<td><div class="pb">' + bar(D.ada ? fs : 0, n, 'g2') + '<span>' + (D.ada ? fs : '…') + '/' + n + '</span></div></td><td class="c">' + (!D.ada ? '<span class="pl n">…</span>' : bl ? '<span class="pl n">' + bl + ' belum</span>' : '<span class="pl g">Semua masuk</span>') + '</td><td class="c"><span class="mu">' + ic('right') + '</span></td></tr>';
+    return '<tr class="klik" tabindex="0" data-kel="' + e(k) + '"><td><b>' + e(k) + '</b></td><td>' + dg + ' dari ' + n + '</td><td class="c">' + (D.ada ? fs : '…') + '</td>' +
+      '<td class="c">' + (!D.ada ? '<span class="pl n">…</span>' : bl ? '<span class="pl n">' + bl + ' belum</span>' : '<span class="pl g">Semua masuk</span>') + '</td><td class="c"><span class="mu">' + ic('right') + '</span></td></tr>';
   }).join('');
-  return '<details class="cd kelc"' + (hp() ? '' : ' open') + '><summary><b>Per kelurahan</b>' + ic('down') + '</summary><div class="hd"><h2>Per kelurahan</h2><span class="mu sm">Klik baris untuk melihat Posyandu kelurahan itu</span></div>' +
-    '<div class="tw"><table class="tbl kt"><thead><tr><th>Kelurahan</th><th class="c">Posyandu</th><th>Laporan digital</th><th>Berkas fisik diterima</th><th class="c">Belum masuk</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></details>';
+  return '<details class="cd kelc"' + (hp() ? '' : ' open') + '><summary><b>Per kelurahan</b>' + ic('down') + '</summary><div class="hd"><h2>Per kelurahan</h2><span class="mu sm">Klik baris untuk menyaring daftar Posyandu di bawah</span></div>' +
+    '<div class="tw"><table class="tbl kt"><thead><tr><th>Kelurahan</th><th>Sudah kirim</th><th class="c">Diterima</th><th class="c">Belum masuk</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div></details>';
 }
 function saring(D) {
   var q = S.q.trim().toLowerCase();
@@ -256,20 +217,17 @@ function selek(name, opts, val, lbl) {
   return '<label class="sel">' + '<select data-f="' + name + '" aria-label="' + lbl + '">' + opts.map(function (o) { return '<option value="' + e(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + e(o[1]) + '</option>'; }).join('') + '</select><b>' + e((opts.filter(function (o) { return o[0] === val; })[0] || opts[0])[1]) + '</b>' + ic('down') + '</label>';
 }
 function tabelUtama(D) {
-  var all = D.rows, cnt = { semua: all.length, mfisik: 0, belum: 0, lengkap: 0, telat: 0 };
-  all.forEach(function (x) { if (x.st === 'mfisik') cnt.mfisik++; if (x.st === 'belum' || x.st === 'mdig') cnt.belum++; if (x.st === 'lengkap' || x.st === 'fsaja') cnt.lengkap++; if (x.telat) cnt.telat++; });
-  var tabs = [['semua', 'Semua'], ['mfisik', op() ? 'Siap diantar' : 'Menunggu berkas fisik'], ['belum', 'Belum masuk'], ['lengkap', op() ? 'Sudah kirim' : 'Lengkap']];
-  if (S.tab === 'telat') tabs.push(['telat', 'Terlambat']);
-  var tb = tabs.map(function (t) { return '<a href="#" role="tab" data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + ' <b>' + (D.ada || t[0] === 'semua' ? cnt[t[0]] : '…') + '</b></a>'; }).join('');
-  var hc = '<div class="hchips">' + tabs.map(function (t) { return '<a href="#" data-tab="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1].replace('Menunggu berkas fisik', 'Tunggu fisik').replace('Belum masuk', 'Belum') + ' ' + (D.ada || t[0] === 'semua' ? cnt[t[0]] : '…') + '</a>'; }).join('') + '</div>';
-  var judul = op() ? 'Posyandu (' + all.length + ')' : 'Laporan Posyandu';
+  var all = D.rows;
+  var judul = 'Posyandu (' + all.length + ')';
   var aksi = '<div class="dd"><button class="bt sm out" type="button" data-menu="bagi">' + ic('share') + ' Bagikan daftar belum ' + ic('down') + '</button>' + (S.menu === 'bagi' ? '<div class="ddm"><button type="button" data-aksi="posterpdf">' + ic('file') + 'PDF untuk dicetak</button><button type="button" data-aksi="posterpng">' + ic('wa') + 'Gambar untuk WhatsApp</button></div>' : '') + '</div>' +
     '<div class="dd"><button class="bt sm out" type="button" data-menu="unduh">' + ic('dl') + ' Unduh ' + ic('down') + '</button>' + (S.menu === 'unduh' ? '<div class="ddm r"><button type="button" data-aksi="xlsx">' + ic('dl') + 'Data laporan (Excel)</button><button type="button" data-aksi="csv">' + ic('dl') + 'Data laporan (CSV)</button></div>' : '') + '</div>';
   if (op()) aksi = aksi.replace(/<div class="dd"><button class="bt sm out" type="button" data-menu="bagi">[\s\S]*?<\/div>(?=<div class="dd">)/, '');
   var flt = '<div class="flt"><label class="srch">' + ic('search') + '<input id="v2q" type="search" placeholder="Cari Posyandu atau ketua…" aria-label="Cari Posyandu" value="' + e(S.q) + '" autocomplete="off"></label>' +
     (op() ? '' : selek('kel', [['', 'Semua kelurahan']].concat(KEL.map(function (k) { return [k, k]; })), S.kel, 'Kelurahan')) +
     (op() ? '' : selek('jn', [['', 'Semua jenis'], ['Balita', 'Balita'], ['Lansia', 'Lansia']], S.jn, 'Jenis')) + '</div>';
-  return '<section class="cd tblc" id="v2tabel"><div class="hd"><h2>' + e(judul) + '</h2><div class="sp"></div>' + aksi + '</div>' + (op() ? '' : '<div class="tabs" role="tablist">' + tb + '</div>' + hc) + flt + '<div id="v2isi"></div></section>';
+  var NMT = { kirim: 'Sudah kirim', blm: 'Belum kirim', terima: 'Diterima kecamatan', mfisik: 'Berkas fisik perlu diterima', telat: 'Terlambat', belum: 'Belum masuk', lengkap: 'Lengkap' };
+  if (!op() && S.tab !== 'semua' && NMT[S.tab]) flt += '<div class="fchip"><span>Disaring: <b>' + NMT[S.tab] + '</b></span><button type="button" class="bt sm ghost" data-tab="semua" aria-label="Hapus saringan">' + ic('x') + ' Tampilkan semua</button></div>';
+  return '<section class="cd tblc" id="v2tabel"><div class="hd"><h2>' + e(judul) + '</h2><div class="sp"></div>' + aksi + '</div>' + flt + '<div id="v2isi"></div></section>';
 }
 function isiTabel(D) {
   var box = $('v2isi'); if (!box) return;
@@ -282,18 +240,25 @@ function isiTabel(D) {
     if (x.d && x.d.pdf) a += '<button class="ib s" type="button" data-pdf="' + e(p.id) + '" title="Unduh PDF laporan" aria-label="Unduh PDF laporan ' + e(p.nama) + '">' + ic('file') + '</button>';
     if (!op() && !x.d && p.hp) a += '<a class="ib s" target="_blank" rel="noopener" href="https://wa.me/' + PX.nomorWA(p.hp) + '?text=' + encodeURIComponent(PX.pesanWA(p, per(), x.r.st === 'lewat')) + '" title="Ingatkan lewat WhatsApp" aria-label="Ingatkan ' + e(p.nama) + ' lewat WhatsApp">' + ic('wa') + '</a>';
     a += '<button class="ib s" type="button" data-laci="' + e(p.id) + '" aria-label="Rincian ' + e(p.nama) + '">' + ic('dots') + '</button>';
-    var dg = x.d ? '<span class="ok">' + ic('check') + ' ' + tglD(x.d) + '</span>' + ((+x.d.ver || 1) > 1 ? '<small class="rv">revisi ke-' + x.d.ver + '</small>' : '') : '<span class="no">Belum dikirim</span>';
-    var fs = x.tg ? '<span class="ok">' + ic('check') + ' Diterima ' + tglF(x.tg) + '</span>' : (x.d && !op() && utama() ? '<button class="bt sm out" type="button" data-tandai="' + e(p.id) + '">Tandai diterima</button>' : '<span class="no">—</span>');
     var ms = '<div class="ms"><span class="m ' + (x.d ? 'y' : 'n') + '">' + ic(x.d ? 'check' : 'clock') + ' Digital</span><span class="m ' + (x.tg ? 'y' : 'n') + '">' + ic(x.tg ? 'check' : 'clock') + ' Fisik</span></div>';
     if (op()) {
       var stO = x.tg ? '<span class="pl g">Diterima kecamatan</span>' : x.d ? '<span class="pl a">Siap diantar</span>' : '<span class="pl n">Belum kirim</span>';
-      return '<tr data-baris="' + e(p.id) + '"><td class="nmc"><b class="nm">' + e(p.nama) + '</b><small>' + jn(p) + (p.ketua ? ' · Ketua ' + e(p.ketua) : '') + '</small><span class="hpo">' + stO + '</span></td><td class="stc">' + stO + '</td><td class="ac">' + a + ic('right', 'chev') + '</td></tr>';
+      return '<tr tabindex="0" data-baris="' + e(p.id) + '"><td class="nmc"><b class="nm">' + e(p.nama) + '</b><small>' + jn(p) + (p.ketua ? ' · Ketua ' + e(p.ketua) : '') + '</small><span class="hpo">' + stO + '</span></td><td class="stc">' + stO + '</td><td class="ac">' + a + ic('right', 'chev') + '</td></tr>';
     }
-    return '<tr class="' + (s ? 'selr' : '') + '" data-baris="' + e(p.id) + '">' + (op() ? '' : '<td class="cb"><input type="checkbox" class="ck" data-pil="' + e(p.id) + '"' + (s ? ' checked' : '') + ' aria-label="Pilih ' + e(p.nama) + '"></td>') +
-      '<td class="nmc"><b class="nm">' + e(p.nama) + '</b><small>' + (op() ? jn(p) + (p.ketua ? ' · Ketua ' + e(p.ketua) : '') : 'Kel. ' + e(p.kel) + (p.ketua ? ' · Ketua ' + e(p.ketua) : '')) + '</small><small class="hpo">' + e(p.kel) + ' · ' + jn(p) + '</small>' + ms + '</td>' +
-      '<td class="jnc"><span class="jn ' + jn(p).toLowerCase() + '">' + jn(p) + '</span></td><td class="dgc">' + dg + '</td><td class="fsc">' + fs + '</td><td class="stc">' + pill(x.st) + '<span class="hpo">' + pillHp(x.st) + '</span></td><td class="ac">' + a + ic('right', 'chev') + '</td></tr>';
+    var tk = x.d ? tglD(x.d) : '', rv = [];
+    if (x.d) rv.push('Dikirim ' + tk);
+    if (x.d && (+x.d.ver || 1) > 1) rv.push('revisi ke-' + x.d.ver);
+    if (x.telat) rv.push('<em class="tl">terlambat</em>');
+    var stK = x.st === 'lengkap' ? '<span class="pl g">Diterima ' + tglF(x.tg) + '</span>'
+      : x.st === 'mfisik' ? '<span class="pl a">Menunggu berkas fisik</span>'
+      : (x.st === 'fsaja' || x.st === 'mdig') ? '<span class="pl b">Fisik diterima ' + tglF(x.tg) + ', digital belum</span>'
+      : '<span class="pl n">Belum kirim</span>';
+    var tdA = (x.d && !x.tg && utama() ? '<button class="bt sm out" type="button" data-tandai="' + e(p.id) + '">Tandai diterima</button>' : '') + a;
+    return '<tr class="' + (s ? 'selr' : '') + '" tabindex="0" data-baris="' + e(p.id) + '"><td class="cb"><input type="checkbox" class="ck" data-pil="' + e(p.id) + '"' + (s ? ' checked' : '') + ' aria-label="Pilih ' + e(p.nama) + '"></td>' +
+      '<td class="nmc"><b class="nm">' + e(p.nama) + '</b><small>Kel. ' + e(p.kel) + ' · ' + jn(p) + (p.ketua ? ' · Ketua ' + e(p.ketua) : '') + '</small><small class="hpo">' + e(p.kel) + ' · ' + jn(p) + '</small>' + ms + '</td>' +
+      '<td class="stc">' + stK + (rv.length ? '<small class="rv">' + rv.join(' · ') + '</small>' : '') + '<span class="hpo">' + pillHp(x.st) + '</span></td><td class="ac">' + tdA + ic('right', 'chev') + '</td></tr>';
   }).join('');
-  var th = op() ? '<thead><tr><th>Posyandu</th><th>Status</th><th></th></tr></thead>' : '<thead><tr>' + (op() ? '' : '<th class="cb"><input type="checkbox" class="ck" data-pilsemua' + (semua ? ' checked' : '') + ' aria-label="Pilih semua di halaman ini"></th>') + '<th>Posyandu</th><th>Jenis</th><th>Laporan digital</th><th>Berkas fisik</th><th>Status</th><th></th></tr></thead>';
+  var th = op() ? '<thead><tr><th>Posyandu</th><th>Status</th><th></th></tr></thead>' : '<thead><tr>' + (op() ? '' : '<th class="cb"><input type="checkbox" class="ck" data-pilsemua' + (semua ? ' checked' : '') + ' aria-label="Pilih semua di halaman ini"></th>') + '<th>Posyandu</th><th>Status</th><th class="r">Aksi</th></tr></thead>';
   var pg = '';
   if (hal > 1) { pg = '<div class="pg">'; for (var i = 1; i <= hal; i++) pg += '<a href="#" data-hal="' + i + '" class="' + (i === S.hal ? 'on' : '') + '">' + i + '</a>'; pg += (S.hal < hal ? '<a href="#" data-hal="' + (S.hal + 1) + '" aria-label="Berikutnya">' + ic('right') + '</a>' : '') + '</div>'; }
   box.innerHTML = bulk + (l.length ? '<div class="tw"><table class="tbl mt">' + th + '<tbody>' + body + '</tbody></table></div>' : '<div class="kosong">Tidak ada Posyandu yang cocok.</div>') +
@@ -310,7 +275,7 @@ function kartuAntarCd(D) {
 function tenggatOp(pr, selesai) {
   var bt = PX.batasTgl(pr.th, pr.bl), bf = PX.batasFisikTgl(pr.th, pr.bl), judul = 'Laporan ' + pr.bl + ' ' + pr.th;
   if (selesai) return '<section class="dl dlo"><div class="dli"><b>' + judul + ' selesai</b><span>Semua berkas fisik sudah diterima kecamatan.</span></div><div class="cnt f"><b>&#10003;</b><span>periode<br>selesai</span></div></section>';
-  if (!bt || !bf) return '<section class="dl dlo"><div class="dli"><b>' + judul + '</b><span>Batas waktu belum diatur oleh admin kecamatan.</span></div></section>';
+  if (!bt || !bf) return '<section class="dl dlo"><div class="dli"><b>' + judul + '</b><span>' + (op() ? 'Batas waktu belum diatur oleh admin kecamatan.' : 'Batas waktu belum diatur, jadi belum ada hitung mundur dan penanda terlambat.' + (utama() ? ' <a href="#" data-aksi="bbatur" data-bb="' + PX.bbKey(pr.th, pr.bl) + '">Atur sekarang</a>' : '')) + '</span></div></section>';
   var h0 = new Date(); h0.setHours(0, 0, 0, 0);
   var b1 = new Date(bt.getFullYear(), bt.getMonth(), bt.getDate()), b2 = new Date(bf.getFullYear(), bf.getMonth(), bf.getDate());
   var hk = Math.round((b1 - h0) / 864e5), hf = Math.round((b2 - h0) / 864e5), m = BULAN.indexOf(pr.bl), awal = new Date(+pr.th, m, 1);
@@ -325,6 +290,24 @@ function angkaOp(D) {
   var k = function (tab, v, lbl, c) { return '<a href="#" class="num' + (S.tab === tab ? ' on' : '') + '" data-tab="' + tab + '"><b>' + q(v) + '</b><span><i class="' + c + '"></i>' + lbl + '</span></a>'; };
   return '<section class="nums">' + k('kirim', dg, 'Sudah kirim', 'g1') + k('blm', n - dg, 'Belum kirim', 'g0') + k('terima', fs, 'Diterima kecamatan', 'g2') + '</section>';
 }
+/* Beranda admin kecamatan: tiga angka (empat bila ada yang terlambat) dengan rincian Balita dan Lansia. */
+function angkaKec(D) {
+  var rs = D.rows, n = rs.length, A = D.ada, q = function (v) { return A ? v : '…'; };
+  var nb = rs.filter(function (x) { return jn(x.p) === 'Balita'; }).length, nl = n - nb;
+  var hit = function (f, j) { return rs.filter(function (x) { return f(x) && (!j || jn(x.p) === j); }).length; };
+  var fd = function (x) { return !!x.d; }, fb = function (x) { return !x.d; }, ft = function (x) { return !!x.tg; }, tl = A ? hit(function (x) { return x.telat; }) : 0;
+  var k = function (tab, v, lbl, c, sub) { return '<a href="#" class="num' + (S.tab === tab ? ' on' : '') + '" data-tab="' + tab + '"><b>' + v + '</b><span><i class="' + c + '"></i>' + lbl + '<small>' + sub + '</small></span></a>'; };
+  return '<section class="nums kec' + (tl ? ' n4' : '') + '">' +
+    k('kirim', hit(fd), 'Sudah kirim dari ' + n, 'g1', 'Balita ' + hit(fd, 'Balita') + '/' + nb + ' · Lansia ' + hit(fd, 'Lansia') + '/' + nl) +
+    k('blm', hit(fb), 'Belum kirim', 'g0', 'Balita ' + hit(fb, 'Balita') + ' · Lansia ' + hit(fb, 'Lansia')) +
+    k('terima', q(hit(ft)), 'Diterima kecamatan', 'g2', A ? 'Balita ' + hit(ft, 'Balita') + '/' + nb + ' · Lansia ' + hit(ft, 'Lansia') + '/' + nl : 'memuat…') +
+    (tl ? k('telat', tl, 'Terlambat', 'r', 'lewat batas kader') : '') + '</section>';
+}
+function kartuTerimaCd(D) {
+  var mf = D.rows.filter(function (x) { return x.st === 'mfisik'; }).length; if (!D.ada || !mf) return '';
+  return '<section class="cd antar kec"><div class="ai">' + ic('box') + '</div><div><h2>' + mf + ' berkas fisik perlu diterima</h2><p class="mu sm">Laporan digital sudah ada, tinggal dicek berkas fisiknya.</p></div><div class="sp"></div>' +
+    '<button class="bt out" type="button" data-tab="mfisik">Lihat daftar</button></section>';
+}
 /* Selama data laporan pertama kali dimuat (belum ada data sama sekali), tampilkan kerangka abu-abu, bukan angka 0 yang menyesatkan. */
 function menungguData() { return window.ADA === false && window.loading === true; }
 function gagalMuatKartu() { return '<div class="info w" role="alert">' + ic('alert') + '<span>' + e(window.MUAT_GAGAL) + '</span> <button class="bt ghost sm" type="button" data-muat>Coba lagi</button></div>'; }
@@ -334,7 +317,7 @@ function hlmBeranda(ct) {
   if (window.ADA === false && window.MUAT_GAGAL && !window.loading) { ct.innerHTML = gagalMuatKartu(); return; }
   var pr = per(), D = data(pr); PX.muatSetor(pr);
   var h = op() ? ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + angkaOp(D) + (D.rows.some(function (x) { return x.st === 'mfisik'; }) ? kartuAntarCd(D) : ''))
-    : ('<div class="hpper">' + selPer(true) + '</div>' + tenggat(pr, periodeSelesai(pr)) + tahap(D) + tabelKel(D));
+    : ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + angkaKec(D) + kartuTerimaCd(D) + tabelKel(D));
   if (D.h.asing.length) h += '<div class="info w">' + ic('alert') + D.h.asing.length + ' laporan memakai nama Posyandu yang belum cocok dengan Data Posyandu, sehingga tidak dihitung. ' + (utama() ? 'Periksa ejaan di menu Posyandu.' : '') + '</div>';
   if (op() && PX.PENGUMUMAN) h = '<div class="info">' + e(PX.PENGUMUMAN) + '</div>' + h;
   h += tabelUtama(D) + kredit('kb');
@@ -494,7 +477,7 @@ function hlmPengaturan(ct) {
   if (!utama() && S.ps !== 'w') S.ps = 'a';
   var sub = utama() ? PSUB : PSUB.filter(function (x) { return x[0] === 'a' || x[0] === 'w'; });
   var nav = '<nav class="psub">' + sub.map(function (x) { return '<a href="#" data-ps="' + x[0] + '" class="' + (S.ps === x[0] ? 'on' : '') + '">' + ic(x[1]) + x[2] + '</a>'; }).join('') + '</nav>';
-  var back = '<a href="#" class="back" data-go="m">' + ic('left') + 'Lainnya</a>';
+  var back = '<a href="' + rute('m') + '" class="back" data-go="m">' + ic('left') + 'Lainnya</a>';
   ct.innerHTML = '<div class="pset">' + nav + '<div class="pcol" id="v2pcol">' + back + '</div></div>';
   var c = $('v2pcol');
   ({ j: psJadwal, u: psPengguna, s: psData, t: psSistem, w: psWarna, a: psAkun }[S.ps] || psAkun)(c);
@@ -714,6 +697,7 @@ function render() {
   if (op() && (S.pg === 'd' || S.pg === 'p' || S.pg === 'm')) S.pg = 'b';
   if (S.pg === 'h' && !utama()) S.pg = 'b';
   if (!op() && S.pg === 'a') { S.pg = 'p'; S.ps = 'a'; }
+  if (location.hash.indexOf('#/') === 0 && dariRute(location.hash) !== S.pg) catatRute(true);
   root.className = 'pg-' + S.pg + (op() ? ' isop' : '');
   var ae = document.activeElement, fid = ae && ae.id && root.contains(ae) ? ae.id : null, ss = fid && ae.selectionStart != null ? [ae.selectionStart, ae.selectionEnd] : null;
   var lacin = S.laci; S.laci = null; laci(); S.laci = lacin;
@@ -749,13 +733,14 @@ function pulangkan() {
 }
 function segar() { if (jadwalT) return; jadwalT = setTimeout(render, 40); }
 window.segarkanV2 = segar;
-function go(pg) {
+function go(pg, dariRiwayat) {
   S.pg = pg; S.menu = null; S.laci = null;
   var lama = { b: 'b', r: 'r', d: 'd', p: 'p', a: 'p', m: 'p', h: 'b' }[pg];
   try { if (typeof tampilView === 'function') tampilView(lama); } catch (x) { }
   if (pg === 'r') PX.rkSiap();
   if (pg === 'd') PX.dpSiap();
   render(); window.scrollTo(0, 0);
+  if (!dariRiwayat) catatRute(false);
 }
 
 /* ---------- klik dan isian ---------- */
@@ -768,9 +753,9 @@ function pasangKlik() {
     if (d.go) { ev.preventDefault(); return go(d.go); }
     if (d.ps) { ev.preventDefault(); S.ps = d.ps; S.pg = 'p'; S.simpan = {}; return render(); }
     if (d.tutup !== undefined) { ev.preventDefault(); S.laci = null; return laci(); }
-    if (d.tab) { ev.preventDefault(); S.tab = (S.tab === d.tab && t.closest('.nums')) ? 'semua' : d.tab; S.hal = 1; if (S.pg !== 'b') S.pg = 'b'; render(); var tb = $('v2tabel'); if (tb && t.closest('.todo,.htodo,.nums')) tb.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (d.tab) { ev.preventDefault(); S.tab = (S.tab === d.tab && t.closest('.nums')) ? 'semua' : d.tab; S.hal = 1; if (S.pg !== 'b') S.pg = 'b'; render(); var tb = $('v2tabel'); if (tb && t.closest('.nums,.antar')) tb.scrollIntoView({ behavior: gl(), block: 'start' }); return; }
     if (d.hal) { ev.preventDefault(); S.hal = +d.hal; return isiTabel(data(per())); }
-    if (d.kel !== undefined && t.tagName === 'TR') { S.kel = d.kel; S.tab = 'semua'; S.hal = 1; render(); var tb2 = $('v2tabel'); if (tb2) tb2.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (d.kel !== undefined && t.tagName === 'TR') { S.kel = d.kel; S.tab = 'semua'; S.hal = 1; render(); var tb2 = $('v2tabel'); if (tb2) tb2.scrollIntoView({ behavior: gl(), block: 'start' }); return; }
     if (d.menu) { ev.preventDefault(); ev.stopPropagation(); S.menu = S.menu === d.menu ? null : d.menu; return render(); }
     if (d.laci) { S.laci = d.laci; return laci(); }
     if (d.pdf) { var x = cariBaris(d.pdf); if (x && x.d) PX.unduhPdf(x.d, t); return; }
@@ -808,9 +793,16 @@ function pasangKlik() {
     }
   });
   root.addEventListener('keydown', function (ev) {
-    if (ev.key === 'Enter') { var t = ev.target; if (t.tagName === 'TR' && (t.dataset.kel !== undefined || t.dataset.posd)) { t.click(); } }
+    var t = ev.target; if (t.tagName !== 'TR') return;
+    if (ev.key === 'Enter' && (t.dataset.kel !== undefined || t.dataset.posd)) { t.click(); return; }
+    if ((ev.key === 'Enter' || ev.key === ' ') && t.dataset.baris) { ev.preventDefault(); S.laciDari = t.dataset.baris; S.laci = t.dataset.baris; laci(); }
   });
-  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && S.laci && !document.getElementById('modalExt')) { S.laci = null; laci(); } });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape' && S.laci && !document.getElementById('modalExt')) {
+      var asal = S.laciDari; S.laci = null; S.laciDari = null; laci();
+      if (asal) { var r = root.querySelector('tr[data-baris="' + asal.replace(/"/g, '') + '"]'); if (r) r.focus(); }
+    }
+  });
   /* klik baris tabel (di luar tombol) membuka rincian */
   root.addEventListener('click', function (ev) {
     var tr = ev.target.closest('tr[data-baris]'); if (!tr || ev.target.closest('button,a,input,label')) return;
@@ -841,7 +833,7 @@ async function aksi(a, t) {
       return a === 'cetakrekap' ? PX.cetakRekap() : PX.unduhRekap();
     case 'xlsangka': PX.setAng({ bl: pr.bl, th: pr.th, j: S.rkJ === 'b' ? 'Posyandu Balita' : 'Posyandu Lansia', k: '' }); return PX.unduhAngka();
     case 'darisk': return PX.simpanDariSK();
-    case 'impor': PX.bukaUbah('excel'); render(); setTimeout(function () { var u = $('v2ubah'); if (u) u.scrollIntoView({ behavior: 'smooth' }); }, 60); return;
+    case 'impor': PX.bukaUbah('excel'); render(); setTimeout(function () { var u = $('v2ubah'); if (u) u.scrollIntoView({ behavior: gl() }); }, 60); return;
     case 'ekspor': return PX.ekspor();
     case 'tambahpos': return PX.formPos(null);
     case 'peralihan': return PX.dialogPeralihan(!PX.fisikSaja(), function () { render(); });
@@ -874,6 +866,9 @@ async function aksi(a, t) {
 /* ---------- mulai ---------- */
 window.V2 = { segar: segar, render: render, go: go };
 function mulai() {
+  var awal = dariRute(location.hash); if (awal) S.pg = awal;
+  try { if (history.replaceState) history.replaceState({ v2: S.pg }, '', location.hash.indexOf('#/') === 0 ? rute(S.pg) : location.href); } catch (x) { }
+  window.addEventListener('popstate', function (ev) { var st = ev.state; if (!st || !st.v2 || !aktif()) return; if (st.v2 !== S.pg) go(st.v2, true); });
   render();
   var app = $('app');
   if (app && window.MutationObserver) new MutationObserver(segar).observe(app, { attributes: true, attributeFilter: ['class'] });
