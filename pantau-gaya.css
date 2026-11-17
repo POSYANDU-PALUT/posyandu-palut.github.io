@@ -1,0 +1,94 @@
+/* ===== Gaya tampilan Pantau: Gaya ceria =====
+   Krem hangat, bilah menu biru tua, satu aksen emas, pita tiga warna (biru, emas, hijau) di bawah judul halaman.
+   Tidak memakai pilihan "Warna aplikasi" (warna sudah ditentukan gaya ini). Klasik tidak tersentuh. */
+
+/* --- warna: terang --- */
+html[data-gaya=ceria]:root body.v2on{
+  --bg:#fdf6e3; --sf:#fffdf6; --line:#e6d9b6; --line2:#f0e6c8; --fg:#1c2333; --mu:#5a5340; --mu2:#666049; --th:#faf1d6;
+  --pri:#1b2b5e; --pri2:#24387a; --pri3:#2a3f80; --tint:#fff0bd;
+  --navy:#1b2b5e; --navy2:#24387a; --navys:#ffe9a0; --navyt:#1b2b5e; --gold:#ffd24a;
+  --g:#177a41; --gs:#dff2e5; --a:#6b4a00; --as:#ffeaa6; --r:#b3261e; --rs:#fbe0dd; --b:#2457b3; --bs:#e1ebfb; --n:#5a5340; --ns:#f0e6c8;
+  --c1:#2a3f80; --c2:#177a41; --sel:#fff6d6;
+}
+/* --- warna: gelap (pilihan tema, atau ikut perangkat) --- */
+html[data-gaya=ceria][data-theme=dark]:root body.v2on{
+  --bg:#17140d; --sf:#221e14; --line:#3a3321; --line2:#2d2819; --fg:#f6efd9; --mu:#cbc19f; --mu2:#bdb390; --th:#2a2517;
+  --navy:#ffd24a; --navy2:#ffe08a; --navys:#3a3114; --navyt:#ffe28a; --gold:#ffd24a;
+  --g:#6fdc9e; --gs:#14301f; --a:#ffd24a; --as:#3a2c0e; --r:#ff9a92; --rs:#3a1816; --b:#a9c4ff; --bs:#1c2a4d; --n:#cbc19f; --ns:#2d2819;
+  --c1:#8ea6ff; --c2:#6fdc9e; --sel:#2d2715;
+}
+@media (prefers-color-scheme:dark){
+  html[data-gaya=ceria]:root:not([data-theme=light]) body.v2on{
+    --bg:#17140d; --sf:#221e14; --line:#3a3321; --line2:#2d2819; --fg:#f6efd9; --mu:#cbc19f; --mu2:#bdb390; --th:#2a2517;
+    --navy:#ffd24a; --navy2:#ffe08a; --navys:#3a3114; --navyt:#ffe28a; --gold:#ffd24a;
+    --g:#6fdc9e; --gs:#14301f; --a:#ffd24a; --as:#3a2c0e; --r:#ff9a92; --rs:#3a1816; --b:#a9c4ff; --bs:#1c2a4d; --n:#cbc19f; --ns:#2d2819;
+    --c1:#8ea6ff; --c2:#6fdc9e; --sel:#2d2715;
+  }
+}
+
+/* --- bilah menu biru tua (laptop) --- */
+html[data-gaya=ceria] #v2 .sb{background:#1b2b5e;border-right:0}
+html[data-gaya=ceria] #v2 .sb::before{background:linear-gradient(90deg,#1b2b5e 0 55%,#ffd24a 55% 80%,#177a41 80%);box-shadow:0 1px 0 rgba(255,255,255,.12)}
+html[data-gaya=ceria] #v2 .sb .brand b,html[data-gaya=ceria] #v2 .sb .me b{color:#fff}
+html[data-gaya=ceria] #v2 .sb .brand small,html[data-gaya=ceria] #v2 .sb .me small{color:#c9d3f2}
+html[data-gaya=ceria] #v2 .sb nav a{color:#d6ddf5;border-radius:12px}
+html[data-gaya=ceria] #v2 .sb nav a:hover{background:rgba(255,255,255,.1);color:#fff}
+html[data-gaya=ceria] #v2 .sb nav a.on{background:#ffd24a;color:#1b2b5e;font-weight:700}
+html[data-gaya=ceria] #v2 .sbf{border-top:1px solid rgba(255,255,255,.16)}
+html[data-gaya=ceria] #v2 .sb .me:hover{background:rgba(255,255,255,.1)}
+html[data-gaya=ceria] #v2 .sb .av{background:#ffd24a;color:#1b2b5e}
+html[data-gaya=ceria] #v2 .sb .v2kr,html[data-gaya=ceria] #v2 .sb .v2kr b{color:#c9d3f2}
+
+/* --- judul halaman + pita tiga warna --- */
+html[data-gaya=ceria] #v2 .tb{border-bottom:0;background:linear-gradient(90deg,#1b2b5e 0 55%,#ffd24a 55% 80%,#177a41 80%) 0 100%/100% 3px no-repeat,var(--sf)}
+html[data-gaya=ceria] #v2 .tb h1{font-size:22px;color:var(--navy)}
+
+/* --- HP: bilah atas biru tua, bilah bawah krem dengan satu penanda emas --- */
+@media (max-width:760px){
+  html[data-gaya=ceria] #v2 .htb{background:#1b2b5e;border-bottom:3px solid #ffd24a}
+  html[data-gaya=ceria] #v2 .htb .ht b{color:#fff}
+  html[data-gaya=ceria] #v2 .htb .ht small{color:#c9d3f2}
+  html[data-gaya=ceria] #v2 .htb .ib{color:#fff}
+  html[data-gaya=ceria] #v2 .hnav{background:var(--sf);border-top:1px solid var(--line)}
+  html[data-gaya=ceria] #v2 .hnav a.on{color:var(--navyt);position:relative}
+  html[data-gaya=ceria] #v2 .hnav a.on::before{content:"";position:absolute;top:-7px;left:30%;right:30%;height:3px;border-radius:3px;background:#ffd24a}
+}
+
+/* --- kartu dan tombol --- */
+html[data-gaya=ceria] #v2 .cd,html[data-gaya=ceria] #v2 .tblc{border-radius:14px;border-color:var(--line)}
+html[data-gaya=ceria] #v2 .bt.pri{background:#ffd24a;color:#1b2b5e;font-weight:700;border-color:#e8b923}
+html[data-gaya=ceria] #v2 .bt.pri:hover{background:#ffdb6b}
+html[data-gaya=ceria] #v2 .bt.out{border-color:var(--navy);color:var(--navy)}
+html[data-gaya=ceria] #v2 .bt{border-radius:10px}
+html[data-gaya=ceria] #v2 a:focus-visible,html[data-gaya=ceria] #v2 button:focus-visible{outline:3px solid var(--navy);outline-offset:2px}
+
+/* --- kartu angka berwarna lembut menurut status --- */
+html[data-gaya=ceria] #v2 .num{border-radius:14px}
+html[data-gaya=ceria] #v2 .nums .num:nth-child(1){background:var(--gs)}
+html[data-gaya=ceria] #v2 .nums .num:nth-child(2){background:var(--as)}
+html[data-gaya=ceria] #v2 .nums .num:nth-child(3){background:var(--bs)}
+html[data-gaya=ceria] #v2 .nums .num:nth-child(4){background:var(--rs)}
+html[data-gaya=ceria] #v2 .num b{color:var(--fg)}
+html[data-gaya=ceria] #v2 .num span,html[data-gaya=ceria] #v2 .num span small{color:var(--fg);opacity:.82}
+html[data-gaya=ceria] #v2 .num.on{outline:3px solid #ffd24a;outline-offset:0}
+/* angka besar panel kemajuan: sorot emas di belakang angka */
+html[data-gaya=ceria] #v2 .kem .kb b{display:inline-block;color:var(--fg);background:linear-gradient(transparent 62%,#ffd24a 62%);padding:0 6px;margin-left:-6px}
+html[data-gaya=ceria][data-theme=dark] #v2 .kem .kb b{background:linear-gradient(transparent 62%,#6b5300 62%)}
+@media (prefers-color-scheme:dark){html[data-gaya=ceria]:not([data-theme=light]) #v2 .kem .kb b{background:linear-gradient(transparent 62%,#6b5300 62%)}}
+
+/* --- lencana status penuh (teks putih/gelap di atas warna pekat, kontras di atas 4,5:1) --- */
+html[data-gaya=ceria] #v2 .pl{border-radius:999px;font-weight:600}
+html[data-gaya=ceria]:root #v2 .pl.g{background:#177a41;color:#fff}
+html[data-gaya=ceria]:root #v2 .pl.a{background:#ffd24a;color:#3a2c00}
+html[data-gaya=ceria]:root #v2 .pl.b{background:#2457b3;color:#fff}
+html[data-gaya=ceria]:root #v2 .pl.n,html[data-gaya=ceria]:root #v2 .pl.r{background:#b3261e;color:#fff}
+html[data-gaya=ceria] #v2 .dg.y{color:var(--g)}
+
+/* --- tabel dan baris --- */
+html[data-gaya=ceria] #v2 .tbl th{background:var(--th);color:var(--mu)}
+html[data-gaya=ceria] #v2 .tbl tr.klik:hover td,html[data-gaya=ceria] #v2 .tbl tr[data-baris]:hover td{background:var(--sel)}
+html[data-gaya=ceria] #v2 .pg a.on{background:#ffd24a;color:#1b2b5e}
+html[data-gaya=ceria] #v2 .tabs a.on{background:#ffd24a;color:#1b2b5e;font-weight:700}
+html[data-gaya=ceria] #v2 .gyb.on{border-color:#ffd24a;box-shadow:0 0 0 3px rgba(255,210,74,.4)}
+
+@media (max-width:760px){html[data-gaya=ceria] #v2 .mt td.nmc small{white-space:normal;overflow-wrap:anywhere}html[data-gaya=ceria] #v2 .mt td.nmc{padding-right:6px}}
