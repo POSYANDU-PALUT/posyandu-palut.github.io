@@ -293,7 +293,6 @@ body .v2lside{display:none}
   body:not(.v2on) .v2lside{display:flex;grid-column:2;grid-row:1;background:linear-gradient(180deg,rgba(27,43,94,.55),rgba(27,43,94,.92) 70%),url(kantor.jpg) center/cover;align-items:flex-end;padding:60px}
 }
 .v2lh .lbrand{display:flex;gap:12px;align-items:center;margin-bottom:56px}.v2lh .lbrand img{width:40px}.v2lh .lbrand b{display:block;font-size:16px;color:#121a2f}.v2lh .lbrand small{color:#5d6679;font-size:13px}
-.v2lh h2{font-size:26px;margin:0;color:#121a2f;font-weight:650;letter-spacing:-.01em}.v2lh h2{margin-bottom:26px}
 .v2lside .lq{color:#fff;max-width:440px;text-align:left}.v2lside .lq b{text-wrap:balance}.v2lside .lq b{display:block;font-size:26px;margin-bottom:8px;letter-spacing:-.01em;font-weight:650}.v2lside .lq span{color:#c8d1ee;font-size:15px}
 html body:not(.v2on) .login .lf label{color:#121a2f!important;font-size:13px!important;font-weight:550!important}
 html body:not(.v2on) .login .lf input{border:1px solid #e4e7ec!important;border-radius:8px!important;background:#fff!important;min-height:44px!important;font-size:15px!important;color:#121a2f!important}
@@ -301,8 +300,7 @@ html body:not(.v2on) .login .lf input:focus{border-color:var(--navy2,#2a3f80)!im
 html body:not(.v2on) .login .lf .btn{background:var(--pri,#1b2b5e)!important;color:#fff!important;border-radius:8px!important;min-height:44px!important;box-shadow:none!important;font-size:15px!important;font-weight:600!important}
 html body:not(.v2on) .login .pw button{color:var(--navy2,#2a3f80)!important}
 @media (max-width:899px){
-  .v2lh .lbrand{display:none}
-  .v2lh{margin-bottom:4px}.v2lh h2{font-size:20px}.v2lh h2{margin-bottom:14px}
+  .v2lh{display:none}
   html body:not(.v2on) .login{background:linear-gradient(180deg,var(--pri,#1b2b5e) 0 300px,#f4f5f7 300px)!important}
   html body:not(.v2on) .login::before{display:none!important}
   html body:not(.v2on) .login .lf{border-radius:12px!important;box-shadow:none!important;border:1px solid #e4e7ec!important;background:#fff!important}
