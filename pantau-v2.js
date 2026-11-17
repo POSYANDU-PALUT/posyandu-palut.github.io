@@ -311,9 +311,9 @@ function panelKemajuan(D) {
   var a = rs.filter(function (x) { return x.tg; }).length, b = rs.filter(function (x) { return x.d && !x.tg; }).length, c = n - a - b;
   var pc = function (v) { return Math.round(v * 1000 / n) / 10; }, pct = Math.round(a * 100 / n);
   var lg = function (cl, v, t, tab) { return '<a href="#" class="kl" data-tab="' + tab + '"><i class="' + cl + '"></i><span>' + t + '</span><b>' + v + '</b></a>'; };
-  return '<section class="cd kem" aria-label="Kemajuan laporan"><div class="kh"><div class="kb"><b>' + (A ? a : '…') + '</b><span>dari ' + n + ' Posyandu sudah diterima kecamatan</span></div><div class="kp">' + (A ? pct + '%' : '') + '</div></div>' +
+  return '<section class="cd kem" aria-label="Kemajuan laporan"><div class="kh"><div class="kb"><b>' + (A ? a : '…') + '</b><span>dari ' + n + ' Posyandu ' + (op() ? 'diterima kecamatan' : 'sudah diterima kecamatan') + '</span></div><div class="kp">' + (A ? pct + '%' : '') + '</div></div>' +
     '<div class="kbar" role="img" aria-label="' + a + ' diterima, ' + b + ' menunggu berkas fisik, ' + c + ' belum masuk"><i class="s1" style="width:' + pc(a) + '%"></i><i class="s2" style="width:' + pc(b) + '%"></i><i class="s3" style="width:' + pc(c) + '%"></i></div>' +
-    '<div class="kls">' + lg('s1', A ? a : '…', 'Sudah diterima kecamatan', 'terima') + lg('s2', b, 'Menunggu berkas fisik', 'mfisik') + lg('s3', c, 'Belum masuk', 'blm') + '</div></section>';
+    '<div class="kls">' + lg('s1', A ? a : '…', op() ? 'Diterima kecamatan' : 'Sudah diterima kecamatan', 'terima') + lg('s2', b, op() ? 'Siap diantar' : 'Menunggu berkas fisik', 'mfisik') + lg('s3', c, 'Belum masuk', 'blm') + '</div></section>';
 }
 function kartuTerimaCd(D) {
   var mf = D.rows.filter(function (x) { return x.st === 'mfisik'; }).length; if (!D.ada || !mf) return '';
@@ -328,7 +328,7 @@ function hlmBeranda(ct) {
   if (menungguData()) { ct.innerHTML = kerangkaMuat(); return; }
   if (window.ADA === false && window.MUAT_GAGAL && !window.loading) { ct.innerHTML = gagalMuatKartu(); return; }
   var pr = per(), D = data(pr); PX.muatSetor(pr);
-  var h = op() ? ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + angkaOp(D) + (D.rows.some(function (x) { return x.st === 'mfisik'; }) ? kartuAntarCd(D) : ''))
+  var h = op() ? ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + (skin() ? panelKemajuan(D) : '') + angkaOp(D) + (D.rows.some(function (x) { return x.st === 'mfisik'; }) ? kartuAntarCd(D) : ''))
     : ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + (skin() ? panelKemajuan(D) : '') + angkaKec(D) + kartuTerimaCd(D) + tabelKel(D));
   if (D.h.asing.length) h += '<div class="info w">' + ic('alert') + D.h.asing.length + ' laporan memakai nama Posyandu yang belum cocok dengan Data Posyandu, sehingga tidak dihitung. ' + (utama() ? 'Periksa ejaan di menu Posyandu.' : '') + '</div>';
   if (op() && PX.PENGUMUMAN) h = '<div class="info">' + e(PX.PENGUMUMAN) + '</div>' + h;
@@ -383,7 +383,9 @@ function hlmRekap(ct) {
     var fut = i > bmax, x = fut ? null : data({ bl: b, th: th }), n = x ? x.rows.length : 0;
     var dg = x ? x.rows.filter(function (r) { return r.d; }).length : 0, fs = x && x.ada ? x.rows.filter(RS).length : 0;
     var pd = n ? Math.round(dg * 100 / n) : 0, pf = n ? Math.round(fs * 100 / n) : 0;
-    g += '<div class="cg' + (fut ? ' fut' : '') + (b === pr.bl ? ' on' : '') + '" title="' + b + ': digital ' + pd + '%, ' + (op() ? 'diterima kecamatan ' : 'fisik ') + pf + '%"><div class="cbs"><i class="g1" style="height:' + pd + '%"></i><i class="g2" style="height:' + pf + '%"></i></div><span>' + B3(i) + '</span></div>';
+    var st = '';
+    if (skin() && x && x.ada) { var sb = x.rows.filter(function (r) { return r.d && !RS(r); }).length, sc = n - fs - sb, h3 = function (v) { return n ? Math.round(v * 1000 / n) / 10 : 0; }; st = '<div class="cbs st"><i class="s3" style="height:' + h3(sc) + '%"></i><i class="s2" style="height:' + h3(sb) + '%"></i><i class="s1" style="height:' + h3(fs) + '%"></i></div>'; }
+    g += st ? '<div class="cg' + (b === pr.bl ? ' on' : '') + '" title="' + b + ': ' + fs + ' diterima, ' + sb + ' menunggu fisik, ' + sc + ' belum masuk">' + st + '<span>' + B3(i) + '</span></div>' : '<div class="cg' + (fut ? ' fut' : '') + (b === pr.bl ? ' on' : '') + '" title="' + b + ': digital ' + pd + '%, ' + (op() ? 'diterima kecamatan ' : 'fisik ') + pf + '%"><div class="cbs"><i class="g1" style="height:' + pd + '%"></i><i class="g2" style="height:' + pf + '%"></i></div><span>' + B3(i) + '</span></div>';
   });
   var n = D.rows.length, pd0 = n ? Math.round(D.rows.filter(function (r) { return r.d; }).length * 100 / n) : 0, pf0 = n ? Math.round(D.rows.filter(RS).length * 100 / n) : 0;
   var bi = BULAN.indexOf(pr.bl), cat = pr.bl + (bi === bmax ? ' baru berjalan: ' : ': ') + pd0 + '% digital, ' + (D.ada ? pf0 + '% ' + LBR : '…') + '.';
@@ -401,12 +403,13 @@ function hlmRekap(ct) {
   /* angka kegiatan per kelurahan */
   var bal = S.rkJ === 'b', pakai = D.rows.filter(function (r) { return r.d && (op() || r.tg) && jn(r.p) === (bal ? 'Balita' : 'Lansia'); });
   var F = bal ? [['Sasaran (S)', 'Sasaran Bayi Balita (S)'], ['Kunjungan (D)', 'Kunjungan (D)'], ['BB naik (N)', 'BB Naik (N)'], ['BB tidak naik (T)', 'BB Tidak Naik (T)'], ['BGM', 'BGM'], ['Stunting', 'Stunting']] : [['Sasaran lansia', 'Sasaran lansia'], ['Kunjungan', 'Kunjungan lansia']];
-  var jm = F.map(function () { return 0; }), ak = '';
+  var jm = F.map(function () { return 0; }), ak = '', kg = '';
   KEL.forEach(function (k) {
     if (!D.rows.some(function (r) { return r.p.kel === k; })) return;
     var t = F.map(function () { return 0; }), ada = 0;
     pakai.filter(function (r) { return r.p.kel === k; }).forEach(function (r) { ada++; ambil(r.d).forEach(function (o) { F.forEach(function (f, i) { if (o.v[f[1]] !== '' && o.v[f[1]] != null) t[i] += o.v[f[1]]; }); }); });
     t.forEach(function (v, i) { jm[i] += v; });
+    if (skin()) kg += '<div class="kgc"><div class="kgh"><b>' + e(k) + '</b><span class="mu sm">' + ada + ' laporan</span></div><dl>' + F.map(function (f, i) { return '<div class="' + (t[i] ? '' : 'z') + '"><dt>' + f[0] + '</dt><dd>' + t[i] + '</dd></div>'; }).join('') + (bal ? '' : '<div class="' + (Math.max(0, t[0] - t[1]) ? '' : 'z') + '"><dt>Belum berkunjung</dt><dd>' + Math.max(0, t[0] - t[1]) + '</dd></div>') + '</dl></div>';
     ak += '<tr><td><b>' + e(k) + '</b> <span class="mu sm">' + ada + ' laporan</span></td>' + t.map(function (v) { return '<td class="c">' + v + '</td>'; }).join('') + (bal ? '' : '<td class="c">' + Math.max(0, t[0] - t[1]) + '</td><td class="c">' + (t[0] ? Math.round(t[1] * 100 / t[0]) + '%' : '-') + '</td>') + '</tr>';
   });
   if (KEL.length > 1) ak += '<tr class="sum"><td>Jumlah</td>' + jm.map(function (v) { return '<td class="c">' + v + '</td>'; }).join('') + (bal ? '' : '<td class="c">' + Math.max(0, jm[0] - jm[1]) + '</td><td class="c">' + (jm[0] ? Math.round(jm[1] * 100 / jm[0]) + '%' : '-') + '</td>') + '</tr>';
@@ -415,13 +418,13 @@ function hlmRekap(ct) {
   var tlh = tl.length ? '<div class="tw"><table class="tbl"><thead><tr><th>Posyandu</th><th>Kelurahan</th><th>Jenis</th><th>Keterangan</th></tr></thead><tbody>' + tl.map(function (r) { return '<tr><td><b>' + e(r.p.nama) + '</b></td><td>' + e(r.p.kel) + '</td><td><span class="jn ' + jn(r.p).toLowerCase() + '">' + jn(r.p) + '</span></td><td>' + (r.r.st === 'telat' ? '<span class="pl a">Dikirim ' + tglD(r.d) + '</span>' : '<span class="pl r">Belum mengirim</span>') + '</td></tr>'; }).join('') + '</tbody></table></div>' : '';
   var cap = 'Semua angka mengikuti periode di kanan atas. Cetak dan unduh berisi seluruh isi halaman ini.';
   ct.innerHTML = '<div class="hpper">' + selPer(true) + '</div><section class="rh"><p class="mu" style="margin:0">' + cap + '</p><div class="sp"></div><button class="bt out" type="button" data-aksi="cetakrekap">' + ic('file') + ' Cetak rekap (PDF)</button><button class="bt pri" type="button" data-aksi="xlsrekap">' + ic('dl') + ' Unduh Excel</button></section>' +
-    '<div class="g2c"><section class="cd"><div class="hd"><h2>Capaian per bulan · ' + th + '</h2><div class="lg"><span><i class="g1"></i>Digital terkirim</span><span><i class="g2"></i>' + (op() ? 'Diterima kecamatan' : 'Resmi masuk') + '</span></div></div>' +
+    '<div class="g2c"><section class="cd"><div class="hd"><h2>Capaian per bulan · ' + th + '</h2><div class="lg">' + (skin() ? '<span><i class="s1"></i>' + (op() ? 'Diterima kecamatan' : 'Resmi masuk') + '</span><span><i class="s2"></i>Digital masuk, fisik menunggu</span><span><i class="s3"></i>Belum masuk</span>' : '<span><i class="g1"></i>Digital terkirim</span><span><i class="g2"></i>' + (op() ? 'Diterima kecamatan' : 'Resmi masuk') + '</span>') + '</div></div>' +
     '<div class="chart"><div class="ax"><span>100%</span><span>50%</span><span>0%</span></div><div class="cgs">' + g + '</div></div><div class="note">' + ic('alert') + e(cat) + '</div></section>' +
     '<section class="cd rkkel"><div class="hd"><h2>Per kelurahan · ' + pr.bl + ' ' + th + '</h2></div><div class="tw"><table class="tbl"><thead><tr><th>Kelurahan</th><th class="c">Balita</th><th class="c">Lansia</th><th class="c">Digital</th><th class="c">' + (op() ? 'Diterima' : 'Fisik') + '</th><th>' + (op() ? 'Diterima kecamatan' : 'Capaian resmi') + '</th></tr></thead><tbody>' + kr + '</tbody></table></div>' +
     '<div class="hkl">' + hk + '</div><p class="mu sm" style="margin:12px 2px 0">' + (op() ? 'Diterima = berkas fisik yang sudah diterima kecamatan, sama seperti di Beranda.' : 'Capaian resmi = ' + 'berkas fisik diterima kecamatan' + (PX.fisikSaja() ? ' (masa peralihan: berkas fisik tanpa digital ikut dihitung)' : ' dan laporan digital sudah ada') + ', sama seperti di Beranda.') + '</p></section></div>' +
     '<section class="cd"><div class="hd"><div><h2>Angka kegiatan Posyandu ' + (bal ? 'Balita' : 'Lansia') + ' · ' + pr.bl + ' ' + th + '</h2><p class="mu sm">' + (op() ? 'Dari semua laporan digital kelurahan Anda.' : 'Hanya dari laporan yang berkas fisiknya sudah diterima kecamatan.') + '</p></div><div class="sp"></div>' +
     '<div class="tabs pill2 sm"><a href="#" data-rkj="b" class="' + (bal ? 'on' : '') + '">Balita</a><a href="#" data-rkj="l" class="' + (bal ? '' : 'on') + '">Lansia</a></div><button class="bt sm out" type="button" data-aksi="xlsangka">' + ic('dl') + ' Excel</button></div>' +
-    '<div class="tw"><table class="tbl"><thead><tr>' + akh + '</tr></thead><tbody>' + ak + '</tbody></table></div></section>' +
+    '<div class="tw akt"><table class="tbl"><thead><tr>' + akh + '</tr></thead><tbody>' + ak + '</tbody></table></div>' + (skin() ? '<div class="kgl">' + kg + '</div>' : '') + '</section>' +
     '<section class="cd"><div class="hd"><div><h2>Keterlambatan · ' + pr.bl + ' ' + th + '</h2><p class="mu sm">' + (PX.batasTgl(th, pr.bl) ? 'Posyandu yang belum mengirim setelah ' + PX.teksBatas(th, pr.bl) + ', atau mengirim setelah batas.' : 'Batas waktu bulan ini belum diatur, jadi belum ada yang dihitung terlambat.') + '</p></div><div class="sp"></div>' + (tl.length ? '<span class="pl r">' + tl.length + ' Posyandu</span>' : '<span class="pl g">Tidak ada yang terlambat</span>') + '</div>' + tlh + '</section>' +
     '<div class="two btm"><button class="bt out" type="button" data-aksi="cetakrekap">' + ic('file') + ' Cetak PDF</button><button class="bt pri" type="button" data-aksi="xlsrekap">' + ic('dl') + ' Excel</button></div>';
 }

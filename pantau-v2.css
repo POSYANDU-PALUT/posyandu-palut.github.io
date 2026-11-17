@@ -580,3 +580,24 @@ html:not([data-gaya=klasik]) #v2 .dg svg{width:15px;height:15px}
 html:not([data-gaya=klasik]) #v2 .kl:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
 html[data-theme=dark]:not([data-gaya=klasik]) #v2 .kbar .s3,html[data-theme=dark]:not([data-gaya=klasik]) #v2 .kl i.s3{background:#b8665d}
 @media (prefers-color-scheme:dark){html:not([data-theme=light]):not([data-gaya=klasik]) #v2 .kbar .s3,html:not([data-theme=light]):not([data-gaya=klasik]) #v2 .kl i.s3{background:#b8665d}}
+
+/* Gaya baru: Rekap bertumpuk dan kartu kegiatan HP */
+html:not([data-gaya=klasik]) #v2 .cbs.st{flex-direction:column;justify-content:flex-end;align-items:center;gap:0}
+html:not([data-gaya=klasik]) #v2 .cbs.st i{width:56%;max-width:26px;border-radius:0;min-height:0}
+html:not([data-gaya=klasik]) #v2 .cbs.st i.s1{background:#1f8a4c}
+html:not([data-gaya=klasik]) #v2 .cbs.st i.s2{background:#e3ac1f}
+html:not([data-gaya=klasik]) #v2 .cbs.st i.s3{background:#e2a49d;border-radius:3px 3px 0 0}
+html:not([data-gaya=klasik]) #v2 .lg i.s1{background:#1f8a4c}html:not([data-gaya=klasik]) #v2 .lg i.s2{background:#e3ac1f}html:not([data-gaya=klasik]) #v2 .lg i.s3{background:#e2a49d}
+html[data-theme=dark]:not([data-gaya=klasik]) #v2 .cbs.st i.s3,html[data-theme=dark]:not([data-gaya=klasik]) #v2 .lg i.s3{background:#b8665d}
+@media (prefers-color-scheme:dark){html:not([data-theme=light]):not([data-gaya=klasik]) #v2 .cbs.st i.s3,html:not([data-theme=light]):not([data-gaya=klasik]) #v2 .lg i.s3{background:#b8665d}}
+html:not([data-gaya=klasik]) #v2 .kgl{display:none}
+@media (max-width:760px){
+  html:not([data-gaya=klasik]) #v2 .akt{display:none}
+  html:not([data-gaya=klasik]) #v2 .kgl{display:grid;gap:10px}
+  html:not([data-gaya=klasik]) #v2 .kgc{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--sf)}
+  html:not([data-gaya=klasik]) #v2 .kgh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  html:not([data-gaya=klasik]) #v2 .kgc dl{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 8px;margin:0}
+  html:not([data-gaya=klasik]) #v2 .kgc dt{font-size:11.5px;color:var(--mu)}
+  html:not([data-gaya=klasik]) #v2 .kgc dd{margin:2px 0 0;font-size:20px;font-weight:700;color:var(--fg)}
+  html:not([data-gaya=klasik]) #v2 .kgc .z dd{color:var(--mu);font-weight:500}
+}
