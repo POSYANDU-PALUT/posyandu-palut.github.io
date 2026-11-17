@@ -687,7 +687,7 @@ function rapikanLogin() {
   var side = document.createElement('div'); side.className = 'v2lside';
   side.innerHTML = '<div class="lq"><b>Pantau laporan Posyandu setiap bulan</b><span>Laporan digital dari kader dan berkas fisik yang diterima kecamatan dipantau bersama setiap bulan.</span></div>';
   lg.appendChild(side);
-  var lf = lg.querySelector('.lf'); if (lf && !lf.querySelector('.v2lh')) lf.insertAdjacentHTML('afterbegin', '<div class="v2lh"><div class="lbrand"><img src="logo.png" alt=""><div><b>Pantau Laporan Posyandu</b><small>Kecamatan Palu Utara · Kota Palu</small></div></div><h2>Masuk</h2><p class="mu">Gunakan akun yang diberikan admin kecamatan.</p></div>');
+  var lf = lg.querySelector('.lf'); if (lf && !lf.querySelector('.v2lh')) lf.insertAdjacentHTML('afterbegin', '<div class="v2lh"><div class="lbrand"><img src="logo.png" alt=""><div><b>Pantau Laporan Posyandu</b><small>Kecamatan Palu Utara · Kota Palu</small></div></div><h2>Masuk</h2></div>');
   if (lf && !lf.querySelector('.v2lf')) lf.insertAdjacentHTML('beforeend', '<p class="v2lf">Developed by <b>Max Juniar Ratowo</b> · © 2026</p>');
 }
 
