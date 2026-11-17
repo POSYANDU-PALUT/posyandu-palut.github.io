@@ -528,3 +528,13 @@ html body .modal .kh.noline::before{display:none}
 
 .lupa{margin:12px 0 0;font-size:13px;color:#5d6679;text-align:center}
 html body:not(.v2on) .login .lf .lupa{color:#5d6679}
+
+/* gaya tampilan: pemilih */
+#v2 .gyl{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;margin-top:14px}
+#v2 .gyb{font:inherit;color:var(--fg);background:var(--sf);border:2px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:4px;min-height:44px}
+#v2 .gyb b{font-size:15px}
+#v2 .gyb span{font-size:13px;color:var(--mu)}
+#v2 .gyb em{font-size:12px;font-style:normal;color:var(--mu)}
+#v2 .gyb:hover:not(:disabled){border-color:var(--mu2)}
+#v2 .gyb.on{border-color:var(--navy);box-shadow:0 0 0 3px color-mix(in srgb,var(--navy) 20%,transparent)}
+#v2 .gyb:disabled{cursor:not-allowed;opacity:.65}

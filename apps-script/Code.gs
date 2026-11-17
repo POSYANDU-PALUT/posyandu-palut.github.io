@@ -295,7 +295,7 @@ function doGet(e) {
     var w2 = masuk(p.u, p.p);
     if (w2) {
       var c = bacaPengaturan(w2.u), bs = bacaPengaturan(PANTAU_USER);
-      hasil = { ok: true, cepat: 1, nama: c.nama, nip: c.nip, jabatan: c.jabatan, unit: c.unit, foto: c.foto,
+      hasil = { ok: true, cepat: 1, nama: c.nama, nip: c.nip, jabatan: c.jabatan, unit: c.unit, foto: c.foto, gaya: c.gaya || '',
                 banners: bs.banners, batas: bs.batas, batasKel: bs.batasKel, bb: bs.bb || {}, sk: bs.sk, pejabat: bs.pejabat || {}, pengumuman: bs.pengumuman, wa: bs.wa, fisik: bs.fisik, peran: w2.peran, kel: w2.kel || '' };
       if (w2.peran === 'utama') { hasil.admins = daftarAdmin(); hasil.ruang = bacaRuang(); hasil.penerima = infoPenerima(); hasil.pemeliharaan = pemeliharaanSampai(); if (MODE_TES) hasil.tes = infoTes(); }
       hasil.modeTes = MODE_TES;
@@ -567,10 +567,12 @@ function bacaBerkas(nb) {
   return {};
 }
 /** Profil satu admin. Untuk admin utama ikut berisi pengaturan bersama: banner (maks 3), batas tanggal, SK. */
+var GAYA_OK = ['klasik', 'baru', 'ceria', 'ios', 'kaca'];
 function bacaPengaturanAsli(u) {
   var o = bacaBerkas(berkasProfil(u));
   var c = { nama: o.nama ? String(o.nama) : 'Admin Posyandu', nip: String(o.nip || ''), jabatan: String(o.jabatan || ''),
-            unit: String(o.unit || ''), foto: String(o.foto || '') };
+            unit: String(o.unit || ''), foto: String(o.foto || ''),
+            gaya: GAYA_OK.indexOf(String(o.gaya || '')) >= 0 ? String(o.gaya) : '' };   // gaya tampilan Pantau yang dipilih akun ini ('' = belum memilih, tetap Klasik)
   if (!u || u === PANTAU_USER) {
     var bn = Array.isArray(o.banners) ? o.banners : (o.banner ? [o.banner] : []);
     c.banners = [String(bn[0] || ''), String(bn[1] || ''), String(bn[2] || '')];
@@ -664,6 +666,11 @@ function atur(d) {
   if (d.foto !== undefined) c.foto = cekGambar(d.foto, 45000);
   if (d.jabatan !== undefined) c.jabatan = bersih(d.jabatan, 60);
   if (d.unit !== undefined) c.unit = bersih(d.unit, 80);
+  if (d.gaya !== undefined) {
+    var gy = String(d.gaya);
+    if (GAYA_OK.indexOf(gy) < 0) throw new Error('Gaya tampilan tidak dikenal');
+    c.gaya = gy;
+  }
   if (d.bannerIdx !== undefined) {
     if (w.peran !== 'utama') throw new Error('Hanya admin utama yang boleh mengubah banner');
     var bi = parseInt(d.bannerIdx, 10);
@@ -731,6 +738,7 @@ function atur(d) {
   if (d.wa !== undefined) cl.push(c.wa ? 'mengubah nomor WhatsApp bantuan' : 'menghapus nomor WhatsApp bantuan');
   if (d.fisik !== undefined) cl.push(c.fisik ? 'menghidupkan masa peralihan' : 'mematikan masa peralihan');
   if (d.sandiBaru !== undefined) cl.push('mengganti kata sandi');
+  if (d.gaya !== undefined) cl.push('memilih gaya tampilan ' + c.gaya);
   if (cl.length) catatLog(w.u, cl.join(', '));
   return simpanHasil({ ok: true }, 'a');
 }

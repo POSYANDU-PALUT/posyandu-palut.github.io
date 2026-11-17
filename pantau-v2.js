@@ -625,7 +625,7 @@ function logHtml() {
   if (!LOG.length) return '<p class="mu sm">Belum ada catatan.</p>';
   return '<ul class="log">' + LOG.slice(0, LOGN).map(function (x) { return '<li><span class="lt"><b>' + e(x.u) + '</b> ' + e(x.a) + '</span><span>' + e(x.t) + '</span></li>'; }).join('') + '</ul>' + (LOG.length > LOGN ? '<p class="mu sm" style="margin:8px 2px 0"><a href="#" data-aksi="logmore">Tampilkan lebih banyak</a></p>' : '');
 }
-function psWarna(c) { c.insertAdjacentHTML('beforeend', kartuWarna()); }
+function psWarna(c) { if (window.kartuGaya) c.insertAdjacentHTML('beforeend', kartuGaya()); c.insertAdjacentHTML('beforeend', kartuWarna()); }
 function psSistem(c) {
   c.insertAdjacentHTML('beforeend', '<div id="v2pm"></div><section class="cd"><div class="hd"><div><h2>Tentang aplikasi</h2></div></div><div class="kvl"><span>Versi</span><b>v11 · tampilan baru</b></div><div class="kvl"><span>Jenis Posyandu</span><b>Balita, Lansia</b></div><div class="kvl"><span>Kelurahan</span><b>' + e(KEL.join(', ')) + '</b></div><div class="kvl"><span>Pengembang</span><b>Max Juniar Ratowo</b></div></section>');
   var pm = $('cardPm'); if (pm) { $('v2pm').appendChild(pm); pm.style.display = ''; }
@@ -756,6 +756,7 @@ function pasangKlik() {
     var t = ev.target.closest('a,button,tr[data-baris],tr[data-kel],tr[data-posd],label,[data-tutup],input'); if (!t || !root.contains(t)) { if (S.menu) { S.menu = null; render(); } return; }
     var d = t.dataset;
     if (t.tagName === 'INPUT' || (t.tagName === 'LABEL' && !d.tab)) { if (t.tagName === 'INPUT' && t.type === 'checkbox') return; return; }
+    if (d.gaya) { ev.preventDefault(); setGaya(d.gaya); return render(); }
     if (d.warna) { ev.preventDefault(); setWarna(d.warna); return render(); }
     if (d.go) { ev.preventDefault(); return go(d.go); }
     if (d.ps) { ev.preventDefault(); S.ps = d.ps; S.pg = 'p'; S.simpan = {}; return render(); }
