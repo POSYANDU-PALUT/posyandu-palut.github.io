@@ -2,7 +2,7 @@
 (function () {
   var GAYA = [
     { id: 'klasik', nm: 'Klasik', ket: 'Tampilan yang sekarang dipakai.', ada: true },
-    { id: 'baru', nm: 'Tampilan baru', ket: 'Panel kemajuan besar, kolom Digital dan Fisik terpisah.', ada: false },
+    { id: 'baru', nm: 'Tampilan baru', ket: 'Panel kemajuan besar, kolom Digital dan Fisik terpisah.', ada: true },
     { id: 'ceria', nm: 'Gaya ceria', ket: 'Krem hangat dengan satu aksen emas.', ada: false },
     { id: 'ios', nm: 'iPhone (dua kaca)', ket: 'Bersih ala iPhone, bilah bawah dan pil bulan berkaca.', ada: false },
     { id: 'kaca', nm: 'iPhone (kaca penuh)', ket: 'Seluruh kartu berkaca di atas foto buram.', ada: false }

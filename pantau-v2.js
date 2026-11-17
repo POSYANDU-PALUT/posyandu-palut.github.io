@@ -191,7 +191,7 @@ function tabelKel(D) {
   var rows = KEL.map(function (k) {
     var rs = D.rows.filter(function (x) { return x.p.kel === k; }), n = rs.length; if (!n) return '';
     var dg = rs.filter(function (x) { return x.d; }).length, fs = rs.filter(function (x) { return x.tg; }).length, bl = rs.filter(function (x) { return !x.resmi; }).length;
-    return '<tr class="klik" tabindex="0" data-kel="' + e(k) + '"><td><b>' + e(k) + '</b></td><td>' + dg + ' dari ' + n + '</td><td class="c">' + (D.ada ? fs : '…') + '</td>' +
+    return '<tr class="klik" tabindex="0" data-kel="' + e(k) + '"><td><b>' + e(k) + '</b></td><td>' + dg + ' dari ' + n + (skin() ? bar(dg, n, 'g1') : '') + '</td><td class="c">' + (D.ada ? fs : '…') + '</td>' +
       '<td class="c">' + (!D.ada ? '<span class="pl n">…</span>' : bl ? '<span class="pl n">' + bl + ' belum</span>' : '<span class="pl g">Semua masuk</span>') + '</td><td class="c"><span class="mu">' + ic('right') + '</span></td></tr>';
   }).join('');
   return '<details class="cd kelc"' + (hp() ? '' : ' open') + '><summary><b>Per kelurahan</b>' + ic('down') + '</summary><div class="hd"><h2>Per kelurahan</h2><span class="mu sm">Klik baris untuk menyaring daftar Posyandu di bawah</span></div>' +
@@ -257,9 +257,9 @@ function isiTabel(D) {
     var tdA = (x.d && !x.tg && utama() ? '<button class="bt sm out" type="button" data-tandai="' + e(p.id) + '">Tandai diterima</button>' : '') + a;
     return '<tr class="' + (s ? 'selr' : '') + '" tabindex="0" data-baris="' + e(p.id) + '"><td class="cb"><input type="checkbox" class="ck" data-pil="' + e(p.id) + '"' + (s ? ' checked' : '') + ' aria-label="Pilih ' + e(p.nama) + '"></td>' +
       '<td class="nmc"><b class="nm">' + e(p.nama) + '</b><small>Kel. ' + e(p.kel) + ' · ' + jn(p) + (p.ketua ? ' · Ketua ' + e(p.ketua) : '') + '</small><small class="hpo">' + e(p.kel) + ' · ' + jn(p) + '</small>' + ms + '</td>' +
-      '<td class="stc">' + stK + (rv.length ? '<small class="rv">' + rv.join(' · ') + '</small>' : '') + '<span class="hpo">' + pillHp(x.st) + '</span></td><td class="ac">' + tdA + ic('right', 'chev') + '</td></tr>';
+      (skin() ? '<td class="dgf c">' + (x.d ? '<span class="dg y">' + ic('check') + ' ' + tglD(x.d).replace(/^Terkirim$/, 'Ya') + '</span>' : '<span class="dg n">Belum</span>') + '</td><td class="dgf c">' + (x.tg ? '<span class="dg y">' + ic('check') + ' ' + tglF(x.tg) + '</span>' : '<span class="dg n">Belum</span>') + '</td>' : '') + '<td class="stc">' + stK + (rv.length ? '<small class="rv">' + rv.join(' · ') + '</small>' : '') + '<span class="hpo">' + pillHp(x.st) + '</span></td><td class="ac">' + tdA + ic('right', 'chev') + '</td></tr>';
   }).join('');
-  var th = op() ? '<thead><tr><th>Posyandu</th><th>Status</th><th></th></tr></thead>' : '<thead><tr>' + (op() ? '' : '<th class="cb"><input type="checkbox" class="ck" data-pilsemua' + (semua ? ' checked' : '') + ' aria-label="Pilih semua di halaman ini"></th>') + '<th>Posyandu</th><th>Status</th><th class="r">Aksi</th></tr></thead>';
+  var th = op() ? '<thead><tr><th>Posyandu</th><th>Status</th><th></th></tr></thead>' : '<thead><tr>' + (op() ? '' : '<th class="cb"><input type="checkbox" class="ck" data-pilsemua' + (semua ? ' checked' : '') + ' aria-label="Pilih semua di halaman ini"></th>') + '<th>Posyandu</th>' + (skin() ? '<th class="dgf c">Digital</th><th class="dgf c">Fisik</th>' : '') + '<th>Status</th><th class="r">Aksi</th></tr></thead>';
   var pg = '';
   if (hal > 1) { pg = '<div class="pg">'; for (var i = 1; i <= hal; i++) pg += '<a href="#" data-hal="' + i + '" class="' + (i === S.hal ? 'on' : '') + '">' + i + '</a>'; pg += (S.hal < hal ? '<a href="#" data-hal="' + (S.hal + 1) + '" aria-label="Berikutnya">' + ic('right') + '</a>' : '') + '</div>'; }
   box.innerHTML = bulk + (l.length ? '<div class="tw"><table class="tbl mt">' + th + '<tbody>' + body + '</tbody></table></div>' : '<div class="kosong">Tidak ada Posyandu yang cocok.</div>') +
@@ -304,6 +304,17 @@ function angkaKec(D) {
     k('terima', q(hit(ft)), 'Diterima kecamatan', 'g2', A ? 'Balita ' + hit(ft, 'Balita') + '/' + nb + ' · Lansia ' + hit(ft, 'Lansia') + '/' + nl : 'memuat…') +
     (tl ? k('telat', tl, 'Terlambat', 'r', 'lewat batas kader') : '') + '</section>';
 }
+function skin() { return !!window.gayaAktif && gayaAktif() !== 'klasik'; }
+/* Panel kemajuan (gaya baru): satu angka besar dan satu bilah tiga warna. Hijau = berkas sudah diterima kecamatan, kuning = digital masuk tetapi fisik menunggu, merah muda = belum masuk. */
+function panelKemajuan(D) {
+  var rs = D.rows, n = rs.length, A = D.ada; if (!n) return '';
+  var a = rs.filter(function (x) { return x.tg; }).length, b = rs.filter(function (x) { return x.d && !x.tg; }).length, c = n - a - b;
+  var pc = function (v) { return Math.round(v * 1000 / n) / 10; }, pct = Math.round(a * 100 / n);
+  var lg = function (cl, v, t, tab) { return '<a href="#" class="kl" data-tab="' + tab + '"><i class="' + cl + '"></i><span>' + t + '</span><b>' + v + '</b></a>'; };
+  return '<section class="cd kem" aria-label="Kemajuan laporan"><div class="kh"><div class="kb"><b>' + (A ? a : '…') + '</b><span>dari ' + n + ' Posyandu sudah diterima kecamatan</span></div><div class="kp">' + (A ? pct + '%' : '') + '</div></div>' +
+    '<div class="kbar" role="img" aria-label="' + a + ' diterima, ' + b + ' menunggu berkas fisik, ' + c + ' belum masuk"><i class="s1" style="width:' + pc(a) + '%"></i><i class="s2" style="width:' + pc(b) + '%"></i><i class="s3" style="width:' + pc(c) + '%"></i></div>' +
+    '<div class="kls">' + lg('s1', A ? a : '…', 'Sudah diterima kecamatan', 'terima') + lg('s2', b, 'Menunggu berkas fisik', 'mfisik') + lg('s3', c, 'Belum masuk', 'blm') + '</div></section>';
+}
 function kartuTerimaCd(D) {
   var mf = D.rows.filter(function (x) { return x.st === 'mfisik'; }).length; if (!D.ada || !mf) return '';
   return '<section class="cd antar kec"><div class="ai">' + ic('box') + '</div><div><h2>' + mf + ' berkas fisik perlu diterima</h2><p class="mu sm">Laporan digital sudah ada, tinggal dicek berkas fisiknya.</p></div><div class="sp"></div>' +
@@ -318,7 +329,7 @@ function hlmBeranda(ct) {
   if (window.ADA === false && window.MUAT_GAGAL && !window.loading) { ct.innerHTML = gagalMuatKartu(); return; }
   var pr = per(), D = data(pr); PX.muatSetor(pr);
   var h = op() ? ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + angkaOp(D) + (D.rows.some(function (x) { return x.st === 'mfisik'; }) ? kartuAntarCd(D) : ''))
-    : ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + angkaKec(D) + kartuTerimaCd(D) + tabelKel(D));
+    : ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + (skin() ? panelKemajuan(D) : '') + angkaKec(D) + kartuTerimaCd(D) + tabelKel(D));
   if (D.h.asing.length) h += '<div class="info w">' + ic('alert') + D.h.asing.length + ' laporan memakai nama Posyandu yang belum cocok dengan Data Posyandu, sehingga tidak dihitung. ' + (utama() ? 'Periksa ejaan di menu Posyandu.' : '') + '</div>';
   if (op() && PX.PENGUMUMAN) h = '<div class="info">' + e(PX.PENGUMUMAN) + '</div>' + h;
   h += tabelUtama(D) + kredit('kb');
