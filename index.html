@@ -787,6 +787,17 @@ body.pl{
   .pl .langkah5 li i{width:28px;height:28px;font-size:13px}
   .pl section.info{border-radius:16px;padding:16px 20px}
 }
+
+/* ===== Versi 49: perbaikan antislop (tombol 44 px, kontras, huruf biasa) ===== */
+.pl .tabs button{min-height:44px}
+.pl .btn.sm{min-height:44px}
+.pl details.lain>summary{min-height:44px;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
+.pl .mcard .mh2 select{min-height:44px}
+.pl .si button.go{min-height:44px}
+.pl .foot{color:#59645c}
+.pl .app .ttl small{text-transform:none;letter-spacing:0}
+.pl .mcard .sub{text-transform:none;letter-spacing:0;font-size:13px}
+@media (prefers-color-scheme:dark){.pl .foot{color:#9aa69d}.pl input::placeholder,.pl textarea::placeholder{color:#8f9c93}}
 </style>
 <script src="pembaruan.js?v=1"></script>
 </head>
@@ -801,7 +812,7 @@ body.pl{
 </header>
 
 <main id="main" tabindex="-1"></main>
-<footer class="foot">Developed by <b>Max Juniar Ratowo</b> · © 2026<br><span id="ver">Versi 48</span> · Kecamatan Palu Utara</footer>
+<footer class="foot">Developed by <b>Max Juniar Ratowo</b> · © 2026<br><span id="ver">Versi 49</span> · Kecamatan Palu Utara</footer>
 
 <div class="dock"><div class="dock-in">
   <button type="button" class="btn back" id="btn-back">Kembali</button>
@@ -849,10 +860,11 @@ var LBL={sibu:"Sasaran",kibu:"Kunjungan",sbalita:"Sasaran (S)",kms:"Punya KMS (K
 var INFOSVG='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>';
 var DOCSVG='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
 var PGOPEN=null,PGOK=0,BAG=null;
-var APP_V="48";
+var APP_V="49";
 var KEY="laporan-posyandu-v3", MAXFOTO=12, uid=0;
 var main=document.getElementById("main"), btnBack=document.getElementById("btn-back"), btnNext=document.getElementById("btn-next"), btnMake=document.getElementById("btn-make");
 
+function gerak(){try{return window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}catch(e){return "smooth"}}
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function pad(n){return (n<10?"0":"")+n}
 function todayISO(){var d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())}
@@ -1013,7 +1025,7 @@ function showErrors(list){
     var d=document.createElement("div");d.className="err";d.textContent=x.m;
     var anchor=el.closest(".rowline")||el.closest(".mh2")||el;anchor.insertAdjacentElement("afterend",d);
   });
-  if(list.length){var f=document.getElementById(list[0].id);if(f){f.scrollIntoView({block:"center",behavior:"smooth"});try{f.focus({preventScroll:true})}catch(e){}}}
+  if(list.length){var f=document.getElementById(list[0].id);if(f){f.scrollIntoView({block:"center",behavior:gerak()});try{f.focus({preventScroll:true})}catch(e){}}}
 }
 
 /* ---------- ikon dan penunjuk langkah ---------- */
@@ -1772,7 +1784,7 @@ async function makePdf(btn){
     if(resUrl)URL.revokeObjectURL(resUrl);
     resBlob=blob;arsipDone=false;arsipBusy=false;arsipInfo=null;resUrl=URL.createObjectURL(blob);
     st.textContent="";
-    res.scrollIntoView({block:"center",behavior:"smooth"});
+    res.scrollIntoView({block:"center",behavior:gerak()});
     kirimArsip();
   }catch(e){
     res.innerHTML="";document.body.classList.remove("kirim");btn.style.display="";st.style.display="";
