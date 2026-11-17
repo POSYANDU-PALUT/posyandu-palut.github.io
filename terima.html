@@ -324,7 +324,7 @@ body.tm .scan{letter-spacing:0}
     <div class="fld"><label for="lp">Kata sandi</label><input id="lp" type="password" autocomplete="current-password"></div>
     <div class="err" id="lerr" role="alert"></div>
     <button class="btn" id="lb" type="submit">Masuk</button>
-    <div data-ver class="vtap">Terima Posyandu · tampilan 20261117a</div>
+    <div data-ver class="vtap">Terima Posyandu · tampilan 20261117b</div>
     <p class="kredit">Developed by <b>Max Juniar Ratowo</b> · © 2026</p>
   </form>
 </section>
@@ -351,7 +351,7 @@ body.tm .scan{letter-spacing:0}
       <h2>Riwayat penerimaan</h2>
       <div class="list" id="riw"></div>
       <p class="kredit">Developed by <b>Max Juniar Ratowo</b> · © 2026</p>
-      <div data-ver class="vtap" style="margin-bottom:90px">Terima Posyandu · tampilan 20261117a</div>
+      <div data-ver class="vtap" style="margin-bottom:90px">Terima Posyandu · tampilan 20261117b</div>
     </section>
 
     <section id="vR" class="hidden">
@@ -450,7 +450,7 @@ $('lf').addEventListener('submit',function(ev){
   CRED={u:u,p:p};$('lb').disabled=true;$('lb').textContent='Memeriksa…';$('lerr').textContent='';
   jsonp({aksi:'trekap',u:u,p:p,per:''},25000).then(function(r){
     if(!r||r.ok!==true){CRED=null;$('lb').disabled=false;$('lb').textContent='Masuk';$('lerr').textContent=(r&&r.pesan)||'Nama pengguna atau kata sandi salah';return}
-    simpanCred();terapRekap(r);mulai2(r);
+    simpanCred();terapRekap(r);mulai2(r);majuBulan(r);
   }).catch(function(){CRED=null;$('lb').disabled=false;$('lb').textContent='Masuk';$('lerr').textContent='Belum tersambung. Periksa internet lalu coba lagi.'});
 });
 function mulai2(r){
@@ -476,11 +476,21 @@ function tulis(aksiGet,aksiPost,extra,cek){
     var f={aksi:aksiPost};for(var k in extra)f[k]=extra[k];return kirim(f);
   });
 }
+/* Bulan sebelumnya yang sudah 100% diterima tidak perlu ditampilkan lagi: pindah otomatis ke bulan berjalan. */
+function kunciBulanIni(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)}
+function majuBulan(r){
+  var ini=kunciBulanIni();
+  if(!r||!r.per||r.per>=ini||PER!==r.per||!r.list.length||r.list.some(function(x){return !x.terima}))return Promise.resolve(r);
+  return api('trekap',{per:ini}).then(function(n){
+    if(!n||n.ok!==true||PER!==r.per)return r;
+    terapRekap(n);PER=n.per;tampilBeranda();isiFilter();tampilRekap();return n;
+  }).catch(function(){return r});
+}
 function muatRekap(per){
   return api('trekap',{per:per||''}).then(function(r){
     if(!r||r.ok!==true)throw new Error((r&&r.pesan)||'Data belum bisa dimuat');
     terapRekap(r);if(!per)PER=r.per;
-    tampilBeranda();isiFilter();tampilRekap();return r;
+    tampilBeranda();isiFilter();tampilRekap();return per?r:majuBulan(r);
   }).catch(function(e){toast(e.message||'Data belum bisa dimuat')});
 }
 function tandai(per,arr){
@@ -809,7 +819,7 @@ $('lt').addEventListener('input',function(){
   try{var s=localStorage.getItem(KUNCI_LS);if(s){CRED=JSON.parse(s);if(CRED&&CRED.u&&CRED.p){$('login').classList.add('hidden');$('app').classList.remove('hidden');mulai();return}CRED=null}}catch(e){CRED=null}
 })();
 </script>
-<script>if(window.PB)PB.mulai({app:'terima',v:'20261117a'});</script>
+<script>if(window.PB)PB.mulai({app:'terima',v:'20261117b'});</script>
 <script>if('serviceWorker' in navigator)window.addEventListener('load',function(){try{navigator.serviceWorker.register('sw-terima.js').then(function(){return navigator.serviceWorker.ready}).then(function(g){var l=[location.href,'terima.html','terima','pindah.js','kantor.jpg','jsQR.js','tes.js','logo.png','pembaruan.js','terima.webmanifest','icon-terima-192.png','icon-terima-512.png','apple-touch-icon-terima.png'];try{performance.getEntriesByType('resource').forEach(function(x){l.push(x.name)})}catch(e){}if(g.active)g.active.postMessage({simpan:l})}).catch(function(){})}catch(e){}})</script>
 </body>
 </html>
