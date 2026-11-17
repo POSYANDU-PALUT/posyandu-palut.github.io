@@ -181,7 +181,7 @@ body.v2on #v2{display:flex;min-height:100vh;font-family:Inter,system-ui,-apple-s
 #v2 .dbody{flex:1;overflow:auto}
 #v2 .dh{display:flex;align-items:flex-start;gap:10px;padding:20px 22px 16px;border-bottom:1px solid var(--line2)}#v2 .dh h2{font-size:19px}#v2 .dh small{color:var(--mu);font-size:12.5px}#v2 .dh .ib{margin-left:auto}
 #v2 .dpl{margin-top:6px}
-#v2 .dsec{padding:16px 22px;border-bottom:1px solid var(--line2)}#v2 .dsec h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);margin-bottom:10px;font-weight:600}
+#v2 .dsec{padding:16px 22px;border-bottom:1px solid var(--line2)}#v2 .dsec h3{font-size:13px;text-transform:none;letter-spacing:0;color:var(--mu);margin-bottom:10px;font-weight:600}
 #v2 .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 #v2 .mini{border:1px solid var(--line);border-radius:10px;padding:10px 12px}#v2 .mini small{display:block;color:var(--mu);font-size:12px}#v2 .mini b{display:flex;align-items:center;gap:5px;margin:3px 0 1px}#v2 .mini span{font-size:12px;color:var(--mu)}
 #v2 .okt{color:var(--g)}#v2 .okt .i{width:15px;stroke-width:2.4}#v2 .wt{color:var(--a)}
@@ -504,3 +504,25 @@ button[aria-busy="true"]{opacity:.8;cursor:progress}
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) #v2 .antar{background:#211d12;border-color:#4a3c16}}
 @media (max-width:760px){#v2 .antar.kec .ai{display:none}#v2 .antar.kec{gap:10px;padding:14px}#v2 .antar.kec>div:nth-child(2){flex:1 1 180px}#v2 .antar.kec .sp{display:none}}
+/* ===== 20261117b: Pantau kelurahan (antislop) ===== */
+.apil{display:inline-block;white-space:nowrap;font-size:12px;font-weight:700;border-radius:99px;padding:3px 10px;background:#eef0f4;color:#4a5263}
+.apil.ok{background:var(--ok-soft,#e6f4ea);color:var(--ok,#1e6b3a)}
+.apil.no{background:#fdeceb;color:#a03020}
+.alink{display:inline-flex;align-items:center;min-height:44px;font-weight:600;text-decoration:none;color:#1b2b5e}
+button.a44,.btn.a44{min-height:44px!important}
+html body .modal .kh.noline::before{display:none}
+:root[data-theme=dark] .apil{background:#2a3350;color:#c9d0e3}:root[data-theme=dark] .apil.no{background:#3a2224;color:#ffb4ab}:root[data-theme=dark] .alink{color:#a9bcff}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .apil{background:#2a3350;color:#c9d0e3}:root:not([data-theme=light]) .apil.no{background:#3a2224;color:#ffb4ab}:root:not([data-theme=light]) .alink{color:#a9bcff}}
+@media (max-width:760px){
+  #v2 .htb .ib{width:44px;height:44px}
+  #v2 .avb{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  #v2 .bt,#v2 .btn,#v2 label.btn{min-height:44px}
+  #v2 .srch{height:44px}
+  #v2 .kvl a,#v2laci .kvl a{display:inline-flex;align-items:center;min-height:44px}
+  #v2 input[type=text],#v2 input[type=password],#v2 input[type=search],#v2 input[type=tel],#v2 select{min-height:44px}
+  .modal .btn{min-height:44px}
+  #v2 .card .btn,#v2 .card label.btn{min-height:44px}
+  #v2 .card input:not([type=checkbox]):not([type=radio]):not([type=file]),#v2 .card select{min-height:44px!important}
+  #v2 .tblc .srch{height:44px}
+  #v2 .dh .ib{width:44px;height:44px}
+}

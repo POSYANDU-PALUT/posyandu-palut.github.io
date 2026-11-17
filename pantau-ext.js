@@ -1784,7 +1784,7 @@ async function unduhGabungan(lm, info) {
 }
 function kartuAntar(box, h, pr, gabung) {
   muatLembarKel(pr); var k = perKey(pr), D = LEMB[k], S = SETOR[k] || {}, c = gabung ? box : el('div', 'card antar');
-  if (gabung) { var sj = el('div', 'kh', 'Centang yang akan diantar ke kecamatan'); sj.style.marginTop = '12px'; c.appendChild(sj); } else c.appendChild(el('h4', null, 'Antar laporan ke kecamatan' + (periodeOpList().length > 1 ? ' · ' + pr.bl : '')));
+  if (gabung) { var sj = el('div', 'kh noline', 'Centang yang akan diantar ke kecamatan'); sj.style.marginTop = '12px'; c.appendChild(sj); } else c.appendChild(el('h4', null, 'Antar laporan ke kecamatan' + (periodeOpList().length > 1 ? ' · ' + pr.bl : '')));
   c.appendChild(el('div', 'lt', 'Batas mengantar laporan fisik ke kecamatan: ' + (batasFisikTgl(pr.th, pr.bl) ? 'tanggal ' + teksBatasKel(pr.th, pr.bl) : 'belum diatur') + '.'));
   c.appendChild(el('p', 'hint', (gabung ? '' : 'Centang laporan yang akan diantar. ') + 'Setelah lembar dibuat, laporan yang ikut tidak bisa dikirim ulang oleh kader kecuali Anda membukanya kembali.'));
   var cek = {}, rows = h.rows.slice().sort(function (a, b) { return a.p.jenis.localeCompare(b.p.jenis) || a.p.nama.localeCompare(b.p.nama); }), siap = 0;
@@ -1794,22 +1794,22 @@ function kartuAntar(box, h, pr, gabung) {
     if (diterima) terimaList.push(r); else if (ada) siapList.push(r); else belumList.push(r);
     cek[r.p.id] = { checked: false, disabled: true };
   });
-  function judulGrup(t) { var g = el('div', 'lt', t); g.style.cssText = 'margin:14px 0 6px;font-size:12px;font-weight:700;letter-spacing:.3px;text-transform:uppercase'; c.appendChild(g); }
+  function judulGrup(t) { var g = el('div', 'lt', t); g.style.cssText = 'margin:14px 0 6px;font-size:12.5px;font-weight:700'; c.appendChild(g); }
   function kotak() { var g = el('div'); g.style.cssText = 'border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)'; c.appendChild(g); return g; }
   function baris(g, r) { var it = el('div'); it.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 14px;flex-wrap:wrap;min-height:46px;box-sizing:border-box;' + (g.firstChild ? 'border-top:1px solid var(--line)' : ''); g.appendChild(it); return it; }
   function nm(r) { return r.p.nama + ' · ' + r.p.jenis.replace('Posyandu ', ''); }
-  function pil(t, hijau) { var x = el('span', null, t); x.style.cssText = 'white-space:nowrap;font-size:12px;font-weight:700;border-radius:99px;padding:3px 10px;background:' + (hijau ? 'var(--ok-soft)' : 'var(--chip,#eef0f4)') + ';color:' + (hijau ? 'var(--ok)' : 'var(--muted)'); return x; }
+  function pil(t, jenis) { return el('span', 'apil' + (jenis === true ? ' ok' : jenis ? ' ' + jenis : ''), t); }
   function sp(it) { var z = el('span'); z.style.flex = '1'; it.appendChild(z); }
   var tombolUtama;
   function hitungSiap() { var n = siapList.filter(function (r) { return cek[r.p.id].checked; }).length; if (tombolUtama) { tombolUtama.textContent = 'Buat lembar pengantar (' + n + ')'; tombolUtama.disabled = !n; } return n; }
   if (siapList.length) {
     judulGrup('Siap diantar · ' + siapList.length); var g1 = kotak();
     siapList.forEach(function (r) {
-      var terkunci = !!(D && D.kunci[r.p.id]), it = baris(g1, r), lb = document.createElement('label'); lb.style.cssText = 'display:flex;align-items:center;gap:10px;flex:1;min-width:160px;min-height:30px;cursor:pointer';
+      var terkunci = !!(D && D.kunci[r.p.id]), it = baris(g1, r), lb = document.createElement('label'); lb.style.cssText = 'display:flex;align-items:center;gap:10px;flex:1;min-width:160px;min-height:44px;cursor:pointer';
       var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = true; cb.style.cssText = 'width:22px;height:22px;flex:none'; cb.addEventListener('change', hitungSiap); cek[r.p.id] = cb;
       lb.appendChild(cb); lb.appendChild(el('b', null, nm(r))); it.appendChild(lb);
       if (terkunci) it.appendChild(pil('Terkunci'));
-      it.appendChild(tombolPdf(r.d));
+      var tp = tombolPdf(r.d); tp.classList.add('a44'); it.appendChild(tp);
       if (terkunci) it.appendChild(btn('Buka kembali', 'sm kc plain', async function () {
         var a = await isi('Posyandu ' + r.p.nama + '. Kader akan bisa mengirim ulang laporan ini.', { judul: 'Buka kembali laporan?', label: 'Alasan (wajib)', kecil: 'Contoh: jumlah balita salah ketik', min: 3, ok: 'Buka kembali' });
         LEMB_BUSY++; kirimAtur({ aksi: 'bukalaporan', per: k, pid: r.p.id, alasan: a }).then(function () { LEMB_BUSY--; toast('Laporan dibuka kembali. Kader bisa mengirim ulang.'); muatLembarKel(pr, true); })
@@ -1825,8 +1825,8 @@ function kartuAntar(box, h, pr, gabung) {
     judulGrup('Belum kirim laporan · ' + belumList.length); var g3 = kotak(), semua = false;
     function isiBelum() {
       g3.textContent = '';
-      (semua ? belumList : belumList.slice(0, 3)).forEach(function (r) { var it = baris(g3, r), b = el('span', null, nm(r)); b.style.color = 'var(--muted)'; it.appendChild(b); sp(it); it.appendChild(pil(r.d ? 'PDF belum tersimpan' : 'Belum kirim')); });
-      if (belumList.length > 3) { var it2 = baris(g3, null), ln = el('a', null, semua ? 'Sembunyikan ▴' : 'Lihat ' + (belumList.length - 3) + ' lainnya ▾'); ln.href = '#'; ln.style.cssText = 'font-weight:600;text-decoration:none;color:var(--ink,#1b2b5e)'; ln.addEventListener('click', function (ev) { ev.preventDefault(); semua = !semua; isiBelum(); }); it2.appendChild(ln); }
+      (semua ? belumList : belumList.slice(0, 3)).forEach(function (r) { var it = baris(g3, r), b = el('span', null, nm(r)); b.style.color = 'var(--muted)'; it.appendChild(b); sp(it); it.appendChild(pil(r.d ? 'PDF belum tersimpan' : 'Belum kirim', r.d ? '' : 'no')); });
+      if (belumList.length > 3) { var it2 = baris(g3, null), ln = el('a', null, semua ? 'Sembunyikan ▴' : 'Lihat ' + (belumList.length - 3) + ' lainnya ▾'); ln.href = '#'; ln.className = 'alink'; ln.addEventListener('click', function (ev) { ev.preventDefault(); semua = !semua; isiBelum(); }); it2.appendChild(ln); }
     }
     isiBelum();
   }
@@ -1845,12 +1845,12 @@ function kartuAntar(box, h, pr, gabung) {
   });
   tombolUtama = tb; c.appendChild(tb); hitungSiap();
   var tautan = el('div'); tautan.style.cssText = 'display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 0;font-size:13px'; c.appendChild(tautan);
-  var lkP = el('a', null, 'Ubah data pejabat'); lkP.href = '#'; lkP.addEventListener('click', function (ev) { ev.preventDefault(); formPejabat(pr); }); tautan.appendChild(lkP);
+  var lkP = el('a', 'alink', 'Ubah data pejabat'); lkP.href = '#'; lkP.addEventListener('click', function (ev) { ev.preventDefault(); formPejabat(pr); }); tautan.appendChild(lkP);
   var akt = D && D.lembar.filter(function (x) { return !x.ganti; })[0];
   if (akt) {
     var terima = akt.items.filter(function (x) { return x.terima; }).length, ikutN = akt.items.filter(function (x) { return x.st === 'ikut' || x.st === 'diterima'; }).length;
     c.appendChild(el('div', 'lt', 'Lembar terakhir: dibuat ' + tglId(akt.tgl) + ' ' + akt.jam + ' · ' + terima + ' dari ' + ikutN + ' laporan sudah diterima kecamatan.'));
-    var lkU = el('a', null, 'Unduh ulang lembar terakhir'); lkU.href = '#'; lkU.addEventListener('click', function (ev) { ev.preventDefault(); if (lkU.dataset.sb) return;
+    var lkU = el('a', 'alink', 'Unduh ulang lembar terakhir'); lkU.href = '#'; lkU.addEventListener('click', function (ev) { ev.preventDefault(); if (lkU.dataset.sb) return;
       var b = lkU, awal = b.textContent; b.dataset.sb = '1';
       unduhGabungan(akt, function (t) { b.textContent = t; }).then(function () { toast('PDF diunduh.'); }).catch(function (e) { toast(e.message || 'Gagal'); }).then(function () { b.dataset.sb = ''; b.textContent = awal; });
     }); tautan.appendChild(lkU);
