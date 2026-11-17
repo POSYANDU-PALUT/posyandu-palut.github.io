@@ -294,21 +294,22 @@ body .v2lside{display:none}
 }
 .v2lh .lbrand{display:flex;gap:12px;align-items:center;margin-bottom:56px}.v2lh .lbrand img{width:40px}.v2lh .lbrand b{display:block;font-size:16px;color:#121a2f}.v2lh .lbrand small{color:#5d6679;font-size:13px}
 .v2lh h2{font-size:26px;margin:0;color:#121a2f;font-weight:650;letter-spacing:-.01em}.v2lh p{margin:6px 0 26px;color:#5d6679}
-.v2lside .lq{color:#fff;max-width:440px}.v2lside .lq b{display:block;font-size:26px;margin-bottom:8px;letter-spacing:-.01em;font-weight:650}.v2lside .lq span{color:#c8d1ee;font-size:15px}
+.v2lside .lq{color:#fff;max-width:440px;text-align:left}.v2lside .lq b{text-wrap:balance}.v2lside .lq b{display:block;font-size:26px;margin-bottom:8px;letter-spacing:-.01em;font-weight:650}.v2lside .lq span{color:#c8d1ee;font-size:15px}
 html body:not(.v2on) .login .lf label{color:#121a2f!important;font-size:13px!important;font-weight:550!important}
 html body:not(.v2on) .login .lf input{border:1px solid #e4e7ec!important;border-radius:8px!important;background:#fff!important;min-height:44px!important;font-size:15px!important;color:#121a2f!important}
 html body:not(.v2on) .login .lf input:focus{border-color:var(--navy2,#2a3f80)!important;box-shadow:0 0 0 3px color-mix(in srgb,var(--navy2,#2a3f80) 16%,transparent)!important}
 html body:not(.v2on) .login .lf .btn{background:var(--pri,#1b2b5e)!important;color:#fff!important;border-radius:8px!important;min-height:44px!important;box-shadow:none!important;font-size:15px!important;font-weight:600!important}
 html body:not(.v2on) .login .pw button{color:var(--navy2,#2a3f80)!important}
 @media (max-width:899px){
-  .v2lh{display:none}
+  .v2lh .lbrand{display:none}
+  .v2lh{margin-bottom:4px}.v2lh h2{font-size:20px}.v2lh p{margin:4px 0 14px;font-size:14px}
   html body:not(.v2on) .login{background:linear-gradient(180deg,var(--pri,#1b2b5e) 0 300px,#f4f5f7 300px)!important}
   html body:not(.v2on) .login::before{display:none!important}
   html body:not(.v2on) .login .lf{border-radius:12px!important;box-shadow:none!important;border:1px solid #e4e7ec!important;background:#fff!important}
   html body:not(.v2on) .login .lf .btn{background:var(--pri,#1b2b5e)!important;color:#fff!important;border-radius:8px!important;box-shadow:none!important}
   html body:not(.v2on) .login h1{font-size:20px!important;color:#fff!important}
   html body:not(.v2on) .login p.sub{color:#c8d1ee!important;letter-spacing:0!important;text-transform:none!important;font-weight:500!important}
-  html body:not(.v2on) .login .lfoot{color:#8a92a3!important}html body:not(.v2on) .login .lfoot b{color:#5d6679!important}
+  html body:not(.v2on) .login .lfoot{color:#5d6679!important;opacity:1!important;font-size:12.5px}html body:not(.v2on) .login .lfoot b{color:#3b4457!important}html body:not(.v2on) .login .lfoot small{font-size:12px;opacity:1}
 }
 
 /* ===== tablet ===== */
@@ -419,7 +420,7 @@ html body:not(.v2on) .login .pw button{color:var(--navy2,#2a3f80)!important}
   body.v2on #modalExt>.box{width:100%!important;border-radius:18px 18px 0 0!important;max-height:90vh}
 }
 .v2lf{display:none}
-@media (min-width:900px){html body:not(.v2on) .login .lf .v2lf{display:block;margin-top:auto;padding-top:40px;color:#8a92a3;font-size:12px}html body:not(.v2on) .login .lf .v2lh{margin-top:auto}}
+@media (min-width:900px){html body:not(.v2on) .login .lf .v2lf{display:block;margin-top:auto;padding-top:40px;color:#5d6679;font-size:12px}html body:not(.v2on) .login .lf .v2lh{margin-top:auto}}
 #v2 .two.btm{display:none}
 
 #v2 .av{flex:none!important}#v2 .av.lg{width:48px!important;height:48px!important}
@@ -526,3 +527,6 @@ html body .modal .kh.noline::before{display:none}
   #v2 .tblc .srch{height:44px}
   #v2 .dh .ib{width:44px;height:44px}
 }
+
+.lupa{margin:12px 0 0;font-size:13px;color:#5d6679;text-align:center}
+html body:not(.v2on) .login .lf .lupa{color:#5d6679}
