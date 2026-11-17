@@ -1599,6 +1599,7 @@ function formPejabat(pr) {
 }
 
 /* Pembuat QR Code kecil (sama dengan aplikasi kader), dipakai untuk kode di lembar pengantar. */
+window.qrBuat = qrBuat;
 function qrBuat(teks, paksaMask) {
   var DATA = [0, 16, 28, 44, 64, 86, 108], ECN = [0, 10, 16, 26, 18, 24, 16], BLK = [0, 1, 1, 1, 2, 2, 4];
   var ALIGN = [0, [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34]];

@@ -488,7 +488,7 @@ function rincianPos(id) {
 }
 
 /* ---------- Pengaturan ---------- */
-var PSUB = [['j', 'cal', 'Jadwal dan pengumuman'], ['u', 'pos', 'Pengguna dan penerima'], ['s', 'db', 'Data dan cadangan'], ['t', 'shield', 'Sistem'], ['w', 'eye', 'Tampilan'], ['a', 'user', 'Akun saya']];
+var PSUB = [['j', 'cal', 'Jadwal dan pengumuman'], ['u', 'pos', 'Pengguna dan penerima'], ['s', 'db', 'Data dan cadangan'], ['t', 'shield', 'Sistem'], ['l', 'share', 'Tautan aplikasi'], ['w', 'eye', 'Tampilan'], ['a', 'user', 'Akun saya']];
 function fld(lbl, inner, hint) { return '<div class="fl"><label>' + lbl + '</label>' + inner + (hint ? '<p class="hint">' + hint + '</p>' : '') + '</div>'; }
 function hlmPengaturan(ct) {
   if (!utama() && S.ps !== 'w') S.ps = 'a';
@@ -497,7 +497,7 @@ function hlmPengaturan(ct) {
   var back = '<a href="' + rute('m') + '" class="back" data-go="m">' + ic('left') + 'Lainnya</a>';
   ct.innerHTML = '<div class="pset">' + nav + '<div class="pcol" id="v2pcol">' + back + '</div></div>';
   var c = $('v2pcol');
-  ({ j: psJadwal, u: psPengguna, s: psData, t: psSistem, w: psWarna, a: psAkun }[S.ps] || psAkun)(c);
+  ({ j: psJadwal, u: psPengguna, s: psData, t: psSistem, l: psTautan, w: psWarna, a: psAkun }[S.ps] || psAkun)(c);
 }
 function bbLabel(k) { var m = /^(\d{4})-(\d\d)$/.exec(k); return m ? BULAN[+m[2] - 1] + ' ' + m[1] : k; }
 function bbTgl(t) { var m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(t || ''); return m ? (+m[3]) + ' ' + BULAN[+m[2] - 1] + ' ' + m[1] : '-'; }
@@ -639,6 +639,45 @@ function logHtml() {
   if (!LOG.length) return '<p class="mu sm">Belum ada catatan.</p>';
   return '<ul class="log">' + LOG.slice(0, LOGN).map(function (x) { return '<li><span class="lt"><b>' + e(x.u) + '</b> ' + e(x.a) + '</span><span>' + e(x.t) + '</span></li>'; }).join('') + '</ul>' + (LOG.length > LOGN ? '<p class="mu sm" style="margin:8px 2px 0"><a href="#" data-aksi="logmore">Tampilkan lebih banyak</a></p>' : '');
 }
+/* Tautan aplikasi: alamat aplikasi kader dan aplikasi Terima, dengan tombol salin, WhatsApp dan kode QR yang bisa diunduh. Alamat diambil dari alamat situs yang sedang dibuka. */
+var TAUTAN = [
+  { id: 'kader', nm: 'Aplikasi laporan kader', ket: 'Dipakai kader mengisi dan mengirim laporan Posyandu.', hal: './', judul: 'Laporan Posyandu', pesan: 'Aplikasi laporan Posyandu Kecamatan Palu Utara. Buka tautan ini lalu pasang di layar utama HP:' },
+  { id: 'terima', nm: 'Aplikasi penerima berkas (QR)', ket: 'Dipakai petugas memindai dan menerima berkas fisik. Tautan akses per petugas ada di Pengguna dan penerima.', hal: 'terima.html', judul: 'Terima Posyandu', pesan: 'Aplikasi Terima Posyandu Kecamatan Palu Utara untuk memindai berkas fisik:' }
+];
+function tautUrl(t) { return new URL(t.hal, location.href).href.replace(/[?#].*$/, ''); }
+function qrSvg(url) {
+  var q = window.qrBuat ? qrBuat(url) : null; if (!q) return '';
+  var Z = 2, N = q.n + 2 * Z, d = '';
+  for (var r = 0; r < q.n; r++) for (var c = 0; c < q.n; c++) if (q.m[r][c]) d += 'M' + (c + Z) + ' ' + (r + Z) + 'h1v1h-1z';
+  return '<svg viewBox="0 0 ' + N + ' ' + N + '" role="img" aria-label="Kode QR" shape-rendering="crispEdges"><rect width="' + N + '" height="' + N + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+}
+function unduhQr(t) {
+  var url = tautUrl(t), q = window.qrBuat(url), Z = 2, S = 12, N = q.n + 2 * Z, W = N * S + 80, H = N * S + 150, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.fillStyle = '#000';
+  for (var r = 0; r < q.n; r++) for (var c = 0; c < q.n; c++) if (q.m[r][c]) g.fillRect(40 + (c + Z) * S, 70 + (r + Z) * S, S, S);
+  g.textAlign = 'center'; g.fillStyle = '#1b2b5e'; g.font = 'bold 30px Arial, sans-serif'; g.fillText(t.judul, W / 2, 46);
+  g.fillStyle = '#333'; g.font = '22px Arial, sans-serif'; g.fillText('Kecamatan Palu Utara', W / 2, H - 52); g.font = '17px Arial, sans-serif'; g.fillStyle = '#555'; g.fillText('Pindai dengan kamera HP', W / 2, H - 22);
+  cv.toBlob(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'QR ' + t.judul + '.png'; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500); }, 'image/png');
+}
+function salinTeks(tx, tombol) {
+  function ok() { var l = tombol.textContent; tombol.textContent = 'Tersalin'; setTimeout(function () { tombol.textContent = l; }, 1600); }
+  function cad() { var a = document.createElement('textarea'); a.value = tx; a.style.position = 'fixed'; a.style.opacity = '0'; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); ok(); } catch (x) { tombol.textContent = 'Gagal, salin manual'; } a.remove(); }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(tx).then(ok, cad); else cad();
+}
+function psTautan(c) {
+  var h = '<section class="cd form"><h2>Tautan aplikasi</h2><p class="mu sm">Bagikan ke kader dan petugas. Alamat diambil otomatis dari alamat situs ini.</p>' + TAUTAN.map(function (t) {
+    var u = tautUrl(t); return '<div class="tlk"><div class="tlt"><b>' + t.nm + '</b><span>' + t.ket + '</span><div class="tlu" tabindex="0" aria-label="Alamat ' + t.nm + '">' + e(u) + '</div>' +
+      '<div class="tautb"><button type="button" class="bt pri sm" data-tl="salin" data-i="' + t.id + '">Salin tautan</button><a class="bt out sm" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(t.pesan + '\n' + u) + '">Bagikan ke WhatsApp</a><button type="button" class="bt out sm" data-tl="unduh" data-i="' + t.id + '">Unduh kode QR</button></div></div>' +
+      '<div class="tlq"><div class="tlqi">' + qrSvg(u) + '</div><small>Pindai untuk membuka</small></div></div>';
+  }).join('') + '</section>';
+  c.insertAdjacentHTML('beforeend', h);
+  c.querySelectorAll('[data-tl]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = TAUTAN.filter(function (x) { return x.id === b.getAttribute('data-i'); })[0]; if (!t) return;
+      if (b.getAttribute('data-tl') === 'salin') salinTeks(tautUrl(t), b); else unduhQr(t);
+    });
+  });
+}
 function psWarna(c) { if (window.kartuGaya) c.insertAdjacentHTML('beforeend', kartuGaya()); c.insertAdjacentHTML('beforeend', kartuWarna()); }
 function psSistem(c) {
   c.insertAdjacentHTML('beforeend', '<div id="v2pm"></div><section class="cd"><div class="hd"><div><h2>Tentang aplikasi</h2></div></div><div class="kvl"><span>Versi</span><b>v11 · tampilan baru</b></div><div class="kvl"><span>Jenis Posyandu</span><b>Balita, Lansia</b></div><div class="kvl"><span>Kelurahan</span><b>' + e(KEL.join(', ')) + '</b></div><div class="kvl"><span>Pengembang</span><b>Max Juniar Ratowo</b></div></section>');
@@ -670,7 +709,7 @@ function psAkun(c) {
 /* ---------- Lainnya (HP) ---------- */
 function hlmLainnya(ct) {
   var dark = document.documentElement.getAttribute('data-theme') === 'dark' || (document.documentElement.getAttribute('data-theme') !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-  var grp = utama() ? [['Pengaturan', PSUB.slice(0, 4)]] : [];
+  var grp = utama() ? [['Pengaturan', PSUB.slice(0, 5)]] : [];
   var h = '<a href="#" class="cd prof" data-ps="a">' + avatar('lg') + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + (window.PROFIL && PROFIL.nip ? ' · NIP ' + e(PROFIL.nip) : '') + '</small></div>' + ic('right', 'chev') + '</a>' + kredit('kl');
   grp.forEach(function (g) { h += '<h3 class="hh sm">' + g[0] + '</h3><div class="cd ml">' + g[1].map(function (x) { return '<a href="#" data-ps="' + x[0] + '">' + ic(x[1]) + '<span>' + x[2] + '</span>' + ic('right', 'chev') + '</a>'; }).join('') + '</div>'; });
   h += '<h3 class="hh sm">Tampilan</h3><div class="cd ml"><a href="#" data-tema>' + ic('moon') + '<span>Mode gelap</span><span class="tg' + (dark ? ' on' : '') + '"><i></i></span></a><a href="#" data-ps="w">' + ic('eye') + '<span>Warna aplikasi</span>' + ic('right', 'chev') + '</a></div>';
