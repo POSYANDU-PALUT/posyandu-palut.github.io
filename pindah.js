@@ -14,7 +14,8 @@
     terima: ['terima-cred', 'terima-rekap']
   };
   var JALUR = { kader: '/', pantau: '/pantau', terima: '/terima' };
-  var diBaru = location.hostname === BARU;
+  var DOMAIN = 'posyandupalut.biz.id'; /* alamat sendiri; dianggap alamat baru agar tidak diteruskan lagi ke github.io */
+  var diBaru = location.hostname === BARU || location.hostname === DOMAIN || location.hostname === 'www.' + DOMAIN;
 
   function enc(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
   function dec(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return decodeURIComponent(escape(atob(s))); }
