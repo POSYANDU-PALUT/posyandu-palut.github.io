@@ -641,8 +641,8 @@ function logHtml() {
 }
 /* Tautan aplikasi: alamat aplikasi kader dan aplikasi Terima, dengan tombol salin, WhatsApp dan kode QR yang bisa diunduh. Alamat diambil dari alamat situs yang sedang dibuka. */
 var TAUTAN = [
-  { id: 'kader', nm: 'Aplikasi laporan kader', ket: 'Dipakai kader mengisi dan mengirim laporan Posyandu.', hal: './', judul: 'Laporan Posyandu', pesan: 'Aplikasi laporan Posyandu Kecamatan Palu Utara. Buka tautan ini lalu pasang di layar utama HP:' },
-  { id: 'terima', nm: 'Aplikasi penerima berkas (QR)', ket: 'Dipakai petugas memindai dan menerima berkas fisik. Tautan akses per petugas ada di Pengguna dan penerima.', hal: 'terima.html', judul: 'Terima Posyandu', pesan: 'Aplikasi Terima Posyandu Kecamatan Palu Utara untuk memindai berkas fisik:' }
+  { id: 'kader', nm: 'Aplikasi laporan kader', ket: 'Dipakai kader mengisi dan mengirim laporan Posyandu.', hal: 'laporan', judul: 'Laporan Posyandu', pesan: 'Aplikasi laporan Posyandu Kecamatan Palu Utara. Buka tautan ini lalu pasang di layar utama HP:' },
+  { id: 'terima', nm: 'Aplikasi penerima berkas (QR)', ket: 'Dipakai petugas memindai dan menerima berkas fisik. Tautan akses per petugas ada di Pengguna dan penerima.', hal: 'terima', judul: 'Terima Posyandu', pesan: 'Aplikasi Terima Posyandu Kecamatan Palu Utara untuk memindai berkas fisik:' }
 ];
 function tautUrl(t) { return new URL(t.hal, location.href).href.replace(/[?#].*$/, ''); }
 function qrSvg(url) {
@@ -694,7 +694,7 @@ function kartuKecepatan() {
 }
 function psAkun(c) {
   c.insertAdjacentHTML('beforeend', '<section class="cd prof2"><div class="prof">' + avatar('lg') + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + ' · ' + e((window.CRED && (CRED.as || CRED.u)) || '') + '</small></div></div></section><div id="v2akun"></div>' +
-    '<section class="cd"><div class="ml"><a href="./" target="_blank" rel="noopener">' + ic('send') + '<span>Buka aplikasi laporan kader</span>' + ic('right', 'chev') + '</a>' +
+    '<section class="cd"><div class="ml"><a href="laporan" target="_blank" rel="noopener">' + ic('send') + '<span>Buka aplikasi laporan kader</span>' + ic('right', 'chev') + '</a>' +
     (utama() || (window.CRED && CRED.as) ? '<a href="#" data-aksi="sebagai">' + ic('eye') + '<span>' + (window.CRED && CRED.as ? 'Kembali sebagai admin' : 'Lihat sebagai operator') + '</span>' + ic('right', 'chev') + '</a>' : '') +
     '<a href="#" data-muat>' + ic('sync') + '<span>Muat ulang data</span>' + ic('right', 'chev') + '</a><a href="#" data-aksi="keluar" class="dz">' + ic('out') + '<span>Keluar</span>' + ic('right', 'chev') + '</a></div></section>');
   var box = $('v2akun');
@@ -713,7 +713,7 @@ function hlmLainnya(ct) {
   var h = '<a href="#" class="cd prof" data-ps="a">' + avatar('lg') + '<div><b>' + e(nama()) + '</b><small>' + e(peranTeks()) + (window.PROFIL && PROFIL.nip ? ' · NIP ' + e(PROFIL.nip) : '') + '</small></div>' + ic('right', 'chev') + '</a>' + kredit('kl');
   grp.forEach(function (g) { h += '<h3 class="hh sm">' + g[0] + '</h3><div class="cd ml">' + g[1].map(function (x) { return '<a href="#" data-ps="' + x[0] + '">' + ic(x[1]) + '<span>' + x[2] + '</span>' + ic('right', 'chev') + '</a>'; }).join('') + '</div>'; });
   h += '<h3 class="hh sm">Tampilan</h3><div class="cd ml"><a href="#" data-tema>' + ic('moon') + '<span>Mode gelap</span><span class="tg' + (dark ? ' on' : '') + '"><i></i></span></a><a href="#" data-ps="w">' + ic('eye') + '<span>Warna aplikasi</span>' + ic('right', 'chev') + '</a></div>';
-  h += '<div class="cd ml"><a href="./" target="_blank" rel="noopener">' + ic('send') + '<span>Buka aplikasi laporan kader</span>' + ic('right', 'chev') + '</a><a href="#" data-aksi="keluar" class="dz">' + ic('out') + '<span>Keluar</span>' + ic('right', 'chev') + '</a></div>';
+  h += '<div class="cd ml"><a href="laporan" target="_blank" rel="noopener">' + ic('send') + '<span>Buka aplikasi laporan kader</span>' + ic('right', 'chev') + '</a><a href="#" data-aksi="keluar" class="dz">' + ic('out') + '<span>Keluar</span>' + ic('right', 'chev') + '</a></div>';
   h += '<p class="ver">Pantau Laporan Posyandu v11 · © 2026 Kecamatan Palu Utara</p>';
   ct.innerHTML = h;
 }

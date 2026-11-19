@@ -1,5 +1,5 @@
 /* Pindah alamat aplikasi.
-   Alamat baru: https://posyandu-palut.github.io/ (kader), /pantau, /terima.
+   Alamat baru: https://posyandupalut.biz.id/ (Pantau), /laporan (kader), /terima.
    - Di ALAMAT BARU: menerima data yang dibawa dari alamat lama (#pindah=...), menyimpannya di HP, lalu membersihkan alamat.
    - Di ALAMAT LAMA, mulai MULAI: Pantau dan Terima langsung diteruskan ke alamat baru (QR ?k= ikut);
      aplikasi kader menampilkan pesan pindah hanya bila aman (di halaman awal, tidak sedang mengirim, antrean HP kosong).
@@ -13,7 +13,7 @@
     pantau: ['pantau-tema', 'pantau-seen', 'pantau_nip', 'pantau_trm_tautan', 'pantau_fisik_saja'],
     terima: ['terima-cred', 'terima-rekap']
   };
-  var JALUR = { kader: '/', pantau: '/pantau', terima: '/terima' };
+  var JALUR = { kader: '/laporan', pantau: '/', terima: '/terima' };
   var DOMAIN = 'posyandupalut.biz.id'; /* alamat sendiri; dianggap alamat baru agar tidak diteruskan lagi ke github.io */
   var diBaru = location.hostname === BARU || location.hostname === DOMAIN || location.hostname === 'www.' + DOMAIN;
 

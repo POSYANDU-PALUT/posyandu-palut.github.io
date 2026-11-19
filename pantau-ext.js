@@ -2047,7 +2047,7 @@ window.pasangPenerima = function () {
   c.textContent = '';
   var L = Array.isArray(PENERIMA) ? PENERIMA : (PENERIMA && PENERIMA.u ? [PENERIMA] : []);
   c.appendChild(el('h4', null, 'Aplikasi Terima Posyandu'));
-  var link = new URL('terima.html', location.href).href;
+  var link = new URL('terima', location.href).href;
   c.appendChild(el('p', 'hint', 'Aplikasi terpisah untuk mencatat penerimaan laporan fisik dengan memindai QR laporan atau lembar pengantar. Beri satu tautan untuk tiap petugas supaya tercatat siapa yang menerima. Alamat: ' + link));
   var hd = el('div', 'trmhd'); hd.appendChild(el('b', null, 'Petugas penerima (' + L.length + ' dari ' + MAKS_TRM + ')'));
   var bTam = el('button', 'btn sm', '+ Tambah penerima'); bTam.type = 'button'; bTam.disabled = L.length >= MAKS_TRM;
