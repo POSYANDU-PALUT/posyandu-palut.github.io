@@ -208,6 +208,7 @@ function saring(D) {
     if (t === 'kirim' && !x.d) return false;
     if (t === 'blm' && x.d) return false;
     if (t === 'terima' && !x.tg) return false;
+    if (t === 'nol' && (x.d || x.tg)) return false;
     if (S.kel && x.p.kel !== S.kel) return false;
     if (S.jn && jn(x.p) !== S.jn) return false;
     return !q || (x.p.nama + ' ' + x.p.kel + ' ' + (x.p.ketua || '')).toLowerCase().indexOf(q) >= 0;
@@ -225,7 +226,7 @@ function tabelUtama(D) {
   var flt = '<div class="flt"><label class="srch">' + ic('search') + '<input id="v2q" type="search" placeholder="Cari Posyandu atau ketua…" aria-label="Cari Posyandu" value="' + e(S.q) + '" autocomplete="off"></label>' +
     (op() ? '' : selek('kel', [['', 'Semua kelurahan']].concat(KEL.map(function (k) { return [k, k]; })), S.kel, 'Kelurahan')) +
     (op() ? '' : selek('jn', [['', 'Semua jenis'], ['Balita', 'Balita'], ['Lansia', 'Lansia']], S.jn, 'Jenis')) + '</div>';
-  var NMT = { kirim: 'Sudah kirim', blm: 'Belum kirim', terima: 'Diterima kecamatan', mfisik: 'Berkas fisik perlu diterima', telat: 'Terlambat', belum: 'Belum masuk', lengkap: 'Lengkap' };
+  var NMT = { kirim: 'Sudah kirim', blm: 'Belum kirim', terima: 'Diterima kecamatan', mfisik: 'Berkas fisik perlu diterima', telat: 'Terlambat', nol: 'Belum ada laporan masuk', belum: 'Belum masuk', lengkap: 'Lengkap' };
   if (!op() && S.tab !== 'semua' && NMT[S.tab]) flt += '<div class="fchip"><span>Disaring: <b>' + NMT[S.tab] + '</b></span><button type="button" class="bt sm ghost" data-tab="semua" aria-label="Hapus saringan">' + ic('x') + ' Tampilkan semua</button></div>';
   return '<section class="cd tblc" id="v2tabel"><div class="hd"><h2>' + e(judul) + '</h2><div class="sp"></div>' + aksi + '</div>' + flt + '<div id="v2isi"></div></section>';
 }
@@ -291,18 +292,25 @@ function angkaOp(D) {
   var k = function (tab, v, lbl, c) { return '<a href="#" class="num' + (S.tab === tab ? ' on' : '') + '" data-tab="' + tab + '"><b>' + q(v) + '</b><span><i class="' + c + '"></i>' + lbl + '</span></a>'; };
   return '<section class="nums">' + k('kirim', dg, 'Sudah kirim', 'g1') + k('blm', n - dg, 'Belum kirim', 'g0') + k('terima', fs, 'Diterima kecamatan', 'g2') + '</section>';
 }
-/* Beranda admin kecamatan: tiga angka (empat bila ada yang terlambat) dengan rincian Balita dan Lansia. */
-function angkaKec(D) {
+/* Beranda admin kecamatan: satu angka utama "diterima di kecamatan" dengan bilah tiga warna dan tiga rincian yang bisa diklik.
+   Hijau = berkas fisik sudah diterima kecamatan, kuning = digital sudah ada tetapi fisik belum diserahkan, merah = belum ada laporan sama sekali.
+   Rincian kiriman digital (sudah/belum kirim) dan Terlambat tetap bisa diklik di baris kecil di bawahnya. */
+function panelDiterima(D, pr) {
   var rs = D.rows, n = rs.length, A = D.ada, q = function (v) { return A ? v : '…'; };
   var nb = rs.filter(function (x) { return jn(x.p) === 'Balita'; }).length, nl = n - nb;
   var hit = function (f, j) { return rs.filter(function (x) { return f(x) && (!j || jn(x.p) === j); }).length; };
-  var fd = function (x) { return !!x.d; }, fb = function (x) { return !x.d; }, ft = function (x) { return !!x.tg; }, tl = A ? hit(function (x) { return x.telat; }) : 0;
-  var k = function (tab, v, lbl, c, sub) { return '<a href="#" class="num' + (S.tab === tab ? ' on' : '') + '" data-tab="' + tab + '"><b>' + v + '</b><span><i class="' + c + '"></i>' + lbl + '<small>' + sub + '</small></span></a>'; };
-  return '<section class="nums kec' + (tl ? ' n4' : '') + '">' +
-    k('kirim', hit(fd), 'Sudah kirim dari ' + n, 'g1', 'Balita ' + hit(fd, 'Balita') + '/' + nb + ' · Lansia ' + hit(fd, 'Lansia') + '/' + nl) +
-    k('blm', hit(fb), 'Belum kirim', 'g0', 'Balita ' + hit(fb, 'Balita') + ' · Lansia ' + hit(fb, 'Lansia')) +
-    k('terima', q(hit(ft)), 'Diterima kecamatan', 'g2', A ? 'Balita ' + hit(ft, 'Balita') + '/' + nb + ' · Lansia ' + hit(ft, 'Lansia') + '/' + nl : 'memuat…') +
-    (tl ? k('telat', tl, 'Terlambat', 'r', 'lewat batas kader') : '') + '</section>';
+  var ft = function (x) { return !!x.tg; }, fm = function (x) { return x.d && !x.tg; }, fn = function (x) { return !x.d && !x.tg; };
+  var a = hit(ft), b = hit(fm), c = hit(fn), tl = A ? hit(function (x) { return x.telat; }) : 0, dg = hit(function (x) { return !!x.d; });
+  var pc = function (v) { return n ? Math.round(v * 1000 / n) / 10 : 0; };
+  var r = function (cl, tab, t, ket, v) { return '<a href="#" class="dkr' + (S.tab === tab ? ' on' : '') + '" data-tab="' + tab + '"><i class="' + cl + '"></i><span><b>' + t + '</b><small>' + ket + '</small></span><em>' + q(v) + '</em></a>'; };
+  return '<section class="cd dk" aria-label="Berkas fisik diterima kecamatan"><div class="dk1"><div class="dkt">Diterima di kecamatan, ' + e(pr.bl + ' ' + pr.th) + '</div>' +
+    '<div class="dkn"><b>' + q(a) + '</b><span>dari ' + n + ' Posyandu</span></div>' +
+    '<div class="dkbar" role="img" aria-label="' + a + ' diterima, ' + b + ' menunggu berkas fisik, ' + c + ' belum ada laporan masuk"><i class="s1" style="width:' + pc(a) + '%"></i><i class="s2" style="width:' + pc(b) + '%"></i><i class="s3" style="width:' + pc(c) + '%"></i></div>' +
+    '<div class="dkb">' + (A ? 'Balita ' + hit(ft, 'Balita') + ' dari ' + nb + ' · Lansia ' + hit(ft, 'Lansia') + ' dari ' + nl : 'memuat…') + '</div></div>' +
+    '<div class="dk2">' + r('s1', 'terima', 'Berkas Fisik Diterima', 'Berkas fisik telah diterima oleh kecamatan', a) +
+    r('s2', 'mfisik', 'Menunggu Berkas Fisik', 'Laporan digital telah dikirim, berkas fisik belum diserahkan', b) +
+    r('s3', 'nol', 'Belum Ada Laporan Masuk', 'Laporan digital dan berkas fisik belum diserahkan', c) + '</div></section>' +
+    '<p class="dkk">Rincian kiriman digital: <a href="#" data-tab="kirim">' + q(dg) + ' sudah kirim</a> · <a href="#" data-tab="blm">' + q(n - dg) + ' belum kirim</a>' + (tl ? ' · <a href="#" data-tab="telat" class="tl">' + tl + ' terlambat</a>' : '') + '</p>';
 }
 function skin() { return !!window.gayaAktif && gayaAktif() !== 'klasik'; }
 /* Panel kemajuan (gaya baru): satu angka besar dan satu bilah tiga warna. Hijau = berkas sudah diterima kecamatan, kuning = digital masuk tetapi fisik menunggu, merah muda = belum masuk. */
@@ -329,7 +337,7 @@ function hlmBeranda(ct) {
   if (window.ADA === false && window.MUAT_GAGAL && !window.loading) { ct.innerHTML = gagalMuatKartu(); return; }
   var pr = per(), D = data(pr); PX.muatSetor(pr);
   var h = op() ? ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + (skin() ? panelKemajuan(D) : '') + angkaOp(D) + (D.rows.some(function (x) { return x.st === 'mfisik'; }) ? kartuAntarCd(D) : ''))
-    : ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + (skin() ? panelKemajuan(D) : '') + angkaKec(D) + kartuTerimaCd(D) + tabelKel(D));
+    : ('<div class="hpper">' + selPer(true) + '</div>' + tenggatOp(pr, periodeSelesai(pr)) + panelDiterima(D, pr) + kartuTerimaCd(D) + tabelKel(D));
   if (D.h.asing.length) h += '<div class="info w">' + ic('alert') + D.h.asing.length + ' laporan memakai nama Posyandu yang belum cocok dengan Data Posyandu, sehingga tidak dihitung. ' + (utama() ? 'Periksa ejaan di menu Posyandu.' : '') + '</div>';
   if (op() && PX.PENGUMUMAN) h = '<div class="info">' + e(PX.PENGUMUMAN) + '</div>' + h;
   h += tabelUtama(D) + kredit('kb');
@@ -814,7 +822,7 @@ function pasangKlik() {
     if (d.go) { ev.preventDefault(); return go(d.go); }
     if (d.ps) { ev.preventDefault(); S.ps = d.ps; S.pg = 'p'; S.simpan = {}; return render(); }
     if (d.tutup !== undefined) { ev.preventDefault(); S.laci = null; return laci(); }
-    if (d.tab) { ev.preventDefault(); S.tab = (S.tab === d.tab && t.closest('.nums')) ? 'semua' : d.tab; S.hal = 1; if (S.pg !== 'b') S.pg = 'b'; render(); var tb = $('v2tabel'); if (tb && t.closest('.nums,.antar')) tb.scrollIntoView({ behavior: gl(), block: 'start' }); return; }
+    if (d.tab) { ev.preventDefault(); S.tab = (S.tab === d.tab && t.closest('.nums,.dk,.dkk')) ? 'semua' : d.tab; S.hal = 1; if (S.pg !== 'b') S.pg = 'b'; render(); var tb = $('v2tabel'); if (tb && t.closest('.nums,.antar,.dk,.dkk')) tb.scrollIntoView({ behavior: gl(), block: 'start' }); return; }
     if (d.hal) { ev.preventDefault(); S.hal = +d.hal; return isiTabel(data(per())); }
     if (d.kel !== undefined && t.tagName === 'TR') { S.kel = d.kel; S.tab = 'semua'; S.hal = 1; render(); var tb2 = $('v2tabel'); if (tb2) tb2.scrollIntoView({ behavior: gl(), block: 'start' }); return; }
     if (d.menu) { ev.preventDefault(); ev.stopPropagation(); S.menu = S.menu === d.menu ? null : d.menu; return render(); }

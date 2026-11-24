@@ -621,3 +621,31 @@ html:not([data-gaya=klasik]) #v2 .kgl{display:none}
   #v2 .tlq small{margin:0}
   #v2 .tautb .bt{flex:1 1 140px;justify-content:center}
 }
+
+/* Beranda kecamatan: kartu "Diterima di kecamatan" (20261124a). Hijau = diterima, kuning = menunggu berkas fisik, merah = belum ada laporan. */
+#v2 .dk{display:grid;grid-template-columns:1.25fr 1fr;gap:32px;align-items:center;padding:22px 26px;margin:0 0 6px}
+#v2 .dk .dkt{font-size:13px;font-weight:600;color:var(--mu)}
+#v2 .dk .dkn{display:flex;align-items:baseline;gap:10px;margin-top:6px;flex-wrap:wrap}
+#v2 .dk .dkn b{font-size:60px;line-height:1;font-weight:700;color:var(--navy)}
+#v2 .dk .dkn span{font-size:22px;color:var(--mu)}
+#v2 .dkbar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--line2);margin-top:14px}
+#v2 .dkbar i{display:block;height:100%}
+#v2 .dkbar .s1,#v2 .dkr i.s1{background:#2e9e63}#v2 .dkbar .s2,#v2 .dkr i.s2{background:#e8b32a}#v2 .dkbar .s3,#v2 .dkr i.s3{background:#d9432c}
+#v2 .dk .dkb{font-size:12.5px;color:var(--mu);margin-top:8px}
+#v2 .dk2{display:grid}
+#v2 .dkr{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 6px;border-top:1px solid var(--line);color:var(--fg);text-decoration:none}
+#v2 .dkr:first-child{border-top:0}
+#v2 .dkr:hover{background:var(--th)}
+#v2 .dkr.on{outline:2px solid var(--navy2,#1b2b5e);outline-offset:-2px}
+#v2 .dkr:focus-visible,#v2 .dkk a:focus-visible{outline:2px solid var(--navy);outline-offset:2px}
+#v2 .dkr i{width:12px;height:12px;border-radius:3px;flex:none}
+#v2 .dkr span{flex:1;min-width:0}
+#v2 .dkr b{display:block;font-size:14px}
+#v2 .dkr small{display:block;font-size:12px;color:var(--mu);line-height:1.35;margin-top:1px}
+#v2 .dkr em{font-style:normal;font-size:22px;font-weight:700}
+#v2 .dkk{font-size:12.5px;color:var(--mu);margin:0 2px 14px}
+#v2 .dkk a{color:var(--navy);text-decoration:underline;padding:6px 0;display:inline-block}
+#v2 .dkk a.tl{color:#b3341f;font-weight:600}
+html[data-theme=dark] #v2 .dkk a.tl{color:#ff9a8a}
+@media (prefers-color-scheme:dark){html:not([data-theme=light]) #v2 .dkk a.tl{color:#ff9a8a}}
+@media (max-width:760px){#v2 .dk{grid-template-columns:1fr;gap:14px;padding:16px}#v2 .dk .dkn b{font-size:44px}#v2 .dk .dkn span{font-size:18px}#v2 .dkr{min-height:48px}}
